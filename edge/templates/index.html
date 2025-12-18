@@ -1,0 +1,898 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 运筹与优化团队工业设备智能健康管理平台{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <!-- 顶部标题栏 -->
+    <div class="header-bar">
+        <div class="header-left">
+            <img src="{{ url_for('static', filename='127166686.png') }}" alt="团队Logo" class="team-logo" onerror="this.style.display='none'">
+            <div class="header-title-group">
+                <h1 class="header-title">运筹与优化团队</h1>
+                <p class="header-subtitle">工业设备智能健康管理平台</p>
+            </div>
+        </div>
+        
+        <!-- 连接状态 -->
+        <div class="connection-widget">
+            <div class="connection-header">
+                <i class="fas fa-cloud"></i>
+                <span>云端连接</span>
+            </div>
+            <div class="connection-body">
+                <div id="status-indicator" class="status-indicator">
+                    <div class="status-dot"></div>
+                    <i class="fas fa-circle-notch fa-spin"></i>
+                    <span>检查连接中...</span>
+                </div>
+                <div id="connection-message" class="connection-message"></div>
+                <button id="connect-btn" class="connect-button" data-action="connect-server">
+                    <i class="fas fa-plug"></i>
+                    <span>连接云端服务器</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 功能模块区域 -->
+    <div class="features-section">
+        <div class="section-title-wrapper">
+            <h2 class="section-title">功能模块</h2>
+            <p class="section-subtitle">选择以下模块开始使用系统</p>
+        </div>
+        
+        <div class="features-grid">
+            <!-- 设备监测 -->
+            <a href="/device_monitoring" class="feature-card card-monitor" data-card="monitoring">
+                <div class="card-gradient"></div>
+                <div class="card-content">
+                    <div class="card-icon">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <h3 class="card-title">设备监测</h3>
+                    <p class="card-description">实时监测设备状态，多维数据可视化展示</p>
+                    <div class="card-footer">
+                        <span class="card-link-text">进入系统</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
+            </a>
+
+            <!-- 数据管理 -->
+            <a href="/data_management" class="feature-card card-data" data-card="data">
+                <div class="card-gradient"></div>
+                <div class="card-content">
+                    <div class="card-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <h3 class="card-title">数据管理</h3>
+                    <p class="card-description">全流程数据管理，支持截取、导出与标注</p>
+                    <div class="card-footer">
+                        <span class="card-link-text">进入系统</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
+            </a>
+
+            <!-- 模型管理 -->
+            <a href="/model_management" class="feature-card card-model" data-card="model">
+                <div class="card-gradient"></div>
+                <div class="card-content">
+                    <div class="card-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3 class="card-title">模型管理</h3>
+                    <p class="card-description">统一管理多类模型，支持查看与维护操作</p>
+                    <div class="card-footer">
+                        <span class="card-link-text">进入系统</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
+            </a>
+
+            <!-- 异常检测 -->
+            <a href="/anomaly_detection" class="feature-card card-anomaly" data-card="anomaly">
+                <div class="card-gradient"></div>
+                <div class="card-content">
+                    <div class="card-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3 class="card-title">异常检测</h3>
+                    <p class="card-description">AI算法实时检测异常，提前预警潜在风险</p>
+                    <div class="card-footer">
+                        <span class="card-link-text">进入系统</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
+            </a>
+
+            <!-- 故障诊断 -->
+            <a href="/fault_diagnosis" class="feature-card card-fault" data-card="fault">
+                <div class="card-gradient"></div>
+                <div class="card-content">
+                    <div class="card-icon">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                    <h3 class="card-title">故障诊断</h3>
+                    <p class="card-description">智能分析故障原因，提供精准诊断建议</p>
+                    <div class="card-footer">
+                        <span class="card-link-text">进入系统</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
+            </a>
+
+            <!-- RUL预测 -->
+            <a href="/rul_prediction" class="feature-card card-rul" data-card="rul">
+                <div class="card-gradient"></div>
+                <div class="card-content">
+                    <div class="card-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3 class="card-title">RUL预测</h3>
+                    <p class="card-description">预测剩余使用寿命，辅助制定维护计划</p>
+                    <div class="card-footer">
+                        <span class="card-link-text">进入系统</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ============================================
+   白色主题变量
+   ============================================ */
+:root {
+    /* 背景色 */
+    --bg-primary: #FFFFFF;
+    --bg-secondary: #F8F9FA;
+    --bg-tertiary: #F1F3F5;
+    
+    /* 卡片背景 */
+    --card-bg: #FFFFFF;
+    --card-hover-bg: #FAFBFC;
+    
+    /* 边框和阴影 */
+    --border-color: #E5E7EB;
+    --border-hover: #D1D5DB;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
+    
+    /* 文字颜色 */
+    --text-primary: #1F2937;
+    --text-secondary: #6B7280;
+    --text-muted: #9CA3AF;
+    
+    /* 功能色 */
+    --monitor-color: #10B981;
+    --data-color: #3B82F6;
+    --model-color: #8B5CF6;
+    --anomaly-color: #F59E0B;
+    --fault-color: #EF4444;
+    --rul-color: #06B6D4;
+    
+    /* 状态色 */
+    --success: #10B981;
+    --warning: #F59E0B;
+    --error: #EF4444;
+    --info: #3B82F6;
+}
+
+/* ============================================
+   全局容器
+   ============================================ */
+body {
+    background-color: var(--bg-secondary) !important;
+}
+
+.home-container {
+    width: 100%;
+    min-height: 100vh;
+    background: linear-gradient(to bottom, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    padding: 0;
+}
+
+/* ============================================
+   顶部标题栏
+   ============================================ */
+.header-bar {
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 16px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 30px;
+    animation: fadeInDown 0.6s ease-out;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.team-logo {
+    height: 50px;
+    width: auto;
+    object-fit: contain;
+}
+
+.header-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.header-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.2;
+}
+
+.header-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.2;
+}
+
+/* 连接状态小部件 */
+.connection-widget {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 280px;
+}
+
+.connection-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.connection-header i {
+    color: var(--info);
+    font-size: 18px;
+}
+
+.connection-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.status-indicator {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-dot {
+    position: absolute;
+    left: 16px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.status-indicator.connected .status-dot {
+    background: var(--success);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.status-indicator.disconnected .status-dot {
+    background: var(--error);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.status-indicator i {
+    margin-left: 20px;
+}
+
+.status-indicator.connected {
+    color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.status-indicator.disconnected {
+    color: var(--error);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.connection-message {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    min-height: 18px;
+}
+
+.connect-button {
+    width: 100%;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.connect-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.connect-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.connect-button:not(:disabled):active {
+    transform: translateY(0);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(0.9); }
+}
+
+/* ============================================
+   功能模块区域
+   ============================================ */
+.features-section {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 40px 60px;
+}
+
+.section-title-wrapper {
+    text-align: center;
+    margin-bottom: 40px;
+    animation: fadeInUp 0.6s ease-out 0.3s both;
+}
+
+.section-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+}
+
+.section-subtitle {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    animation: fadeInUp 0.6s ease-out 0.4s both;
+}
+
+/* ============================================
+   现代卡片设计
+   ============================================ */
+.feature-card {
+    position: relative;
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 32px;
+    text-decoration: none;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    min-height: 280px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.card-gradient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 120px;
+    opacity: 0.08;
+    transition: opacity 0.4s ease;
+    border-radius: 20px 20px 0 0;
+}
+
+.card-monitor .card-gradient {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+}
+
+.card-data .card-gradient {
+    background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+}
+
+.card-model .card-gradient {
+    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+}
+
+.card-anomaly .card-gradient {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+}
+
+.card-fault .card-gradient {
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+}
+
+.card-rul .card-gradient {
+    background: linear-gradient(135deg, #06B6D4 0%, #0891B2 100%);
+}
+
+.feature-card:hover .card-gradient {
+    opacity: 0.12;
+}
+
+.feature-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+}
+
+.card-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.card-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    transition: all 0.4s ease;
+    position: relative;
+}
+
+.card-monitor .card-icon {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.08));
+    color: var(--monitor-color);
+}
+
+.card-data .card-icon {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.08));
+    color: var(--data-color);
+}
+
+.card-model .card-icon {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.08));
+    color: var(--model-color);
+}
+
+.card-anomaly .card-icon {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.08));
+    color: var(--anomaly-color);
+}
+
+.card-fault .card-icon {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.08));
+    color: var(--fault-color);
+}
+
+.card-rul .card-icon {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(6, 182, 212, 0.08));
+    color: var(--rul-color);
+}
+
+.card-icon i {
+    font-size: 32px;
+    transition: all 0.4s ease;
+}
+
+.feature-card:hover .card-icon {
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.card-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 12px 0;
+    transition: color 0.3s ease;
+}
+
+.card-monitor:hover .card-title {
+    color: var(--monitor-color);
+}
+
+.card-data:hover .card-title {
+    color: var(--data-color);
+}
+
+.card-model:hover .card-title {
+    color: var(--model-color);
+}
+
+.card-anomaly:hover .card-title {
+    color: var(--anomaly-color);
+}
+
+.card-fault:hover .card-title {
+    color: var(--fault-color);
+}
+
+.card-rul:hover .card-title {
+    color: var(--rul-color);
+}
+
+.card-description {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin: 0 0 auto 0;
+    flex: 1;
+}
+
+.card-footer {
+    margin-top: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.card-link-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+}
+
+.card-footer i {
+    font-size: 14px;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+}
+
+.card-monitor:hover .card-footer {
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.card-monitor:hover .card-link-text {
+    color: var(--monitor-color);
+}
+
+.card-monitor:hover .card-footer i {
+    color: var(--monitor-color);
+    transform: translateX(4px);
+}
+
+.card-data:hover .card-footer {
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.card-data:hover .card-link-text {
+    color: var(--data-color);
+}
+
+.card-data:hover .card-footer i {
+    color: var(--data-color);
+    transform: translateX(4px);
+}
+
+.card-model:hover .card-footer {
+    border-color: rgba(139, 92, 246, 0.2);
+}
+
+.card-model:hover .card-link-text {
+    color: var(--model-color);
+}
+
+.card-model:hover .card-footer i {
+    color: var(--model-color);
+    transform: translateX(4px);
+}
+
+.card-anomaly:hover .card-footer {
+    border-color: rgba(245, 158, 11, 0.2);
+}
+
+.card-anomaly:hover .card-link-text {
+    color: var(--anomaly-color);
+}
+
+.card-anomaly:hover .card-footer i {
+    color: var(--anomaly-color);
+    transform: translateX(4px);
+}
+
+.card-fault:hover .card-footer {
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.card-fault:hover .card-link-text {
+    color: var(--fault-color);
+}
+
+.card-fault:hover .card-footer i {
+    color: var(--fault-color);
+    transform: translateX(4px);
+}
+
+.card-rul:hover .card-footer {
+    border-color: rgba(6, 182, 212, 0.2);
+}
+
+.card-rul:hover .card-link-text {
+    color: var(--rul-color);
+}
+
+.card-rul:hover .card-footer i {
+    color: var(--rul-color);
+    transform: translateX(4px);
+}
+
+/* ============================================
+   动画
+   ============================================ */
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================
+   响应式设计
+   ============================================ */
+@media (max-width: 1200px) {
+    .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .header-bar {
+        padding: 12px 20px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+    
+    .header-left {
+        width: 100%;
+    }
+    
+    .team-logo {
+        height: 40px;
+    }
+    
+    .header-title {
+        font-size: 18px;
+    }
+    
+    .header-subtitle {
+        font-size: 13px;
+    }
+    
+    .connection-widget {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .features-section {
+        padding: 0 20px 40px;
+    }
+    
+    .features-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .feature-card {
+        min-height: 240px;
+        padding: 24px;
+    }
+    
+    .card-icon {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 20px;
+    }
+    
+    .card-icon i {
+        font-size: 28px;
+    }
+    
+    .card-title {
+        font-size: 20px;
+    }
+    
+    .section-title {
+        font-size: 28px;
+    }
+}
+
+@media (min-width: 1920px) {
+    .features-section {
+        max-width: 1600px;
+    }
+    
+    .features-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+</style>
+
+<script>
+// 页面加载时检查连接状态
+document.addEventListener('DOMContentLoaded', function() {
+    checkConnectionStatus();
+    
+    // 为连接按钮添加事件监听
+    const connectBtn = document.getElementById('connect-btn');
+    if (connectBtn) {
+        connectBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            connectToServer();
+        });
+    }
+    
+    // 卡片悬停效果增强
+    const cards = document.querySelectorAll('.feature-card');
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.zIndex = '10';
+        });
+        card.addEventListener('mouseleave', function() {
+            this.style.zIndex = '1';
+        });
+    });
+});
+
+// 检查服务器连接状态
+function checkConnectionStatus() {
+    const statusIndicator = document.getElementById('status-indicator');
+    const connectBtn = document.getElementById('connect-btn');
+    const messageDiv = document.getElementById('connection-message');
+
+    if (!statusIndicator || !connectBtn || !messageDiv) return;
+
+    // 显示检查中状态
+    statusIndicator.className = 'status-indicator';
+    statusIndicator.innerHTML = '<div class="status-dot"></div><i class="fas fa-circle-notch fa-spin"></i><span>检查连接中...</span>';
+    connectBtn.disabled = true;
+    connectBtn.style.display = 'flex';
+    messageDiv.textContent = '';
+
+    fetch('/api/connection/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (data.connected) {
+                    statusIndicator.className = 'status-indicator connected';
+                    statusIndicator.innerHTML = '<div class="status-dot"></div><i class="fas fa-check-circle"></i><span>已连接</span>';
+                    connectBtn.style.display = 'none';
+                    messageDiv.innerHTML = '<span style="color: var(--success);"><i class="fas fa-check-circle"></i> 云端高性能服务器连接正常</span>';
+                } else {
+                    statusIndicator.className = 'status-indicator disconnected';
+                    statusIndicator.innerHTML = '<div class="status-dot"></div><i class="fas fa-exclamation-triangle"></i><span>未连接</span>';
+                    connectBtn.disabled = false;
+                    connectBtn.style.display = 'flex';
+                    messageDiv.innerHTML = '<span style="color: var(--warning);"><i class="fas fa-info-circle"></i> 点击按钮连接到云端高性能服务器</span>';
+                }
+            } else {
+                statusIndicator.className = 'status-indicator disconnected';
+                statusIndicator.innerHTML = '<div class="status-dot"></div><i class="fas fa-times-circle"></i><span>连接失败</span>';
+                connectBtn.disabled = false;
+                connectBtn.style.display = 'flex';
+                messageDiv.innerHTML = '<span style="color: var(--error);"><i class="fas fa-exclamation-triangle"></i> ' + (data.message || '无法检查连接状态') + '</span>';
+            }
+        })
+        .catch(error => {
+            statusIndicator.className = 'status-indicator disconnected';
+            statusIndicator.innerHTML = '<div class="status-dot"></div><i class="fas fa-times-circle"></i><span>网络错误</span>';
+            connectBtn.disabled = false;
+            connectBtn.style.display = 'flex';
+            messageDiv.innerHTML = '<span style="color: var(--error);"><i class="fas fa-exclamation-triangle"></i> 网络连接失败,请检查云端服务器状态</span>';
+            console.error('Connection check failed:', error);
+        });
+}
+
+// 连接到服务器
+function connectToServer() {
+    const statusIndicator = document.getElementById('status-indicator');
+    const connectBtn = document.getElementById('connect-btn');
+    const messageDiv = document.getElementById('connection-message');
+
+    if (!statusIndicator || !connectBtn || !messageDiv) return;
+
+    // 显示连接中状态
+    statusIndicator.className = 'status-indicator';
+    statusIndicator.innerHTML = '<div class="status-dot"></div><i class="fas fa-spinner fa-spin"></i><span>连接中...</span>';
+    connectBtn.disabled = true;
+    messageDiv.innerHTML = '<span style="color: var(--info);"><i class="fas fa-spinner fa-spin"></i> 正在连接到云端高性能服务器...</span>';
+
+    fetch('/api/connection/connect', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            statusIndicator.className = 'status-indicator connected';
+            statusIndicator.innerHTML = '<div class="status-dot"></div><i class="fas fa-check-circle"></i><span>已连接</span>';
+            connectBtn.style.display = 'none';
+            messageDiv.innerHTML = '<span style="color: var(--success);"><i class="fas fa-check-circle"></i> ' + (data.message || '连接成功!') + '</span>';
+
+            // 3秒后刷新状态
+            setTimeout(() => {
+                checkConnectionStatus();
+            }, 3000);
+        } else {
+            statusIndicator.className = 'status-indicator disconnected';
+            statusIndicator.innerHTML = '<div class="status-dot"></div><i class="fas fa-times-circle"></i><span>连接失败</span>';
+            connectBtn.disabled = false;
+            messageDiv.innerHTML = '<span style="color: var(--error);"><i class="fas fa-exclamation-triangle"></i> ' + (data.message || '连接失败,请重试') + '</span>';
+        }
+    })
+    .catch(error => {
+        statusIndicator.className = 'status-indicator disconnected';
+        statusIndicator.innerHTML = '<div class="status-dot"></div><i class="fas fa-times-circle"></i><span>连接失败</span>';
+        connectBtn.disabled = false;
+        messageDiv.innerHTML = '<span style="color: var(--error);"><i class="fas fa-exclamation-triangle"></i> 网络错误,请检查服务器状态</span>';
+        console.error('Connection failed:', error);
+    });
+}
+</script>
+{% endblock %}

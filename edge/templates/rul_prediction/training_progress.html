@@ -1,0 +1,1261 @@
+{% extends "base.html" %}
+
+{% block title %}训练进度 - RUL预测{% endblock %}
+
+{% block content %}
+<style>
+/* 训练进度页面样式 */
+.training-progress-page {
+    background: #F4F7FE;
+    min-height: 100vh;
+    padding: 2rem 0;
+}
+
+/* 页面标题区域 */
+.progress-header {
+    background: linear-gradient(135deg, #63D2FF 0%, #008BB0 100%);
+    color: white;
+    padding: 3rem 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    opacity: 0.3;
+}
+
+.progress-header h2 {
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.progress-header p {
+    opacity: 0.9;
+    margin-bottom: 0;
+    position: relative;
+    z-index: 1;
+}
+
+/* 进度卡片样式 */
+.progress-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 1rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    margin-bottom: 2rem;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.progress-card:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.progress-card-header {
+    background: #f8f9fa;
+    color: #495057;
+    padding: 1.5rem 2rem;
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 1rem;
+}
+
+.progress-card-header i {
+    font-size: 1.2rem;
+    color: #008BB0;
+}
+
+.progress-card-body {
+    padding: 2rem;
+}
+
+/* 状态指示器 */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-indicator.status-running {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.status-indicator.status-completed {
+    background: linear-gradient(135deg, #007bff, #6610f2);
+    color: white;
+}
+
+.status-indicator.status-failed {
+    background: linear-gradient(135deg, #dc3545, #fd7e14);
+    color: white;
+}
+
+.status-indicator i {
+    font-size: 1rem;
+}
+
+/* 进度条样式 */
+.progress-container {
+    margin: 2rem 0;
+}
+
+.progress-bar-custom {
+    height: 1.5rem;
+    border-radius: 1rem;
+    background: linear-gradient(90deg, #63D2FF 0%, #008BB0 100%);
+    transition: width 0.5s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-bar-custom::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+.progress-bg {
+    height: 1.5rem;
+    border-radius: 1rem;
+    background: #e9ecef;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    z-index: 1;
+}
+
+/* 指标卡片 */
+.metric-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.metric-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #008BB0;
+    margin-bottom: 0.5rem;
+    text-align: center;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.metric-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+/* 评估结果卡片特殊样式 */
+.evaluation-metric {
+    text-align: center;
+}
+
+.evaluation-metric .metric-description {
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+}
+
+/* 日志区域 */
+.logs-container {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+
+.log-entry {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.log-entry:last-child {
+    border-bottom: none;
+}
+
+.log-timestamp {
+    color: #6c757d;
+    font-size: 0.8rem;
+    min-width: 120px;
+    flex-shrink: 0;
+}
+
+.log-level {
+    min-width: 80px;
+    flex-shrink: 0;
+}
+
+.log-level-info {
+    color: #0d6efd;
+    font-weight: 600;
+}
+
+.log-level-warning {
+    color: #ffc107;
+    font-weight: 600;
+}
+
+.log-level-error {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.log-level-success {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.log-message {
+    flex: 1;
+    word-wrap: break-word;
+}
+
+/* 控制按钮 */
+.control-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-custom {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-custom::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn-custom:hover::before {
+    left: 100%;
+}
+
+.btn-refresh {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    color: white;
+}
+
+.btn-download {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .progress-header {
+        padding: 2rem 1rem;
+    }
+
+    .progress-card-body {
+        padding: 1rem;
+    }
+
+    .control-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn-custom {
+        width: 100%;
+    }
+
+    .metric-card {
+        margin-bottom: 1rem;
+    }
+}
+
+/* 动画效果 */
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* 加载动画 */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
+
+<div class="training-progress-page">
+    <div class="container">
+        <!-- 页面标题 -->
+        <div class="progress-header text-center">
+            <h2 class="mb-3">
+                <i class="fas fa-chart-line me-3"></i>
+                RUL预测训练进度监控
+            </h2>
+        </div>
+
+        <!-- 任务信息卡片 -->
+        <div class="progress-card">
+            <div class="progress-card-header" style="justify-content: space-between;">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-info-circle"></i>
+                    <span>任务信息</span>
+                </div>
+                <div id="taskStatus" class="status-indicator status-running" style="display: none;">
+                    <i class="fas fa-spinner loading-spinner"></i>
+                    <span>加载中...</span>
+                </div>
+            </div>
+            <div class="progress-card-body">
+                <div class="row g-4">
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="taskId">-</div>
+                            <div class="metric-label">任务ID</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="modelType">-</div>
+                            <div class="metric-label">模型类型</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="startTime">-</div>
+                            <div class="metric-label">开始时间</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="elapsedTime">-</div>
+                            <div class="metric-label">运行时间</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 训练进度卡片 -->
+        <div class="progress-card">
+            <div class="progress-card-header">
+                <i class="fas fa-chart-bar"></i>
+                <span>训练进度</span>
+            </div>
+            <div class="progress-card-body">
+                <div class="progress-container">
+                    <div class="progress-bg">
+                        <div class="progress-bar-custom" id="progressBar" style="width: 0%">
+                            <div class="progress-text" id="progressText">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4 mt-4">
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="currentEpoch">0</div>
+                            <div class="metric-label">当前轮次</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="totalEpochs">-</div>
+                            <div class="metric-label">总轮次</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="currentLoss">-</div>
+                            <div class="metric-label">当前损失</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="currentRMSE">-</div>
+                            <div class="metric-label">当前RMSE</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 性能指标卡片 -->
+        <div class="progress-card">
+            <div class="progress-card-header">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>性能指标</span>
+            </div>
+            <div class="progress-card-body">
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <div class="metric-value" id="trainLoss">-</div>
+                            <div class="metric-label">训练损失</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <div class="metric-value" id="trainRMSE">-</div>
+                            <div class="metric-label">训练RMSE</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <div class="metric-value" id="trainMAE">-</div>
+                            <div class="metric-label">训练MAE</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4 mt-2">
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <div class="metric-value" id="valLoss">-</div>
+                            <div class="metric-label">验证损失</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <div class="metric-value" id="valRMSE">-</div>
+                            <div class="metric-label">验证RMSE</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <div class="metric-value" id="valMAE">-</div>
+                            <div class="metric-label">验证MAE</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4 mt-2">
+                    <div class="col-md-6">
+                        <div class="metric-card">
+                            <div class="metric-value" id="trainR2">-</div>
+                            <div class="metric-label">训练R²</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="metric-card">
+                            <div class="metric-value" id="valR2">-</div>
+                            <div class="metric-label">验证R²</div>
+                        </div>
+                    </div>
+                </div>
+
+                
+                <!-- 训练损失曲线 -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>训练损失曲线</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="lossChart" height="80"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 测试集评估结果 - 单卡片容器 + 子指标 -->
+        <div class="progress-card mb-4" id="evaluationCard" style="display: none;">
+            <div class="progress-card-header">
+                <i class="fas fa-clipboard-check"></i>
+                <span>评估结果</span>
+            </div>
+            <div class="progress-card-body">
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="metric-card evaluation-metric">
+                            <div class="metric-value" id="testRMSE">-</div>
+                            <div class="metric-label">测试 RMSE</div>
+                            <div class="metric-description">衡量预测值与真实值的总体偏差</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card evaluation-metric">
+                            <div class="metric-value" id="testMAE">-</div>
+                            <div class="metric-label">测试 MAE</div>
+                            <div class="metric-description">预测误差的平均绝对值</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card evaluation-metric">
+                            <div class="metric-value" id="testR2">-</div>
+                            <div class="metric-label">测试 R²</div>
+                            <div class="metric-description">模型对数据变异的解释程度</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 训练日志卡片 -->
+        <div class="progress-card">
+            <div class="progress-card-header">
+                <i class="fas fa-terminal"></i>
+                <span>训练日志</span>
+            </div>
+            <div class="progress-card-body">
+                <div class="logs-container" id="logsContainer">
+                    <div class="log-entry">
+                        <div class="log-timestamp">--:--:--</div>
+                        <div class="log-level log-level-info">INFO</div>
+                        <div class="log-message">暂无日志信息</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 下载模型按钮（训练完成后显示） -->
+        <div class="text-center mt-4" id="downloadButtonContainer" style="display: none;">
+            <button type="button" class="btn btn-primary btn-lg px-5 py-3" id="downloadModelBtn">
+                <i class="fas fa-download me-2"></i>
+                下载模型
+            </button>
+        </div>
+
+        <!-- 返回按钮 -->
+        <div class="text-center mt-4">
+            <a href="/rul_prediction/train" class="btn btn-outline-primary btn-lg px-5 py-3">
+                <i class="fas fa-arrow-left me-2"></i>
+                返回训练配置
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+// 全局变量
+let taskId = null;
+let refreshInterval = null;
+let elapsedTimeInterval = null;
+let isRefreshing = false;
+let taskStartTime = null;
+let lossChart = null;
+let trainLossHistory = [];
+let valLossHistory = [];
+let epochHistory = [];
+let latestTask = null;
+
+// 页面初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 从URL参数获取任务ID
+    const urlParams = new URLSearchParams(window.location.search);
+    taskId = urlParams.get('task_id');
+
+    if (!taskId) {
+        showError('未找到任务ID，请从训练配置页面重新开始');
+        // 3秒后返回训练页面
+        setTimeout(() => {
+            window.location.href = '/rul_prediction/train';
+        }, 3000);
+        return;
+    }
+
+    // 初始化页面
+    initializePage();
+
+    // 开始自动刷新
+    startAutoRefresh();
+});
+
+// 初始化页面
+function initializePage() {
+    updateTaskId(taskId);
+    refreshTrainingStatus();
+    initializeLossChart();
+}
+
+// 初始化损失曲线图
+function initializeLossChart() {
+    const ctx = document.getElementById('lossChart');
+    if (!ctx) return;
+    
+    lossChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: '训练损失',
+                    data: [],
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1
+                },
+                {
+                    label: '验证损失',
+                    data: [],
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '损失值'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Epoch'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            }
+        }
+    });
+}
+
+// 更新任务ID显示
+function updateTaskId(id) {
+    const taskIdElement = document.getElementById('taskId');
+    if (taskIdElement) {
+        taskIdElement.textContent = id;
+    }
+}
+
+// 开始自动刷新
+function startAutoRefresh() {
+    // 每5秒刷新一次状态
+    refreshInterval = setInterval(refreshTrainingStatus, 5000);
+    
+    // 每1秒更新一次运行时间
+    elapsedTimeInterval = setInterval(updateElapsedTime, 1000);
+}
+
+// 停止自动刷新
+function stopAutoRefresh() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+    }
+    if (elapsedTimeInterval) {
+        clearInterval(elapsedTimeInterval);
+        elapsedTimeInterval = null;
+    }
+}
+
+// 更新运行时间（每秒调用）
+function updateElapsedTime() {
+    if (!taskStartTime) return;
+    
+    const elapsedTimeElement = document.getElementById('elapsedTime');
+    if (elapsedTimeElement) {
+        const elapsed = calculateElapsedTime(taskStartTime);
+        elapsedTimeElement.textContent = elapsed;
+    }
+}
+
+// 刷新训练状态
+async function refreshTrainingStatus() {
+    if (isRefreshing) return;
+
+    isRefreshing = true;
+
+    try {
+        const response = await fetch(`/rul_prediction/api/task/${taskId}/status`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+
+        if (result.success) {
+            updateTrainingStatus(result.task);
+        } else {
+            showError('获取训练状态失败: ' + (result.message || '未知错误'));
+        }
+    } catch (error) {
+        console.error('刷新训练状态失败:', error);
+        showError('网络错误，无法获取训练状态: ' + error.message);
+    } finally {
+        isRefreshing = false;
+    }
+}
+
+// 更新训练状态显示
+function updateTrainingStatus(task) {
+    latestTask = task;
+    // 更新任务状态
+    updateTaskStatus(task);
+
+    // 更新任务信息
+    updateTaskInfo(task);
+
+    // 更新训练进度
+    updateTrainingProgress(task);
+
+    // 更新性能指标
+    updatePerformanceMetrics(task);
+    
+    // 更新评估结果
+    updateEvaluationResults(task);
+
+    // 更新日志
+    updateLogs(task.logs || []);
+}
+
+// 更新任务状态指示器
+function updateTaskStatus(task) {
+    const statusElement = document.getElementById('taskStatus');
+    const status = task.status || 'unknown';
+
+    // 移除所有状态类
+    statusElement.classList.remove('status-running', 'status-completed', 'status-failed');
+
+    let statusText = '';
+    let statusIcon = '';
+
+    switch (status) {
+        case 'running':
+        case 'training':
+            statusElement.classList.add('status-running');
+            statusText = '训练中';
+            statusIcon = '<i class="fas fa-spinner loading-spinner"></i>';
+            break;
+        case 'completed':
+        case 'finished':
+            statusElement.classList.add('status-completed');
+            statusText = '已完成';
+            statusIcon = '<i class="fas fa-check-circle"></i>';
+            showDownloadButton();
+            stopAutoRefresh();
+            break;
+        case 'failed':
+        case 'error':
+            statusElement.classList.add('status-failed');
+            statusText = '失败';
+            statusIcon = '<i class="fas fa-exclamation-triangle"></i>';
+            stopAutoRefresh();
+            break;
+        default:
+            statusElement.style.display = 'none';
+            return;
+    }
+
+    statusElement.style.display = 'inline-flex';
+    statusElement.innerHTML = `${statusIcon} <span>${statusText}</span>`;
+}
+
+// 更新任务信息
+function updateTaskInfo(task) {
+    // 模型类型
+    const modelTypeElement = document.getElementById('modelType');
+    if (modelTypeElement) {
+        const modelType = task.config?.model_type || task.model_type || '未知';
+        modelTypeElement.textContent = formatModelType(modelType);
+    }
+
+    // 开始时间
+    const startTimeElement = document.getElementById('startTime');
+    if (startTimeElement) {
+        const startTime = task.created_at || task.start_time || task.timestamp;
+        startTimeElement.textContent = formatTime(startTime);
+        
+        // 保存开始时间，用于每秒更新运行时间
+        if (startTime) {
+            taskStartTime = startTime;
+        }
+    }
+
+    // 运行时间（首次设置，之后每秒自动更新）
+    if (!elapsedTimeInterval) {
+        const elapsedTimeElement = document.getElementById('elapsedTime');
+        if (elapsedTimeElement && taskStartTime) {
+            const elapsed = calculateElapsedTime(taskStartTime);
+            elapsedTimeElement.textContent = elapsed;
+        }
+    }
+}
+
+// 更新训练进度
+function updateTrainingProgress(task) {
+    // 计算进度
+    const currentEpoch = task.epoch || task.current_epoch || task.metrics?.current_epoch || 0;
+    const totalEpochs = task.total_epochs || task.config?.epochs || 50;
+    const progress = totalEpochs > 0 ? Math.round((currentEpoch / totalEpochs) * 100) : 0;
+
+    // 更新进度条
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+
+    progressBar.style.width = `${progress}%`;
+    progressText.textContent = `${progress}%`;
+
+    // 更新轮次信息
+    document.getElementById('currentEpoch').textContent = currentEpoch;
+    document.getElementById('totalEpochs').textContent = totalEpochs;
+
+    // 更新当前指标
+    const currentLoss = task.loss !== undefined ? task.loss : (task.train_loss !== undefined ? task.train_loss : (task.metrics?.train_loss));
+    const currentRMSE = task.rmse !== undefined ? task.rmse : (task.train_rmse !== undefined ? task.train_rmse : (task.metrics?.rmse));
+    document.getElementById('currentLoss').textContent = formatNumber(currentLoss);
+    document.getElementById('currentRMSE').textContent = formatNumber(currentRMSE);
+}
+
+// 更新评估结果
+function updateEvaluationResults(task) {
+    const evaluation = task.evaluation_results || task.evaluation;
+    const evaluationContainer = document.getElementById('evaluationCard');
+    
+    if (!evaluation) {
+        if (evaluationContainer) {
+            evaluationContainer.style.display = 'none';
+        }
+        return;
+    }
+    
+    // 显示评估结果卡片
+    if (evaluationContainer) {
+        evaluationContainer.style.display = 'block';
+    }
+    
+    // 更新评估指标
+    if (evaluation.rmse !== undefined && evaluation.rmse !== null) {
+        const rmseEl = document.getElementById('testRMSE');
+        if (rmseEl) {
+            rmseEl.textContent = evaluation.rmse.toFixed(6);
+        }
+    }
+    if (evaluation.mae !== undefined && evaluation.mae !== null) {
+        const maeEl = document.getElementById('testMAE');
+        if (maeEl) {
+            maeEl.textContent = evaluation.mae.toFixed(6);
+        }
+    }
+    if (evaluation.r2 !== undefined && evaluation.r2 !== null) {
+        const r2El = document.getElementById('testR2');
+        if (r2El) {
+            r2El.textContent = evaluation.r2.toFixed(6);
+        }
+    }
+}
+
+// 更新性能指标
+function updatePerformanceMetrics(task) {
+    // 训练指标
+    const trainLoss = task.train_loss !== undefined ? task.train_loss : (task.metrics?.train_loss);
+    const trainRMSE = task.train_rmse !== undefined ? task.train_rmse : (task.metrics?.train_rmse);
+    const trainMAE = task.train_mae !== undefined ? task.train_mae : (task.metrics?.train_mae);
+    const trainR2 = task.train_r2 !== undefined ? task.train_r2 : (task.metrics?.train_r2);
+    
+    document.getElementById('trainLoss').textContent = formatNumber(trainLoss);
+    document.getElementById('trainRMSE').textContent = formatNumber(trainRMSE);
+    document.getElementById('trainMAE').textContent = formatNumber(trainMAE);
+    document.getElementById('trainR2').textContent = formatNumber(trainR2);
+
+    // 验证指标
+    const valLoss = task.val_loss !== undefined ? task.val_loss : (task.validation_loss !== undefined ? task.validation_loss : (task.metrics?.val_loss));
+    const valRMSE = task.val_rmse !== undefined ? task.val_rmse : (task.metrics?.val_rmse);
+    const valMAE = task.val_mae !== undefined ? task.val_mae : (task.metrics?.val_mae);
+    const valR2 = task.val_r2 !== undefined ? task.val_r2 : (task.metrics?.val_r2);
+    
+    document.getElementById('valLoss').textContent = formatNumber(valLoss);
+    document.getElementById('valRMSE').textContent = formatNumber(valRMSE);
+    document.getElementById('valMAE').textContent = formatNumber(valMAE);
+    document.getElementById('valR2').textContent = formatNumber(valR2);
+    
+    // 更新损失曲线
+    updateLossChart(task);
+}
+
+// 更新损失曲线
+function updateLossChart(task) {
+    if (!lossChart) return;
+    
+    const currentEpoch = task.epoch || task.current_epoch || 0;
+    const trainLoss = task.train_loss !== undefined ? task.train_loss : null;
+    const valLoss = task.val_loss !== undefined ? task.val_loss : (task.validation_loss !== undefined ? task.validation_loss : null);
+    
+    // 如果当前epoch不在历史记录中，添加新数据点
+    if (currentEpoch > 0 && !epochHistory.includes(currentEpoch)) {
+        epochHistory.push(currentEpoch);
+        trainLossHistory.push(trainLoss);
+        valLossHistory.push(valLoss);
+        
+        // 更新图表
+        lossChart.data.labels = epochHistory;
+        lossChart.data.datasets[0].data = trainLossHistory;
+        lossChart.data.datasets[1].data = valLossHistory;
+        lossChart.update('none');
+    } else if (currentEpoch > 0 && epochHistory.includes(currentEpoch)) {
+        // 如果epoch已存在，更新数据
+        const index = epochHistory.indexOf(currentEpoch);
+        if (trainLoss !== null) trainLossHistory[index] = trainLoss;
+        if (valLoss !== null) valLossHistory[index] = valLoss;
+        
+        lossChart.data.datasets[0].data = trainLossHistory;
+        lossChart.data.datasets[1].data = valLossHistory;
+        lossChart.update('none');
+    }
+}
+
+// 更新日志
+function updateLogs(logs) {
+    const logsContainer = document.getElementById('logsContainer');
+    if (!logsContainer) return;
+
+    // 如果logs是undefined或null，保持当前内容
+    if (logs === undefined || logs === null) {
+        return;
+    }
+
+    // 如果logs是空数组，显示默认消息
+    if (Array.isArray(logs) && logs.length === 0) {
+        if (logsContainer.children.length === 0 || logsContainer.textContent.trim() === '正在初始化训练环境...') {
+            logsContainer.innerHTML = '<div class="log-entry"><div class="log-timestamp">--:--:--</div><div class="log-level log-level-info">INFO</div><div class="log-message">暂无日志信息，训练可能正在进行中...</div></div>';
+        }
+        return;
+    }
+
+    // 只显示最近的50条日志
+    const recentLogs = Array.isArray(logs) ? logs.slice(-50) : [];
+
+    if (recentLogs.length === 0) {
+        logsContainer.innerHTML = '<div class="log-entry"><div class="log-timestamp">--:--:--</div><div class="log-level log-level-info">INFO</div><div class="log-message">暂无日志信息</div></div>';
+        return;
+    }
+
+    logsContainer.innerHTML = recentLogs.map(log => {
+        // 处理不同格式的日志
+        let timestamp, level, message;
+        
+        if (typeof log === 'string') {
+            // 如果是字符串，没有时间戳，显示占位符
+            timestamp = '--:--:--';
+            level = 'info';
+            message = log;
+        } else if (typeof log === 'object' && log !== null) {
+            // 只有当存在timestamp或time字段时才格式化，否则显示占位符
+            if (log.timestamp || log.time) {
+                timestamp = formatLogTime(log.timestamp || log.time);
+            } else {
+                timestamp = '--:--:--';
+            }
+            level = (log.level || log.severity || 'info').toLowerCase();
+            message = log.message || log.msg || JSON.stringify(log);
+        } else {
+            // 其他类型，没有时间戳
+            timestamp = '--:--:--';
+            level = 'info';
+            message = String(log);
+        }
+
+        return `
+            <div class="log-entry">
+                <div class="log-timestamp">${timestamp}</div>
+                <div class="log-level log-level-${level}">${level.toUpperCase()}</div>
+                <div class="log-message">${escapeHtml(message)}</div>
+            </div>
+        `;
+    }).join('');
+
+    // 自动滚动到底部
+    logsContainer.scrollTop = logsContainer.scrollHeight;
+}
+
+
+// 工具函数
+function formatModelType(modelType) {
+    const typeMap = {
+        'bilstm_gru_regressor': 'BiLSTM/GRU 回归器',
+        'cnn_1d_regressor': '1D-CNN 回归器',
+        'transformer_encoder_regressor': 'Transformer Encoder 回归器'
+    };
+    return typeMap[modelType] || modelType;
+}
+
+function formatTime(timestamp) {
+    if (!timestamp) return '-';
+    const date = new Date(timestamp);
+    return date.toLocaleString('zh-CN');
+}
+
+function calculateElapsedTime(startTime) {
+    if (!startTime) return '-';
+
+    const start = new Date(startTime);
+    const now = new Date();
+    const diff = now - start;
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function formatNumber(num) {
+    if (num === null || num === undefined || isNaN(num)) return '-';
+    return parseFloat(num).toFixed(6);
+}
+
+function calculateETA(task) {
+    if (!task || (task.status !== 'running' && task.status !== 'training')) return '-';
+
+    const currentEpoch = task.epoch || task.current_epoch || task.metrics?.current_epoch || 0;
+    const totalEpochs = task.total_epochs || task.config?.epochs || 50;
+
+    if (currentEpoch === 0 || totalEpochs === 0) return '-';
+
+    const startTime = task.created_at || task.start_time || task.timestamp;
+    if (!startTime) return '-';
+
+    const progress = currentEpoch / totalEpochs;
+    if (progress <= 0) return '-';
+
+    const elapsed = Date.now() - new Date(startTime);
+    const totalEstimated = elapsed / progress;
+    const remaining = totalEstimated - elapsed;
+
+    if (remaining <= 0) return '-';
+
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+
+    return `${hours}时${minutes}分`;
+}
+
+function formatLogTime(timestamp) {
+    if (!timestamp) return '--:--:--';
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('zh-CN', { hour12: false });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger fade-in';
+    errorDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+    errorDiv.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>错误:</strong> ${message}
+        <button type="button" class="btn-close" aria-label="关闭" onclick="this.parentElement.remove()"></button>
+    `;
+
+    document.body.appendChild(errorDiv);
+
+    setTimeout(() => {
+        if (errorDiv.parentElement) {
+            errorDiv.remove();
+        }
+    }, 5000);
+}
+
+function showSuccess(message) {
+    const successDiv = document.createElement('div');
+    successDiv.className = 'alert alert-success fade-in';
+    successDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+    successDiv.innerHTML = `
+        <i class="fas fa-check-circle me-2"></i>
+        <strong>成功:</strong> ${message}
+        <button type="button" class="btn-close" aria-label="关闭" onclick="this.parentElement.remove()"></button>
+    `;
+
+    document.body.appendChild(successDiv);
+
+    setTimeout(() => {
+        if (successDiv.parentElement) {
+            successDiv.remove();
+        }
+    }, 3000);
+}
+
+// 显示下载按钮
+function showDownloadButton() {
+    const downloadContainer = document.getElementById('downloadButtonContainer');
+    if (downloadContainer) {
+        downloadContainer.style.display = 'block';
+    }
+}
+
+// 下载模型
+async function downloadModel() {
+    if (!taskId) {
+        showError('任务ID不存在');
+        return;
+    }
+
+    try {
+        const downloadBtn = document.getElementById('downloadModelBtn');
+        if (downloadBtn) {
+            downloadBtn.disabled = true;
+            downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>下载中...';
+        }
+
+        showSuccess('正在下载模型到 Edge...');
+        
+        const resolvedModelType = latestTask?.model_type || latestTask?.config?.model_type;
+        const fetchOptions = { method: 'POST' };
+        if (resolvedModelType) {
+            fetchOptions.headers = { 'Content-Type': 'application/json' };
+            fetchOptions.body = JSON.stringify({ model_type: resolvedModelType });
+        }
+
+        const response = await fetch(`/rul_prediction/api/download_model/${taskId}`, fetchOptions);
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(`模型已成功下载到: ${result.path || 'edge/models/rul_prediction'}`);
+        } else {
+            showError('下载失败: ' + (result.message || '未知错误'));
+        }
+    } catch (error) {
+        console.error('下载模型失败:', error);
+        showError('下载失败，请稍后重试: ' + error.message);
+    } finally {
+        const downloadBtn = document.getElementById('downloadModelBtn');
+        if (downloadBtn) {
+            downloadBtn.disabled = false;
+            downloadBtn.innerHTML = '<i class="fas fa-download me-2"></i>下载模型';
+        }
+    }
+}
+
+// 事件监听器
+document.getElementById('downloadModelBtn')?.addEventListener('click', downloadModel);
+
+// 页面卸载时清理定时器
+window.addEventListener('beforeunload', function() {
+    stopAutoRefresh();
+});
+</script>
+
+{% endblock %}
+

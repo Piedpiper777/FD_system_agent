@@ -1,0 +1,1564 @@
+{% extends "base.html" %}
+
+{% block title %}设备监测 - 工业智能维护系统{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e5e7eb;
+    text-align: center;
+}
+
+.page-header h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #1e293b 0%, #475569 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+}
+
+.page-header p {
+    margin: 0.5rem 0 0;
+    color: #6b7280;
+}
+
+.control-panel {
+    border-radius: 20px;
+    padding: 1.75rem;
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f7f9fc 100%);
+    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.08);
+    border: 1px solid rgba(15, 23, 42, 0.05);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+    width: 100%;
+}
+
+.control-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 18px 35px rgba(15, 23, 42, 0.07);
+    border: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.control-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.control-card-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    color: #fff;
+    box-shadow: 0 12px 20px rgba(59, 130, 246, 0.25);
+}
+
+.icon-collect { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); }
+.icon-inference { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
+.icon-sampling { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
+.icon-status { background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%); }
+.icon-settings { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
+
+.control-card-title {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: #0f172a;
+}
+
+.control-card-desc {
+    margin: 0.35rem 0 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.control-card-body {
+    margin-top: 1.25rem;
+}
+
+.control-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.control-card-actions .btn {
+    flex: 1 1 200px;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    border: none;
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.control-card-actions .btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 30px rgba(15, 23, 42, 0.15);
+}
+
+.control-card-actions .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-gradient-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+.btn-gradient-danger { background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%); }
+.btn-gradient-info { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+.btn-gradient-warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+.btn-gradient-secondary { background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%); }
+
+.control-card .form-select {
+    border-radius: 12px;
+    border: 2px solid #e2e8f0;
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    color: #0f172a;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.control-card .form-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.status-badge {
+    padding: 0.6rem 1.25rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.status-info {
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.status-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.status-info span {
+    font-weight: 500;
+}
+
+.chart-container {
+    position: relative;
+    height: 280px;
+    width: 100%;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-radius: 12px;
+    padding: 0.75rem;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.value-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0.4rem;
+    margin: 1.5rem 0 1rem;
+}
+
+.value-display > span:first-child {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.1;
+}
+
+.unit-label {
+    font-size: 1.1rem;
+}
+
+#realtimeInferencePanel .card {
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border: 1px solid rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+#realtimeInferencePanel .card-header {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%) !important;
+    padding: 1.25rem 1.5rem;
+    border-bottom: none;
+}
+
+#realtimeInferencePanel .bg-light {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%) !important;
+    border-radius: 12px;
+    padding: 1.25rem !important;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+#realtimeInferencePanel h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+#realtimeInferencePanel h4 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+#realtimeInferencePanel h6 {
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 1rem;
+}
+
+.monitor-card {
+    animation: fadeInUp 0.6s ease-out both;
+}
+
+.monitor-card:nth-child(1) { animation-delay: 0.1s; }
+.monitor-card:nth-child(2) { animation-delay: 0.2s; }
+.monitor-card:nth-child(3) { animation-delay: 0.3s; }
+.monitor-card:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.config-modal {
+    z-index: 1060 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+}
+
+.config-modal .modal-dialog {
+    max-width: 900px;
+}
+
+.sensor-config-row {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    padding: 1.25rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    border: 2px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.sensor-config-row:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    transform: translateY(-2px);
+}
+
+.sensor-config-row .row-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.sensor-config-row .row-number {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.sensor-config-row .form-control,
+.sensor-config-row .form-select {
+    border-radius: 8px;
+    border: 2px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.sensor-config-row .form-control:focus,
+.sensor-config-row .form-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.sensor-config-row .btn-outline-danger {
+    border-radius: 8px;
+    border: 2px solid #ef4444;
+    transition: all 0.3s ease;
+}
+
+.sensor-config-row .btn-outline-danger:hover {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.color-preview {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.color-preview:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.no-sensors-placeholder {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-radius: 16px;
+    border: 2px dashed #d1d5db;
+    text-align: center;
+    padding: 2rem;
+    color: #9ca3af;
+}
+
+.accelerometer-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,249,250,0.95) 100%);
+}
+
+.accelerometer-card .card-header {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+}
+
+.accelerometer-card:nth-child(2) .card-header {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+}
+
+.accelerometer-card:nth-child(3) .card-header {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%) !important;
+}
+
+@media (max-width: 768px) {
+    .control-panel {
+        padding: 1.25rem;
+    }
+    .control-card {
+        padding: 1.25rem;
+    }
+    .control-card-actions {
+        flex-direction: column;
+    }
+    .control-card-actions .btn {
+        width: 100%;
+    }
+    .chart-container {
+        height: 240px;
+    }
+    .value-display > span:first-child {
+        font-size: 2.4rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .control-card-header {
+        flex-direction: column;
+    }
+    .control-card-icon {
+        width: 48px;
+        height: 48px;
+    }
+    .chart-container {
+        height: 200px;
+    }
+    .status-info {
+        font-size: 0.85rem;
+    }
+    .value-display > span:first-child {
+        font-size: 2rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="page-header">
+        <h2 class="text-center">
+            <i class="fas fa-tachometer-alt me-2" style="color: #3b82f6;"></i>
+            设备实时监测
+        </h2>
+        <p class="text-muted mt-2 mb-0">统一控制采集、推理与参数配置，实时洞察关键传感器数据。</p>
+    </div>
+
+    <div class="control-panel">
+        <!-- 数据采集 -->
+        <div class="control-card">
+            <div class="control-card-header">
+                <div class="control-card-icon icon-collect">
+                    <i class="fas fa-database"></i>
+                </div>
+                <div>
+                    <h5 class="control-card-title">数据采集</h5>
+                    <p class="control-card-desc">触发边缘设备开始或停止本地采集任务</p>
+                </div>
+            </div>
+            <div class="control-card-body">
+                <p class="text-muted small mb-3">采集后的 CSV 将保存至 edge/data/monitor/collected 目录。</p>
+                <div class="control-card-actions">
+                    <button id="startCollectBtn" class="btn btn-gradient-success" disabled>
+                        <i class="fas fa-circle me-2"></i>开始采集
+                    </button>
+                    <button id="stopCollectBtn" class="btn btn-gradient-danger" disabled>
+                        <i class="fas fa-stop-circle me-2"></i>停止采集
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 实时推理 -->
+        <div class="control-card">
+            <div class="control-card-header">
+                <div class="control-card-icon icon-inference">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <div>
+                    <h5 class="control-card-title">实时推理</h5>
+                    <p class="control-card-desc">选择部署模型，对流数据进行在线异常检测</p>
+                </div>
+            </div>
+            <div class="control-card-body">
+                <label class="form-label small text-muted">推理模型</label>
+                <select id="realtimeModelSelect" class="form-select mb-3">
+                    <option value="">选择模型...</option>
+                </select>
+                <div class="control-card-actions">
+                    <button id="startRealtimeInferenceBtn" class="btn btn-gradient-info" disabled>
+                        <i class="fas fa-play-circle me-2"></i>开始推理
+                    </button>
+                    <button id="stopRealtimeInferenceBtn" class="btn btn-gradient-warning" disabled>
+                        <i class="fas fa-stop-circle me-2"></i>停止推理
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 采样频率 -->
+        <div class="control-card">
+            <div class="control-card-header">
+                <div class="control-card-icon icon-sampling">
+                    <i class="fas fa-tachometer-alt"></i>
+                </div>
+                <div>
+                    <h5 class="control-card-title">采样频率</h5>
+                    <p class="control-card-desc">调整前端刷新速率，控制图表更新频次</p>
+                </div>
+            </div>
+            <div class="control-card-body">
+                <label class="form-label small text-muted">刷新频率</label>
+                <select id="samplingRateSelect" class="form-select">
+                    <option value="0.1">0.1 Hz</option>
+                    <option value="0.5">0.5 Hz</option>
+                    <option value="1" selected>1 Hz</option>
+                    <option value="2">2 Hz</option>
+                    <option value="5">5 Hz</option>
+                    <option value="10">10 Hz (最高)</option>
+                </select>
+                <p class="control-card-desc mt-2 mb-0">数值越大刷新越快，最高支持 10 Hz。</p>
+            </div>
+        </div>
+
+        <!-- 状态与设置 -->
+        <div class="control-card">
+            <div class="control-card-header">
+                <div class="control-card-icon icon-status">
+                    <i class="fas fa-sliders-h"></i>
+                </div>
+                <div>
+                    <h5 class="control-card-title">状态与设置</h5>
+                    <p class="control-card-desc">查看当前监测状态并快速调整传感器配置</p>
+                </div>
+            </div>
+            <div class="control-card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span id="monitorStatusBadge" class="badge bg-secondary status-badge">未监测</span>
+                </div>
+                <div class="status-list mb-3">
+                    <small>采集：<span id="collectionStatus">未采集</span></small>
+                    <div class="d-flex align-items-center gap-2">
+                        <small class="mb-0">推理：</small>
+                        <span id="realtimeInferenceStatus" class="badge bg-secondary">未运行</span>
+                    </div>
+                </div>
+                <div id="collectionFolder" class="status-info mb-3" style="display: none;"></div>
+                <div class="control-card-actions">
+                    <button class="btn btn-gradient-secondary" onclick="openConfigModal()">
+                        <i class="fas fa-cog me-2"></i>打开监测设置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 监测数据卡片容器（动态生成） -->
+    <div class="row" id="sensorCardsContainer">
+        <!-- 传感器卡片将在这里动态生成 -->
+    </div>
+
+    <!-- 实时推理结果显示卡片 -->
+    <div id="realtimeInferencePanel" class="row" style="display: none;">
+        <div class="col-12 mb-4">
+            <div class="card monitor-card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-brain"></i> 实时异常检测推理结果
+                        <span id="realtimeModelName" class="badge bg-light text-dark ms-2"></span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-light rounded">
+                                <h6 class="text-muted mb-2">异常分数</h6>
+                                <h2 id="anomalyScoreValue" class="text-primary mb-0">--</h2>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-light rounded">
+                                <h6 class="text-muted mb-2">阈值</h6>
+                                <h4 id="thresholdValue" class="text-secondary mb-0">--</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-light rounded">
+                                <h6 class="text-muted mb-2">检测状态</h6>
+                                <span id="anomalyStatusBadge" class="badge bg-secondary" style="font-size: 1.5rem; padding: 0.5rem 1rem;">--</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-light rounded">
+                                <h6 class="text-muted mb-2">更新时间</h6>
+                                <small id="inferenceTimestamp" class="text-muted d-block">--</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="mb-3"><i class="fas fa-chart-line"></i> 异常分数趋势图</h6>
+                            <div class="chart-container" style="height: 300px;">
+                                <canvas id="anomalyScoreChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 传感器配置弹窗 -->
+    <div class="modal fade config-modal" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" style="margin: 1.75rem auto; max-height: calc(100vh - 3.5rem);">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                    <h5 class="modal-title" id="configModalLabel">
+                        <i class="fas fa-cog me-2"></i>监测设置
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <p class="text-muted mb-0">配置需要监测的传感器，每个传感器对应数据文件中的一列</p>
+                        <button class="btn btn-success btn-sm" onclick="addSensorConfig()">
+                            <i class="fas fa-plus me-1"></i>添加传感器
+                        </button>
+                    </div>
+                    
+                    <div id="sensorConfigList">
+                        <!-- 传感器配置行将在这里动态生成 -->
+                    </div>
+                    
+                    <div id="noSensorPlaceholder" class="no-sensors-placeholder" style="display: none;">
+                        <i class="fas fa-plus-circle"></i>
+                        <p>暂无传感器配置，点击上方"添加传感器"按钮开始配置</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" onclick="resetToDefault()">
+                        <i class="fas fa-undo me-1"></i>恢复默认
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveConfig()">
+                        <i class="fas fa-save me-1"></i>保存配置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+        // ==================== 全局变量 ====================
+        const maxDataPoints = 50;
+        let sensorCharts = {};  // 存储所有传感器图表
+        let sensorData = {};    // 存储所有传感器数据
+        let timeLabels = [];
+        
+        let isMonitoring = false;
+        let isCollecting = false;
+        let isRealtimeInference = false;
+        
+        let sensorConfig = [];          // 当前传感器配置
+        let availableColumns = [];      // 可用的数据列
+        let configModal = null;         // 配置弹窗实例
+        
+        // 实时推理相关
+        let anomalyScoreChart = null;
+        let anomalyScoreData = [];
+        let anomalyScoreLabels = [];
+        const maxAnomalyScorePoints = 50;
+        
+        // 采样频率相关
+        let samplingRate = 1;  // 默认1Hz
+        let dataUpdateTimer = null;  // 数据更新定时器
+
+        // ==================== 页面初始化 ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化配置弹窗
+            const configModalElement = document.getElementById('configModal');
+            if (configModalElement) {
+                configModal = new bootstrap.Modal(configModalElement, {
+                    backdrop: true,
+                    keyboard: true,
+                    focus: true
+                });
+                
+                // 监听模态框显示事件，防止页面滚动
+                configModalElement.addEventListener('show.bs.modal', function() {
+                    const scrollY = window.scrollY || window.pageYOffset;
+                    document.body.style.top = `-${scrollY}px`;
+                    document.body.style.position = 'fixed';
+                    document.body.style.width = '100%';
+                    // 保存滚动位置到元素上，以便隐藏时恢复
+                    configModalElement.dataset.scrollY = scrollY;
+                });
+                
+                // 监听模态框隐藏事件，恢复滚动位置
+                configModalElement.addEventListener('hidden.bs.modal', function() {
+                    const scrollY = configModalElement.dataset.scrollY || 0;
+                    document.body.style.position = '';
+                    document.body.style.top = '';
+                    document.body.style.width = '';
+                    window.scrollTo(0, scrollY);
+                });
+            }
+            
+            // 初始化采样频率（从选择器获取默认值）
+            const samplingRateSelect = document.getElementById('samplingRateSelect');
+            if (samplingRateSelect) {
+                samplingRate = parseFloat(samplingRateSelect.value) || 1;
+            }
+            
+            // 加载传感器配置并初始化
+            loadSensorConfig().then(() => {
+                initSensorCards();
+                checkMonitorStatus();
+                loadRealtimeInferenceModels();
+                startDataUpdateTimer();
+            });
+            
+            // 绑定事件
+            bindControlEvents();
+        });
+
+        // ==================== 传感器配置管理 ====================
+        async function loadSensorConfig() {
+            try {
+                const response = await fetch('/device_monitoring/api/sensor_config');
+                const result = await response.json();
+                
+                if (result.success) {
+                    sensorConfig = result.config || [];
+                    availableColumns = result.available_columns || [];
+                    
+                    // 如果没有配置，创建默认的三轴加速度配置
+                    if (sensorConfig.length === 0 && availableColumns.length >= 3) {
+                        sensorConfig = createDefaultAccelerometerConfig(availableColumns);
+                        console.log('使用默认三轴加速度配置:', sensorConfig);
+                    } else {
+                        console.log('传感器配置加载成功:', sensorConfig);
+                    }
+                }
+            } catch (error) {
+                console.error('加载传感器配置失败:', error);
+                // 如果API失败，使用默认配置
+                sensorConfig = createDefaultAccelerometerConfig(['col0', 'col1', 'col2']);
+            }
+        }
+
+        function createDefaultAccelerometerConfig(availableColumns) {
+            const colors = ['#0d6efd', '#198754', '#0dcaf0']; // 蓝色、绿色、青色（匹配后端）
+            const axisNames = ['X轴加速度', 'Y轴加速度', 'Z轴加速度'];
+            const descriptions = ['轴承径向（水平）振动', '轴承轴向（垂直）振动', '轴承轴向位移/垂直振动']; // 匹配后端描述
+            
+            return availableColumns.slice(0, 3).map((column, index) => {
+                // 为自适应纵轴设置合理的初始范围
+                let yAxisMin, yAxisMax;
+                if (index === 2) {
+                    // Z轴：包含重力加速度，初始范围稍大
+                    yAxisMin = 5;
+                    yAxisMax = 15;
+                } else {
+                    // X轴和Y轴：振动范围，初始对称范围
+                    yAxisMin = -5;
+                    yAxisMax = 5;
+                }
+                
+                return {
+                    id: `sensor_${index}`, // 匹配后端ID格式
+                    name: axisNames[index] || `轴${index + 1}加速度`,
+                    description: descriptions[index] || '',
+                    unit: 'm/s²',
+                    column: column, // 使用实际可用的列名
+                    color: colors[index] || '#6f42c1',
+                    yAxisMin: yAxisMin,
+                    yAxisMax: yAxisMax,
+                    baseValue: index === 2 ? 9.8 : 0, // Z轴有重力基准
+                    normalThreshold: 1.0,
+                    cautionThreshold: 1.5 // 匹配后端阈值
+                };
+            });
+        }
+
+        function openConfigModal() {
+            renderConfigList();
+            
+            // 确保模态框已初始化
+            if (!configModal) {
+                const modalElement = document.getElementById('configModal');
+                if (modalElement) {
+                    configModal = new bootstrap.Modal(modalElement, {
+                        backdrop: true,
+                        keyboard: true,
+                        focus: true
+                    });
+                }
+            }
+            
+            if (configModal) {
+                configModal.show();
+            }
+        }
+
+        function renderConfigList() {
+            const container = document.getElementById('sensorConfigList');
+            const placeholder = document.getElementById('noSensorPlaceholder');
+            
+            if (sensorConfig.length === 0) {
+                container.innerHTML = '';
+                placeholder.style.display = 'block';
+                return;
+            }
+            
+            placeholder.style.display = 'none';
+            
+            container.innerHTML = sensorConfig.map((sensor, index) => `
+                <div class="sensor-config-row" data-index="${index}">
+                    <div class="row-header">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="row-number">${index + 1}</span>
+                            <span class="text-muted">传感器 ${index + 1}</span>
+                        </div>
+                        <button class="btn btn-outline-danger btn-sm" onclick="removeSensorConfig(${index})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">数据名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" 
+                                   value="${sensor.name || ''}" 
+                                   onchange="updateSensorConfig(${index}, 'name', this.value)"
+                                   placeholder="如：X轴加速度">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">数据描述</label>
+                            <input type="text" class="form-control" 
+                                   value="${sensor.description || ''}" 
+                                   onchange="updateSensorConfig(${index}, 'description', this.value)"
+                                   placeholder="如：轴承径向振动（可选）">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">单位</label>
+                            <input type="text" class="form-control" 
+                                   value="${sensor.unit || ''}" 
+                                   onchange="updateSensorConfig(${index}, 'unit', this.value)"
+                                   placeholder="如：m/s²">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">数据列 <span class="text-danger">*</span></label>
+                            <select class="form-select" onchange="updateSensorConfig(${index}, 'column', this.value)">
+                                <option value="">选择数据列...</option>
+                                ${availableColumns.map(col => 
+                                    `<option value="${col}" ${sensor.column === col ? 'selected' : ''}>${col}</option>`
+                                ).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-2">
+                            <label class="form-label">颜色</label>
+                            <input type="color" class="form-control form-control-color w-100" 
+                                   value="${sensor.color || '#0d6efd'}" 
+                                   onchange="updateSensorConfig(${index}, 'color', this.value)">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Y轴最小</label>
+                            <input type="number" class="form-control" 
+                                   value="${sensor.yAxisMin ?? -10}" 
+                                   onchange="updateSensorConfig(${index}, 'yAxisMin', parseFloat(this.value))"
+                                   step="any">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Y轴最大</label>
+                            <input type="number" class="form-control" 
+                                   value="${sensor.yAxisMax ?? 10}" 
+                                   onchange="updateSensorConfig(${index}, 'yAxisMax', parseFloat(this.value))"
+                                   step="any">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">基准值</label>
+                            <input type="number" class="form-control" 
+                                   value="${sensor.baseValue ?? 0}" 
+                                   onchange="updateSensorConfig(${index}, 'baseValue', parseFloat(this.value))"
+                                   step="any"
+                                   placeholder="0">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">正常阈值</label>
+                            <input type="number" class="form-control" 
+                                   value="${sensor.normalThreshold ?? 1.0}" 
+                                   onchange="updateSensorConfig(${index}, 'normalThreshold', parseFloat(this.value))"
+                                   step="any">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">警告阈值</label>
+                            <input type="number" class="form-control" 
+                                   value="${sensor.cautionThreshold ?? 2.0}" 
+                                   onchange="updateSensorConfig(${index}, 'cautionThreshold', parseFloat(this.value))"
+                                   step="any">
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addSensorConfig() {
+            const newSensor = {
+                id: `sensor_${Date.now()}`,
+                name: '',
+                description: '',
+                unit: '',
+                column: '',
+                color: getRandomColor(),
+                yAxisMin: -10,
+                yAxisMax: 10,
+                baseValue: 0,
+                normalThreshold: 1.0,
+                cautionThreshold: 2.0
+            };
+            sensorConfig.push(newSensor);
+            renderConfigList();
+        }
+
+        function removeSensorConfig(index) {
+            sensorConfig.splice(index, 1);
+            renderConfigList();
+        }
+
+        function updateSensorConfig(index, field, value) {
+            if (sensorConfig[index]) {
+                sensorConfig[index][field] = value;
+            }
+        }
+
+        function getRandomColor() {
+            const colors = ['#0d6efd', '#198754', '#0dcaf0', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14', '#20c997'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        async function saveConfig() {
+            // 验证配置
+            for (let i = 0; i < sensorConfig.length; i++) {
+                const sensor = sensorConfig[i];
+                if (!sensor.name || !sensor.name.trim()) {
+                    alert(`第 ${i + 1} 个传感器缺少名称`);
+                    return;
+                }
+                if (!sensor.column) {
+                    alert(`第 ${i + 1} 个传感器未选择数据列`);
+                    return;
+                }
+            }
+            
+            try {
+                const response = await fetch('/device_monitoring/api/sensor_config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ config: sensorConfig })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    configModal.hide();
+                    // 重新初始化传感器卡片
+                    initSensorCards();
+                    alert('配置保存成功');
+                } else {
+                    alert('保存失败: ' + result.error);
+                }
+            } catch (error) {
+                console.error('保存配置失败:', error);
+                alert('保存失败: ' + error.message);
+            }
+        }
+
+        async function resetToDefault() {
+            if (!confirm('确定要恢复默认配置吗？当前配置将丢失。')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/device_monitoring/api/sensor_config/reset', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    sensorConfig = result.config;
+                    renderConfigList();
+                    alert('已恢复默认配置');
+                }
+            } catch (error) {
+                console.error('重置配置失败:', error);
+                alert('重置失败: ' + error.message);
+            }
+        }
+
+        // ==================== 传感器卡片生成 ====================
+        function initSensorCards() {
+            const container = document.getElementById('sensorCardsContainer');
+            
+            // 销毁现有图表
+            Object.values(sensorCharts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            sensorCharts = {};
+            sensorData = {};
+            timeLabels = [];
+            
+            if (sensorConfig.length === 0) {
+                container.innerHTML = `
+                    <div class="col-12">
+                        <div class="no-sensors-placeholder">
+                            <i class="fas fa-cog"></i>
+                            <h5>暂无传感器配置</h5>
+                            <p>请点击右上角的"监测设置"按钮配置需要监测的传感器</p>
+                            <button class="btn btn-primary" onclick="openConfigModal()">
+                                <i class="fas fa-cog me-2"></i>配置传感器
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 根据传感器数量和屏幕尺寸决定列宽
+            let colClass;
+            if (sensorConfig.length === 3) {
+                // 三轴加速度专用布局：在所有屏幕尺寸下都显示为3列
+                colClass = 'col-12 col-sm-6 col-lg-4';
+            } else if (sensorConfig.length <= 2) {
+                colClass = 'col-md-6';
+            } else if (sensorConfig.length <= 4) {
+                colClass = 'col-md-6 col-lg-3';
+            } else {
+                colClass = 'col-md-4 col-lg-3';
+            }
+            
+            container.innerHTML = sensorConfig.map((sensor, index) => `
+                <div class="${colClass} mb-4">
+                    <div class="card monitor-card ${sensorConfig.length === 3 ? 'accelerometer-card' : ''}">
+                        <div class="card-header text-white" style="background-color: ${sensor.color}">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-wave-square"></i> ${sensor.name}
+                            </h5>
+                            <small class="text-white-50">${sensor.description || ''}</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="value-display">
+                                <span id="value_${sensor.id}">--</span>
+                                <span class="unit-label text-muted">${sensor.unit || ''}</span>
+                            </div>
+                            <div class="text-center mb-3">
+                                <span id="status_${sensor.id}" class="badge bg-secondary">未知</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="chart_${sensor.id}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // 初始化图表
+            sensorConfig.forEach(sensor => {
+                sensorData[sensor.id] = [];
+                initSensorChart(sensor);
+            });
+        }
+
+        function initSensorChart(sensor) {
+            const ctx = document.getElementById(`chart_${sensor.id}`);
+            if (!ctx) return;
+            
+            sensorCharts[sensor.id] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: `${sensor.name} (${sensor.unit || ''})`,
+                        data: sensorData[sensor.id],
+                        borderColor: sensor.color,
+                        backgroundColor: sensor.color + '20',
+                        tension: 0.1,
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 300 // 平滑动画
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            // 初始范围，后续会自适应调整
+                            min: sensor.yAxisMin ?? -5,
+                            max: sensor.yAxisMax ?? 15,
+                            title: {
+                                display: true,
+                                text: sensor.unit || '值'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '时间'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false // 隐藏图例，标题已显示
+                        }
+                    }
+                }
+            });
+        }
+
+        // 自适应调整纵轴范围
+        function adjustYAxisRange(sensorId, newValue) {
+            const chart = sensorCharts[sensorId];
+            if (!chart) return;
+            
+            const data = sensorData[sensorId];
+            if (!data || data.length === 0) return;
+            
+            // 计算数据的最小值和最大值
+            const minValue = Math.min(...data);
+            const maxValue = Math.max(...data);
+            
+            // 添加10%的缓冲区
+            const range = maxValue - minValue;
+            const buffer = range * 0.1;
+            const newMin = minValue - buffer;
+            const newMax = maxValue + buffer;
+            
+            // 确保最小范围
+            const minRange = 2; // 最小范围
+            if (newMax - newMin < minRange) {
+                const center = (newMax + newMin) / 2;
+                const halfRange = minRange / 2;
+                const adjustedMin = center - halfRange;
+                const adjustedMax = center + halfRange;
+                
+                if (Math.abs(chart.options.scales.y.min - adjustedMin) > 0.1 || 
+                    Math.abs(chart.options.scales.y.max - adjustedMax) > 0.1) {
+                    chart.options.scales.y.min = adjustedMin;
+                    chart.options.scales.y.max = adjustedMax;
+                    chart.update('none'); // 不重新渲染动画，提高性能
+                }
+            } else {
+                if (Math.abs(chart.options.scales.y.min - newMin) > 0.1 || 
+                    Math.abs(chart.options.scales.y.max - newMax) > 0.1) {
+                    chart.options.scales.y.min = newMin;
+                    chart.options.scales.y.max = newMax;
+                    chart.update('none');
+                }
+            }
+        }
+
+        // ==================== 数据更新 ====================
+        function updateData() {
+            if (!isMonitoring) return;
+            
+            fetch('/device_monitoring/api/data')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.sensors || data.sensors.length === 0) {
+                        console.warn('没有传感器数据');
+                        return;
+                    }
+                    
+                    // 更新时间标签
+                    const now = new Date().toLocaleTimeString();
+                    timeLabels.push(now);
+                    
+                    // 限制数据点数量
+                    if (timeLabels.length > maxDataPoints) {
+                        timeLabels.shift();
+                    }
+                    
+                    // 更新每个传感器的数据
+                    data.sensors.forEach(sensor => {
+                        // 更新数值显示
+                        const valueEl = document.getElementById(`value_${sensor.id}`);
+                        if (valueEl) {
+                            valueEl.textContent = sensor.value.toFixed(2);
+                        }
+                        
+                        // 更新状态显示
+                        const statusEl = document.getElementById(`status_${sensor.id}`);
+                        if (statusEl) {
+                            statusEl.className = 'badge';
+                            switch (sensor.status) {
+                                case 'normal':
+                                    statusEl.classList.add('bg-success');
+                                    statusEl.textContent = '正常';
+                                    break;
+                                case 'caution':
+                                    statusEl.classList.add('bg-warning');
+                                    statusEl.textContent = '注意';
+                                    break;
+                                case 'warning':
+                                    statusEl.classList.add('bg-danger');
+                                    statusEl.textContent = '警告';
+                                    break;
+                                default:
+                                    statusEl.classList.add('bg-secondary');
+                                    statusEl.textContent = '未知';
+                            }
+                        }
+                        
+                        // 更新图表数据
+                        if (sensorData[sensor.id]) {
+                            sensorData[sensor.id].push(sensor.value);
+                            if (sensorData[sensor.id].length > maxDataPoints) {
+                                sensorData[sensor.id].shift();
+                            }
+                            
+                            if (sensorCharts[sensor.id]) {
+                                sensorCharts[sensor.id].update();
+                                // 自适应调整纵轴范围
+                                adjustYAxisRange(sensor.id, sensor.value);
+                            }
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('获取数据失败:', error);
+                });
+        }
+
+        function startDataUpdateTimer() {
+            // 清除旧的定时器
+            if (dataUpdateTimer) {
+                clearInterval(dataUpdateTimer);
+            }
+            
+            // 计算更新间隔（毫秒）：频率转换为间隔 = 1000 / 频率
+            const updateInterval = 1000 / samplingRate;
+            
+            // 创建新的定时器
+            dataUpdateTimer = setInterval(function() {
+                if (isMonitoring) {
+                    updateData();
+                }
+                if (isRealtimeInference) {
+                    updateRealtimeInference();
+                }
+            }, updateInterval);
+        }
+        
+        function updateSamplingRate() {
+            const select = document.getElementById('samplingRateSelect');
+            const newRate = parseFloat(select.value);
+            
+            // 限制最高频率为10Hz
+            if (newRate > 10) {
+                samplingRate = 10;
+                select.value = '10';
+                alert('采样频率最高为10Hz');
+            } else {
+                samplingRate = newRate;
+            }
+            
+            // 重新启动定时器以应用新的采样频率
+            startDataUpdateTimer();
+            
+            console.log(`采样频率已更新为: ${samplingRate} Hz (更新间隔: ${1000 / samplingRate} ms)`);
+        }
+
+        // ==================== 监测状态管理 ====================
+        function checkMonitorStatus() {
+            fetch('/device_monitoring/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    isMonitoring = data.monitoring;
+                    isCollecting = data.collecting;
+                    isRealtimeInference = data.realtime_inference || false;
+                    
+                    updateControlButtons();
+                    
+                    if (isMonitoring) {
+                        updateData();
+                    }
+                    
+                    if (isRealtimeInference) {
+                        document.getElementById('realtimeInferencePanel').style.display = 'block';
+                        updateRealtimeInference();
+                    }
+                })
+                .catch(error => {
+                    console.error('获取初始状态失败:', error);
+                });
+        }
+
+        function updateControlButtons() {
+            const monitorBadge = document.getElementById('monitorStatusBadge');
+            const startCollectBtn = document.getElementById('startCollectBtn');
+            const stopCollectBtn = document.getElementById('stopCollectBtn');
+            const collectionStatus = document.getElementById('collectionStatus');
+            const startInferenceBtn = document.getElementById('startRealtimeInferenceBtn');
+            const stopInferenceBtn = document.getElementById('stopRealtimeInferenceBtn');
+            const modelSelect = document.getElementById('realtimeModelSelect');
+            const inferenceStatus = document.getElementById('realtimeInferenceStatus');
+            
+            if (isMonitoring) {
+                monitorBadge.className = 'badge bg-primary';
+                monitorBadge.textContent = '监测中（自动）';
+                startCollectBtn.disabled = false;
+                modelSelect.disabled = false;
+                startInferenceBtn.disabled = false;
+            } else {
+                monitorBadge.className = 'badge bg-warning';
+                monitorBadge.textContent = '未监测';
+                startCollectBtn.disabled = true;
+            }
+            
+            if (isCollecting) {
+                startCollectBtn.disabled = true;
+                stopCollectBtn.disabled = false;
+                collectionStatus.textContent = '采集中';
+                collectionStatus.style.color = '#28a745';
+            } else {
+                stopCollectBtn.disabled = true;
+                collectionStatus.textContent = '未采集';
+                collectionStatus.style.color = '#6c757d';
+            }
+            
+            if (isRealtimeInference) {
+                startInferenceBtn.disabled = true;
+                stopInferenceBtn.disabled = false;
+                modelSelect.disabled = true;
+                inferenceStatus.className = 'badge bg-success';
+                inferenceStatus.textContent = '运行中';
+            } else {
+                stopInferenceBtn.disabled = true;
+                inferenceStatus.className = 'badge bg-secondary';
+                inferenceStatus.textContent = '未运行';
+            }
+        }
+
+        // ==================== 控制按钮事件 ====================
+        function bindControlEvents() {
+            // 监测控制
+            const startMonitorBtn = document.getElementById('startMonitorBtn');
+            if (startMonitorBtn) {
+                startMonitorBtn.addEventListener('click', function() {
+                    checkMonitorStatus();
+                });
+            }
+
+            const stopMonitorBtn = document.getElementById('stopMonitorBtn');
+            if (stopMonitorBtn) {
+                stopMonitorBtn.addEventListener('click', function() {
+                    alert('数据监测由后台数据生成器自动运行，无法通过此按钮停止。');
+                });
+            }
+
+            // 采样频率选择
+            const samplingRateSelect = document.getElementById('samplingRateSelect');
+            if (samplingRateSelect) {
+                samplingRateSelect.addEventListener('change', updateSamplingRate);
+            }
+            
+            // 采集控制
+            document.getElementById('startCollectBtn').addEventListener('click', function() {
+                fetch('/device_monitoring/api/start_collection')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'started') {
+                            isCollecting = true;
+                            updateControlButtons();
+                            if (data.collection_folder) {
+                                document.getElementById('collectionFolder').textContent = '保存至: ' + data.collection_folder;
+                                document.getElementById('collectionFolder').style.display = 'block';
+                            }
+                        }
+                    });
+            });
+            
+            document.getElementById('stopCollectBtn').addEventListener('click', function() {
+                fetch('/device_monitoring/api/stop_collection')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'stopped') {
+                            isCollecting = false;
+                            updateControlButtons();
+                            document.getElementById('collectionStatus').textContent = '采集完成';
+                            if (data.collection_folder) {
+                                document.getElementById('collectionFolder').textContent = '数据已保存至: ' + data.collection_folder;
+                            }
+                        }
+                    });
+            });
+            
+            // 实时推理控制
+            document.getElementById('startRealtimeInferenceBtn').addEventListener('click', startRealtimeInference);
+            document.getElementById('stopRealtimeInferenceBtn').addEventListener('click', stopRealtimeInferenceHandler);
+        }
+
+        // ==================== 实时推理功能 ====================
+        function loadRealtimeInferenceModels() {
+            fetch('/device_monitoring/api/realtime_inference/models')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.models) {
+                        const select = document.getElementById('realtimeModelSelect');
+                        select.innerHTML = '<option value="">选择模型...</option>';
+                        data.models.forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model.task_id;
+                            const modelTypeName = {
+                                'lstm_predictor': 'LSTM预测器',
+                                'lstm_autoencoder': 'LSTM自编码器',
+                                'cnn_1d_autoencoder': '1D CNN自编码器'
+                            }[model.model_type] || model.model_type;
+                            option.textContent = `${modelTypeName} (${model.task_id})`;
+                            option.dataset.threshold = model.threshold_value || 0.5;
+                            select.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => console.error('加载模型列表失败:', error));
+        }
+
+        function startRealtimeInference() {
+            const taskId = document.getElementById('realtimeModelSelect').value;
+            if (!taskId) {
+                alert('请先选择模型');
+                return;
+            }
+            
+            fetch('/device_monitoring/api/realtime_inference/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task_id: taskId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    isRealtimeInference = true;
+                    updateControlButtons();
+                    document.getElementById('realtimeInferencePanel').style.display = 'block';
+                    
+                    const selectedOption = document.getElementById('realtimeModelSelect').selectedOptions[0];
+                    document.getElementById('realtimeModelName').textContent = selectedOption.textContent.split(' - ')[0];
+                    
+                    const threshold = parseFloat(selectedOption.dataset.threshold) || 0.5;
+                    initAnomalyScoreChart(threshold);
+                    updateRealtimeInference();
+                } else {
+                    alert('启动实时推理失败: ' + (data.error || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('启动实时推理失败:', error);
+                alert('启动实时推理失败: ' + error.message);
+            });
+        }
+
+        function stopRealtimeInferenceHandler() {
+            fetch('/device_monitoring/api/realtime_inference/stop', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        isRealtimeInference = false;
+                        updateControlButtons();
+                        document.getElementById('realtimeInferencePanel').style.display = 'none';
+                        
+                        if (anomalyScoreChart) {
+                            anomalyScoreChart.destroy();
+                            anomalyScoreChart = null;
+                        }
+                        anomalyScoreData = [];
+                        anomalyScoreLabels = [];
+                    }
+                });
+        }
+
+        function initAnomalyScoreChart(thresholdValue = null) {
+            const ctx = document.getElementById('anomalyScoreChart');
+            if (!ctx) return;
+            
+            if (anomalyScoreChart) {
+                anomalyScoreChart.destroy();
+            }
+            
+            const datasets = [{
+                label: '异常分数',
+                data: anomalyScoreData,
+                borderColor: 'rgb(54, 162, 235)',
+                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                tension: 0.1
+            }];
+            
+            if (thresholdValue !== null) {
+                datasets.push({
+                    label: '阈值',
+                    data: Array(anomalyScoreLabels.length).fill(thresholdValue),
+                    borderColor: 'rgb(255, 99, 132)',
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false
+                });
+            }
+            
+            anomalyScoreChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: anomalyScoreLabels, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: '异常分数' } },
+                        x: { title: { display: true, text: '时间' } }
+                    }
+                }
+            });
+        }
+
+        function updateRealtimeInference() {
+            fetch('/device_monitoring/api/realtime_inference/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.waiting) {
+                            document.getElementById('anomalyScoreValue').textContent = '--';
+                            document.getElementById('anomalyStatusBadge').className = 'badge bg-warning';
+                            document.getElementById('anomalyStatusBadge').textContent = '等待数据';
+                            document.getElementById('inferenceTimestamp').textContent = 
+                                data.waiting_message || `等待数据积累: ${data.current_data_count || 0}/${data.required_data_count || 0}`;
+                            return;
+                        }
+                        
+                        if (data.results) {
+                            const results = data.results;
+                            if (results.latest_score !== null) {
+                                document.getElementById('anomalyScoreValue').textContent = results.latest_score.toFixed(4);
+                                
+                                if (results.model_info) {
+                                    const threshold = results.model_info.threshold_value || 0.5;
+                                    document.getElementById('thresholdValue').textContent = threshold.toFixed(4);
+                                    updateAnomalyScoreChart(results.latest_score, results.latest_is_anomaly, threshold);
+                                }
+                                
+                                const statusBadge = document.getElementById('anomalyStatusBadge');
+                                statusBadge.className = results.latest_is_anomaly ? 'badge bg-danger' : 'badge bg-success';
+                                statusBadge.textContent = results.latest_is_anomaly ? '异常' : '正常';
+                                
+                                if (results.latest_timestamp) {
+                                    document.getElementById('inferenceTimestamp').textContent = 
+                                        new Date(results.latest_timestamp).toLocaleTimeString();
+                                }
+                            }
+                        }
+                    }
+                })
+                .catch(error => console.error('获取推理状态失败:', error));
+        }
+
+        function updateAnomalyScoreChart(score, isAnomaly, thresholdValue) {
+            if (!anomalyScoreChart) {
+                initAnomalyScoreChart(thresholdValue);
+            }
+            
+            const now = new Date().toLocaleTimeString();
+            anomalyScoreLabels.push(now);
+            anomalyScoreData.push(score);
+            
+            if (anomalyScoreLabels.length > maxAnomalyScorePoints) {
+                anomalyScoreLabels.shift();
+                anomalyScoreData.shift();
+            }
+            
+            if (anomalyScoreChart.data.datasets.length > 1) {
+                anomalyScoreChart.data.datasets[1].data = Array(anomalyScoreLabels.length).fill(thresholdValue);
+            }
+            
+            anomalyScoreChart.data.labels = anomalyScoreLabels;
+            anomalyScoreChart.data.datasets[0].data = anomalyScoreData;
+            anomalyScoreChart.update('none');
+        }
+    </script>
+{% endblock %}

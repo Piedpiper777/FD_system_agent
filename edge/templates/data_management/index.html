@@ -1,0 +1,2540 @@
+{% extends "base.html" %}
+
+{% block title %}数据管理 - 工业智能维护系统{% endblock %}
+
+{% block content %}
+<style>
+    /* 全局字体与背景优化 */
+    :root {
+        --primary-gradient: linear-gradient(135deg, #6BB8FF 0%, #2563EB 100%);
+        --secondary-gradient: linear-gradient(135deg, #6AD2FF 0%, #2B77E5 100%);
+        --success-gradient: linear-gradient(135deg, #05CD99 0%, #02A176 100%);
+        --danger-gradient: linear-gradient(135deg, #FF5B5B 0%, #EE0979 100%);
+        --card-shadow: 0 20px 27px 0 rgba(0, 0, 0, 0.05);
+        --hover-shadow: 0 20px 27px 0 rgba(0, 0, 0, 0.1);
+        --text-main: #1B2559;
+        --text-secondary: #A3AED0;
+        --bg-color: #F4F7FE;
+    }
+
+    .data-management-page {
+        background-color: var(--bg-color);
+        min-height: 100vh;
+        padding: 30px;
+        font-family: 'DM Sans', 'Inter', sans-serif;
+    }
+
+    /* 页面头部优化 */
+    .page-header {
+        background: transparent;
+        padding: 0;
+        margin-bottom: 40px;
+        border: none;
+        position: relative;
+        transition: all 0.3s ease;
+        text-align: center;
+    }
+    
+    .page-header::before {
+        display: none;
+    }
+    
+    .page-header h2 {
+        font-weight: 700;
+        font-size: 32px;
+        color: var(--text-main);
+        margin-bottom: 12px;
+        letter-spacing: -0.5px;
+        text-align: center;
+    }
+    
+    .page-header p {
+        color: var(--text-secondary);
+        margin: 0;
+        font-size: 16px;
+        font-weight: 500;
+        text-align: center;
+    }
+
+    /* 卡片样式升级 */
+    .data-card {
+        background: #FFFFFF;
+        border-radius: 30px;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 30px;
+        overflow: hidden;
+        border: none;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: fadeInUp 0.6s ease-out both;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    .data-card:hover {
+        box-shadow: var(--hover-shadow);
+        transform: translateY(-5px);
+    }
+
+    .data-card .card-header {
+        background: #FFFFFF;
+        color: var(--text-main);
+        padding: 24px 30px;
+        font-weight: 700;
+        border-bottom: 1px solid #F4F7FE;
+        position: relative;
+    }
+    
+    .data-card .card-header h5 {
+        margin: 0;
+        font-size: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .data-card .card-header h5 i {
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 24px;
+    }
+
+    .data-card .card-body {
+        padding: 30px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* 信息盒子优化 */
+    .info-box {
+        background: #F7F9FF;
+        border-radius: 20px;
+        padding: 24px;
+        border-left: none;
+        box-shadow: inset 0 0 0 1px rgba(224, 229, 242, 0.5);
+        transition: all 0.3s ease;
+    }
+    
+    .info-box:hover {
+        background: #F0F5FF;
+    }
+
+    .info-box .info-label {
+        font-size: 14px;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+        font-weight: 500;
+    }
+
+    .info-box .info-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-main);
+        letter-spacing: -0.5px;
+    }
+
+    /* 警告盒子 */
+    .warning-box {
+        background: #FFF8F0;
+        border-radius: 20px;
+        padding: 20px 24px;
+        border: 1px solid rgba(255, 159, 67, 0.2);
+        margin-bottom: 24px;
+        color: #FF9F43;
+        font-weight: 500;
+    }
+    
+    .warning-box i {
+        margin-right: 10px;
+        font-size: 18px;
+    }
+
+    /* 文件列表项 */
+    .file-list-item, .browse-file-item {
+        background: #FFFFFF;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 16px;
+        transition: all 0.3s ease;
+        border: 1px solid transparent;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+    }
+
+    .file-list-item:hover, .browse-file-item:hover {
+        background: #F4F7FE;
+        border-color: #2563EB;
+        transform: translateX(5px);
+        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.1);
+    }
+
+    /* 空状态 */
+    .no-files {
+        text-align: center;
+        padding: 60px 40px;
+        color: var(--text-secondary);
+        background: #FFFFFF;
+        border-radius: 24px;
+        border: 2px dashed #E0E5F2;
+        margin-top: 20px;
+    }
+
+    .no-files i {
+        font-size: 64px;
+        margin-bottom: 20px;
+        background: linear-gradient(135deg, #E0E5F2 0%, #A3AED0 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    /* 标签页样式 - 胶囊式 */
+    .nav-tabs-custom {
+        border-bottom: none;
+        margin-bottom: 30px;
+        background: #FFFFFF;
+        padding: 8px;
+        border-radius: 20px;
+        display: inline-flex;
+        box-shadow: var(--card-shadow);
+    }
+
+    .nav-tabs-custom .nav-link {
+        border: none;
+        border-left: none !important;
+        color: var(--text-secondary);
+        font-weight: 600;
+        padding: 12px 30px;
+        border-radius: 14px;
+        transition: all 0.3s ease;
+        margin-right: 5px;
+    }
+    
+    .nav-tabs-custom .nav-link:last-child {
+        margin-right: 0;
+    }
+    
+    .nav-tabs-custom .nav-link::after {
+        display: none;
+    }
+
+    .nav-tabs-custom .nav-link:hover {
+        color: var(--text-main);
+        background: rgba(244, 247, 254, 0.5);
+    }
+    
+    .nav-tabs-custom .nav-link.active {
+        color: #FFFFFF;
+        background: var(--primary-gradient);
+        box-shadow: 0 6px 15px rgba(37, 99, 235, 0.3);
+        border-left: none !important;
+    }
+    
+    .nav-tabs-custom .nav-link.active::before {
+        display: none !important;
+    }
+
+    /* 按钮样式优化 */
+    .btn {
+        padding: 10px 20px;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        letter-spacing: 0.3px;
+        border: none;
+    }
+
+    .btn-primary {
+        background: var(--primary-gradient);
+        box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+    }
+    
+    .btn-primary:hover {
+        box-shadow: 0 15px 30px rgba(37, 99, 235, 0.3);
+        transform: translateY(-2px);
+    }
+    
+    .btn-success {
+        background: var(--success-gradient);
+        box-shadow: 0 10px 20px rgba(5, 205, 153, 0.2);
+    }
+    
+    .btn-success:hover {
+        box-shadow: 0 15px 30px rgba(5, 205, 153, 0.3);
+        transform: translateY(-2px);
+    }
+    
+    .btn-outline-primary {
+        color: #2563EB;
+        border: 2px solid #2563EB;
+        background: transparent;
+    }
+    
+    .btn-outline-primary:hover {
+        background: #2563EB;
+        color: white;
+        box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+        transform: translateY(-2px);
+    }
+    
+    .btn-outline-secondary {
+        color: var(--text-secondary);
+        border: 2px solid #E0E5F2;
+        background: transparent;
+    }
+    
+    .btn-outline-secondary:hover {
+        border-color: var(--text-secondary);
+        color: var(--text-main);
+        background: #F4F7FE;
+    }
+
+    /* 任务类型选择 */
+    .task-type-btn {
+        padding: 30px 20px;
+        border-radius: 24px;
+        border: 2px solid transparent;
+        background: #FFFFFF;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+    }
+    
+    .task-type-btn:hover {
+        border-color: #2563EB;
+        transform: translateY(-8px);
+        box-shadow: var(--hover-shadow);
+    }
+
+    .task-type-btn.active {
+        border-color: transparent;
+        background: var(--primary-gradient);
+        color: white;
+        box-shadow: 0 20px 40px rgba(37, 99, 235, 0.4);
+        transform: translateY(-5px);
+    }
+    
+    .task-type-btn.active strong {
+        color: white;
+    }
+    
+    .task-type-btn.active small {
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .task-type-btn i {
+        font-size: 48px;
+        display: block;
+        margin-bottom: 16px;
+        transition: all 0.3s ease;
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .task-type-btn.active i {
+        background: none;
+        -webkit-text-fill-color: white;
+        color: white;
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+    }
+
+    /* 步骤指示器 */
+    .step-indicator {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 40px;
+        padding: 30px;
+        background: #FFFFFF;
+        border-radius: 24px;
+        box-shadow: var(--card-shadow);
+        border: none;
+    }
+
+    .step-number {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #F4F7FE;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        margin-right: 16px;
+        transition: all 0.3s ease;
+        font-size: 18px;
+        color: var(--text-secondary);
+    }
+
+    .step.active .step-number {
+        background: var(--primary-gradient);
+        color: white;
+        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+        transform: scale(1.15);
+    }
+    
+    .step.completed .step-number {
+        background: var(--success-gradient);
+        color: white;
+        box-shadow: 0 8px 20px rgba(5, 205, 153, 0.4);
+    }
+
+    .step-connector {
+        height: 4px;
+        background: #F4F7FE;
+        border-radius: 4px;
+        margin: 0 20px;
+        width: 60px;
+    }
+
+    .step.completed + .step-connector,
+    .step-connector.completed {
+        background: var(--success-gradient);
+    }
+
+    /* 动画 */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translate3d(0, 30px, 0);
+        }
+        to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+        }
+    }
+
+    .animate-fade-in {
+        animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    
+    .data-card:nth-child(1) { animation-delay: 0.1s; }
+    .data-card:nth-child(2) { animation-delay: 0.2s; }
+    .data-card:nth-child(3) { animation-delay: 0.3s; }
+
+    /* 模态框美化 */
+    .modal-content {
+        border-radius: 24px;
+        border: none;
+        box-shadow: 0 40px 80px rgba(0,0,0,0.2);
+    }
+    
+    .modal-header {
+        background: #FFFFFF;
+        border-bottom: 1px solid #F4F7FE;
+        padding: 24px 30px;
+        border-radius: 24px 24px 0 0;
+    }
+    
+    .modal-title {
+        font-weight: 700;
+        color: var(--text-main);
+    }
+    
+    .modal-body {
+        padding: 30px;
+    }
+    
+    .modal-footer {
+        border-top: 1px solid #F4F7FE;
+        padding: 20px 30px;
+    }
+
+    /* 目录按钮 */
+    .dir-btn {
+        padding: 12px 20px;
+        border-radius: 12px;
+        border: 1px solid #E0E5F2;
+        background: #FFFFFF;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 500;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        color: var(--text-main);
+    }
+
+    .dir-btn:hover { 
+        border-color: #2563EB; 
+        background: #F4F7FE;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+    
+    .dir-btn.active { 
+        border-color: transparent; 
+        background: var(--primary-gradient);
+        color: white;
+        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+    }
+
+    /* 表格美化 */
+    .table {
+        border-radius: 16px;
+        overflow: hidden;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .table thead th {
+        background: #F4F7FE;
+        color: var(--text-secondary);
+        font-weight: 600;
+        border: none;
+        padding: 16px;
+        text-transform: uppercase;
+        font-size: 12px;
+        letter-spacing: 0.5px;
+    }
+    
+    .table tbody td {
+        padding: 16px;
+        border-bottom: 1px solid #F4F7FE;
+        color: var(--text-main);
+        font-weight: 500;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #F4F7FE;
+    }
+
+    /* 表单控件 */
+    .form-control, .form-select {
+        border-radius: 12px;
+        border: 1px solid #E0E5F2;
+        padding: 12px 16px;
+        transition: all 0.3s ease;
+        color: var(--text-main);
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #2563EB;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    /* 保持原有的 Z-index 修复 */
+    .modal { z-index: 1055 !important; }
+    .modal-backdrop { z-index: 1050 !important; }
+    .modal-dialog { z-index: 1056 !important; }
+    .modal-content { z-index: 1057 !important; }
+    
+    /* 预览代码块 */
+    .preview-raw {
+        font-family: 'JetBrains Mono', 'Courier New', monospace;
+        font-size: 0.85rem;
+        background: #1B2559;
+        color: #E0E5F2;
+        padding: 20px;
+        border-radius: 16px;
+        border: none;
+    }
+
+    /* 徽章美化 */
+    .badge {
+        padding: 0.5em 0.8em;
+        border-radius: 8px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+    
+    .bg-secondary {
+        background-color: #E0E5F2 !important;
+        color: #1B2559 !important;
+    }
+    
+    .bg-primary {
+        background: var(--primary-gradient) !important;
+    }
+    
+    .bg-success {
+        background: var(--success-gradient) !important;
+    }
+    
+    .bg-danger {
+        background: var(--danger-gradient) !important;
+    }
+    
+    /* 文本颜色覆盖 */
+    .text-muted {
+        color: var(--text-secondary) !important;
+    }
+    
+    .text-primary {
+        color: #2563EB !important;
+    }
+</style>
+
+<div class="data-management-page">
+    <div class="container">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <h2 class="mb-2">
+                <i class="fas fa-database me-2"></i>数据管理
+            </h2>
+            <p class="mb-0">管理监测数据，支持数据截取、浏览、预处理和标注功能</p>
+        </div>
+
+        <!-- 功能标签页 -->
+        <ul class="nav nav-tabs nav-tabs-custom mb-4" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="extract-tab" data-bs-toggle="tab" data-bs-target="#extract-pane" type="button">
+                    <i class="fas fa-cut me-2"></i>数据截取
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="browse-tab" data-bs-toggle="tab" data-bs-target="#browse-pane" type="button">
+                    <i class="fas fa-search me-2"></i>数据浏览
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="preprocess-tab" data-bs-toggle="tab" data-bs-target="#preprocess-pane" type="button">
+                    <i class="fas fa-cogs me-2"></i>数据预处理
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="mainTabsContent">
+            <!-- 数据截取标签页 -->
+            <div class="tab-pane fade show active" id="extract-pane" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-6 mb-4 d-flex">
+                        <div class="data-card card w-100">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-cut me-2"></i>数据截取</h5>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <div class="warning-box">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>注意：</strong>监控数据实时更新中，请谨慎选择靠近起始点的数据。
+                                </div>
+                                <div class="info-box mb-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>当前监控数据信息</h6>
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="refreshDataInfo()">
+                                            <i class="fas fa-sync-alt me-1"></i>刷新
+                                        </button>
+                                    </div>
+                                    <div id="dataInfoContent">
+                                        <div class="text-center py-3"><div class="spinner-border spinner-border-sm text-secondary"></div></div>
+                                    </div>
+                                </div>
+                                <form id="extractForm" class="mt-auto">
+                                    <div class="mb-3">
+                                        <label class="form-label"><i class="fas fa-clock me-1"></i>开始时间 <span class="text-danger">*</span></label>
+                                        <input type="datetime-local" class="form-control" id="startTime" step="1" required>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="form-label"><i class="fas fa-clock me-1"></i>结束时间 <span class="text-danger">*</span></label>
+                                        <input type="datetime-local" class="form-control" id="endTime" step="1" required>
+                                    </div>
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-secondary btn-lg"><i class="fas fa-cut me-2"></i>截取数据</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6 mb-4 d-flex">
+                        <div class="data-card card w-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0"><i class="fas fa-folder-open me-2"></i>已采集的数据文件</h5>
+                                <button class="btn btn-outline-light btn-sm" onclick="refreshFileList()"><i class="fas fa-sync-alt me-1"></i>刷新</button>
+                            </div>
+                            <div class="card-body d-flex flex-column" style="max-height: 400px; overflow-y: auto;">
+                                <div id="fileListContent" class="flex-grow-1"><div class="text-center py-3"><div class="spinner-border spinner-border-sm text-secondary"></div></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据浏览标签页 -->
+            <div class="tab-pane fade" id="browse-pane" role="tabpanel">
+                <div class="data-card card">
+                    <div class="card-header"><h5 class="mb-0"><i class="fas fa-search me-2"></i>数据浏览</h5></div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">选择数据目录</label>
+                            <div id="dirSelector" class="d-flex gap-2 flex-wrap"><div class="text-muted">加载中...</div></div>
+                        </div>
+                        <div id="currentPathDisplay" class="current-path" style="display: none;">
+                            <i class="fas fa-folder me-2"></i><span id="currentPathText"></span>
+                        </div>
+                        <div id="browseFileList">
+                            <div class="no-files"><i class="fas fa-folder-open d-block"></i><p class="mb-0">请选择一个数据目录</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据预处理标签页 -->
+            <div class="tab-pane fade" id="preprocess-pane" role="tabpanel">
+                <!-- 任务类型选择 -->
+                <div class="data-card card mb-4">
+                    <div class="card-header"><h5 class="mb-0"><i class="fas fa-tasks me-2"></i>选择任务类型</h5></div>
+                    <div class="card-body">
+                        <div class="row g-3" id="taskTypeSelector">
+                            <div class="col-md-4">
+                                <div class="task-type-btn" onclick="selectTaskType('anomaly_detection')">
+                                    <i class="fas fa-chart-line text-primary"></i>
+                                    <strong>异常检测</strong>
+                                    <small class="d-block text-muted">预处理 → 元数据标注</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="task-type-btn" onclick="selectTaskType('fault_diagnosis')">
+                                    <i class="fas fa-tools text-warning"></i>
+                                    <strong>故障诊断</strong>
+                                    <small class="d-block text-muted">预处理 → 标注</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="task-type-btn" onclick="selectTaskType('rul_prediction')">
+                                    <i class="fas fa-clock text-info"></i>
+                                    <strong>RUL预测</strong>
+                                    <small class="d-block text-muted">预处理 → 标注</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 预处理/标注步骤内容 -->
+                <div id="preprocessContent" style="display: none;">
+                    <!-- 步骤指示器 -->
+                    <div class="step-indicator" id="stepIndicator"></div>
+
+                    <!-- 步骤1: 数据预处理 -->
+                    <div class="data-card card mb-4" id="step1Card">
+                        <div class="card-header" style="background: linear-gradient(135deg, #6BB8FF 0%, #2563EB 100%);">
+                            <h5 class="mb-0"><i class="fas fa-sliders-h me-2"></i>步骤1: 数据预处理</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="preprocessForm">
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold"><i class="fas fa-file-csv me-2 text-success"></i>选择源文件</label>
+                                        <select class="form-select" id="ppSourceFile" required>
+                                            <option value="">请选择数据文件...</option>
+                                        </select>
+                                        <small class="text-muted">从 edge/data/collected 中选择截取或采集的原始数据</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold"><i class="fas fa-calculator me-2 text-info"></i>预处理方法</label>
+                                        <select class="form-select" id="ppMethod">
+                                            <option value="minmax">Min-Max 归一化 (推荐)</option>
+                                            <option value="zscore">Z-score 标准化</option>
+                                            <option value="robust">RobustScaler (抗异常值)</option>
+                                        </select>
+                                        <small class="text-muted">自动处理所有数值列，时间戳列会被保留</small>
+                                    </div>
+                                </div>
+                                
+                                <!-- 预处理方法介绍 -->
+                                <div class="mt-3 p-3 bg-light rounded" id="methodDescription">
+                                    <h6 class="text-info mb-2"><i class="fas fa-info-circle me-2"></i>方法说明</h6>
+                                    <div id="methodDescContent">
+                                        <p class="mb-1"><strong>Min-Max 归一化：</strong>将数据缩放到[0,1]区间，适合大多数机器学习算法。公式：(x - min) / (max - min)</p>
+                                        <p class="mb-1"><strong>Z-score 标准化：</strong>将数据转换为均值为0、标准差为1的标准正态分布。公式：(x - μ) / σ</p>
+                                        <p class="mb-0"><strong>RobustScaler：</strong>使用中位数和四分位数范围进行缩放，对异常值不敏感。适合数据中存在较多异常值的情况。</p>
+                                    </div>
+                                </div>
+                                <div class="mt-4 d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-play me-2"></i>开始预处理
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-lg" onclick="loadSourceFiles()">
+                                        <i class="fas fa-sync me-1"></i>刷新文件
+                                    </button>
+                                </div>
+                            </form>
+                            <!-- 预处理结果 -->
+                            <div id="ppResult" class="mt-4" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- 步骤2: 数据标注 (仅监督学习任务显示) -->
+                    <div class="data-card card mb-4" id="step2Card" style="display: none;">
+                        <div class="card-header" style="background: linear-gradient(135deg, #6BB8FF 0%, #2563EB 100%);">
+                            <h5 class="mb-0"><i class="fas fa-tags me-2"></i>步骤2: 数据标注</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- 说明信息 -->
+                            <div class="alert alert-info border-0 mb-4" style="background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%); border-left: 4px solid #2563EB; border-radius: 12px;">
+                                <h6 class="alert-heading" style="color: #1e40af; font-weight: 600;"><i class="fas fa-info-circle me-2"></i>标注说明</h6>
+                                <p class="mb-2">数据标注是为预处理后的数据添加标签信息，用于监督学习模型的训练。</p>
+                                <ul class="mb-0 ps-3">
+                                    <li><strong>标签</strong>：表示数据的类别，如"正常"、"内圈故障"、"外圈故障"等</li>
+                                    <li><strong>工况</strong>：表示数据采集时的运行条件，如转速、负载等（可选）</li>
+                                    <li><strong>输出文件名</strong>：标签_工况1值_工况2值_原文件名.csv</li>
+                                </ul>
+                            </div>
+                            
+                            <form id="labelForm">
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold"><i class="fas fa-file me-2 text-primary"></i>选择预处理后的文件</label>
+                                        <select class="form-select" id="labelSourceFile" required>
+                                            <option value="">请选择文件...</option>
+                                        </select>
+                                        <div class="d-flex justify-content-between align-items-center mt-1">
+                                            <small class="text-muted">从 processed/<span id="processedSubdir"></span> 中选择</small>
+                                            <button type="button" class="btn btn-link btn-sm p-0" onclick="loadProcessedFiles()">
+                                                <i class="fas fa-sync me-1"></i>刷新
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold"><i class="fas fa-tag me-2 text-primary"></i>标签 <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="labelValue" placeholder="输入标签名称" required>
+                                        <small class="text-muted">例如：正常、内圈故障、外圈故障、滚动体故障</small>
+                                    </div>
+                                </div>
+                                
+                                <!-- 工况设置 -->
+                                <div class="mt-4">
+                                    <label class="form-label fw-bold">
+                                        <i class="fas fa-cogs me-2 text-warning"></i>工况设置
+                                        <span class="badge bg-secondary ms-2">可选</span>
+                                    </label>
+                                    <small class="text-muted d-block mb-2">
+                                        如果数据是在特定工况下采集的，可以添加工况信息（如转速、负载等），便于后续分类和管理
+                                    </small>
+                                    <div id="conditionsContainer">
+                                        <div class="row g-2 mb-2 condition-row">
+                                            <div class="col-md-5">
+                                                <input type="text" class="form-control condition-name" placeholder="工况名称（如：转速、负载）">
+                                            </div>
+                                            <div class="col-md-5">
+                                                <input type="text" class="form-control condition-value" placeholder="工况值（如：300、50N）">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <button type="button" class="btn btn-outline-primary w-100" onclick="addConditionRow()" title="添加工况">
+                                                    <i class="fas fa-plus"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-check me-2"></i>执行标注
+                                    </button>
+                                </div>
+                            </form>
+                            <!-- 标注结果 -->
+                            <div id="labelResult" class="mt-4" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- 步骤2: 异常检测元数据标注 (仅异常检测任务显示) -->
+                    <div class="data-card card mb-4" id="step2AnomalyCard" style="display: none;">
+                        <div class="card-header" style="background: linear-gradient(135deg, #6BB8FF 0%, #2563EB 100%);">
+                            <h5 class="mb-0"><i class="fas fa-tags me-2"></i>步骤2: 元数据标注</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- 说明信息 -->
+                            <div class="alert alert-info border-0 mb-4" style="background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%); border-left: 4px solid #2563EB; border-radius: 12px;">
+                                <h6 class="alert-heading" style="color: #1e40af; font-weight: 600;"><i class="fas fa-info-circle me-2"></i>元数据标注说明</h6>
+                                <p class="mb-2">为预处理后的数据添加元数据信息，包括标签、工况和注释。每个数据文件会生成一个对应的元文件（JSON格式），用于记录数据的详细信息。</p>
+                                <ul class="mb-0 ps-3">
+                                    <li><strong>标签</strong>：表示数据的类别或状态，如"正常"、"异常"、"内圈故障"、"外圈故障"等（至少一行）</li>
+                                    <li><strong>工况</strong>：表示数据采集时的运行条件，如转速、负载等（可选，可以为0行）</li>
+                                    <li><strong>输出</strong>：文件复制到 labeled/<span id="metaLabeledSubdir">AnomalyDetection</span>，元文件保存在 meta/<span id="metaMetaSubdir">AnomalyDetection</span></li>
+                                </ul>
+                            </div>
+                            
+                            <div class="row g-4">
+                                <div class="col-md-12">
+                                    <label class="form-label fw-bold"><i class="fas fa-file me-2 text-primary"></i>选择预处理后的文件</label>
+                                    <select class="form-select" id="anomalyLabelSourceFile" required>
+                                        <option value="">请选择文件...</option>
+                                    </select>
+                                    <div class="mt-1">
+                                        <small class="text-muted" id="metaFileSourceHint">从 processed/AnomalyDetection 中选择</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 d-flex gap-2">
+                                <button type="button" class="btn btn-primary btn-lg" id="btnOpenMetaEditor" onclick="openMetaEditor()" disabled>
+                                    <i class="fas fa-edit me-2"></i>编辑元数据
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-lg" onclick="refreshMetaFileList()" title="刷新文件列表">
+                                    <i class="fas fa-sync me-1"></i>刷新文件
+                                </button>
+                            </div>
+                            
+                            <!-- 标注结果 -->
+                            <div id="anomalyLabelResult" class="mt-4" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- 已处理文件列表 -->
+                    <div class="data-card card">
+                        <div class="card-header d-flex justify-content-between">
+                            <h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>已处理的文件</h5>
+                            <button class="btn btn-outline-light btn-sm" onclick="loadAllProcessedFiles()">
+                                <i class="fas fa-sync me-1"></i>刷新
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-muted mb-3">预处理后的文件</h6>
+                                    <div id="processedFilesList" style="max-height: 300px; overflow-y: auto;">
+                                        <span class="text-muted">暂无文件</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6" id="labeledFilesCol">
+                                    <h6 class="text-muted mb-3">已标注的文件</h6>
+                                    <div id="labeledFilesList" style="max-height: 300px; overflow-y: auto;">
+                                        <span class="text-muted">暂无文件</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 返回首页按钮 -->
+        <div class="text-center mt-5 mb-4">
+            <a href="/" class="btn btn-outline-secondary btn-lg">
+                <i class="fas fa-home me-2"></i>返回首页
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- 文件预览弹窗 -->
+<div class="modal fade preview-modal" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="margin: 1.75rem auto; max-height: calc(100vh - 3.5rem);">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color: white;">
+                <h5 class="modal-title" id="previewModalLabel">
+                    <i class="fas fa-eye me-2"></i>文件预览 
+                    <small id="previewFileName" class="ms-2"></small>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div id="previewInfo" class="mb-3"></div>
+                <div id="previewContent">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-secondary"></div>
+                        <p class="mt-3 text-muted">正在加载文件预览...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>关闭
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 元文件编辑模态框 -->
+<div class="modal fade" id="metaEditorModal" tabindex="-1" aria-labelledby="metaEditorModalLabel" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" style="margin: 1.75rem auto; max-height: calc(100vh - 3.5rem);">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #6BB8FF 0%, #2563EB 100%); color: white;">
+                <h5 class="modal-title" id="metaEditorModalLabel"><i class="fas fa-edit me-2"></i>编辑元数据</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <form id="metaEditorForm">
+                    <!-- 只读字段 -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">文件ID</label>
+                            <input type="text" class="form-control" id="metaFileId" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">创建时间</label>
+                            <input type="text" class="form-control" id="metaCreatedAt" readonly>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted">文件路径</label>
+                        <input type="text" class="form-control" id="metaFilePath" readonly>
+                    </div>
+                    
+                    <!-- 可编辑字段 -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">展示名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="metaDisplayName" required>
+                        <small class="text-muted">用于显示的友好名称</small>
+                    </div>
+                    
+                    <!-- 标签表格 -->
+                    <div class="mb-3" id="tagsLabelSection">
+                        <label class="form-label fw-bold">标签 <span class="text-danger">*</span></label>
+                        <small class="text-muted d-block mb-2">至少需要一行标签</small>
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="tagsLabelTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 45%;">键 (Key)</th>
+                                        <th style="width: 45%;">值 (Value)</th>
+                                        <th style="width: 10%;">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tagsLabelBody">
+                                    <!-- 动态添加行 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addTagLabelRow()">
+                            <i class="fas fa-plus me-1"></i>添加标签
+                        </button>
+                    </div>
+                    
+                    <!-- 工况表格 -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">工况 <span class="badge bg-secondary ms-2">可选</span></label>
+                        <small class="text-muted d-block mb-2">可以为空</small>
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="tagsConditionTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 45%;">键 (Key)</th>
+                                        <th style="width: 45%;">值 (Value)</th>
+                                        <th style="width: 10%;">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tagsConditionBody">
+                                    <!-- 动态添加行 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addTagConditionRow()">
+                            <i class="fas fa-plus me-1"></i>添加工况
+                        </button>
+                    </div>
+                    
+                    <!-- 注释 -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">注释</label>
+                        <textarea class="form-control" id="metaComment" rows="3" placeholder="输入注释信息..."></textarea>
+                    </div>
+                    
+                    <!-- RUL预测专用配置 -->
+                    <div id="rulConfigSection" style="display: none;">
+                        <hr>
+                        <h6 class="fw-bold mb-3"><i class="fas fa-cog me-2"></i>RUL配置</h6>
+                        
+                        <!-- 数据预览和失效点选择 -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">选择失效点 <span class="text-danger">*</span></label>
+                            <small class="text-muted d-block mb-2">在下方表格中选择失效点（单选）。RUL标签将根据失效点自动计算。</small>
+                            
+                            <!-- 分页控制 -->
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <span class="text-muted" id="rulPageInfo">加载中...</span>
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="rulPrevPage" onclick="changeRulPage(-1)" disabled>
+                                        <i class="fas fa-chevron-left"></i> 上一页
+                                    </button>
+                                    <span class="mx-2" id="rulPageNumbers"></span>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="rulNextPage" onclick="changeRulPage(1)" disabled>
+                                        下一页 <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table table-sm table-hover table-bordered" id="rulDataPreviewTable">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th style="width: 60px;">选择</th>
+                                            <th style="width: 80px;">行号</th>
+                                            <th>时间戳</th>
+                                            <th>数据预览</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="rulDataPreviewBody">
+                                        <!-- 动态加载数据 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- RUL单位 -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">RUL单位 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="rulUnit" required>
+                                <option value="cycle" selected>cycle（按采样点）</option>
+                                <option value="second">second（按秒计算）</option>
+                                <option value="minute">minute（按分钟计算）</option>
+                            </select>
+                            <small class="text-muted">选择RUL的计算单位</small>
+                        </div>
+                        
+                        <!-- RUL最大截断值 -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">RUL最大截断值 <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="rulMaxRul" value="200" min="1" required>
+                            <small class="text-muted">RUL超过此值将被截断为此值（例如：200）</small>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveMetaData()">
+                    <i class="fas fa-save me-1"></i>保存并执行标注
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- RUL预测确认对话框 -->
+<div class="modal fade" id="rulConfirmModal" tabindex="-1" aria-labelledby="rulConfirmModalLabel" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); color: white;">
+                <h5 class="modal-title" id="rulConfirmModalLabel">
+                    <i class="fas fa-question-circle me-2"></i>确认
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">此文件是否包含从正常到失效的完整过程？</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">否</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmRulFile">是，继续配置</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==================== 全局变量 ====================
+    let directories = [];
+    let currentDir = null;
+    let currentSubdir = null;
+    let previewModal = null;
+    let selectedTaskType = null;
+
+    // ==================== 页面初始化 ====================
+    document.addEventListener('DOMContentLoaded', function() {
+        // 初始化预览模态框
+        const previewModalElement = document.getElementById('previewModal');
+        if (previewModalElement) {
+            previewModal = new bootstrap.Modal(previewModalElement, {
+                backdrop: true,
+                keyboard: true,
+                focus: true
+            });
+        }
+        
+        refreshDataInfo();
+        refreshFileList();
+        loadDirectories();
+        
+        document.getElementById('extractForm').addEventListener('submit', handleExtract);
+        document.getElementById('preprocessForm').addEventListener('submit', handlePreprocess);
+        document.getElementById('labelForm').addEventListener('submit', handleLabel);
+    });
+
+    // ==================== 数据截取功能 ====================
+    async function refreshDataInfo() {
+        const container = document.getElementById('dataInfoContent');
+        container.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-secondary"></div></div>';
+        
+        try {
+            const response = await fetch('/data_management/api/monitor_data_info');
+            const result = await response.json();
+            
+            if (result.success) {
+                const info = result.info;
+                container.innerHTML = `
+                    <div class="row g-3">
+                        <div class="col-6"><div class="info-label">开始时间</div><div class="info-value text-success">${formatDateTime(info.start_time)}</div></div>
+                        <div class="col-6"><div class="info-label">结束时间</div><div class="info-value text-primary">${formatDateTime(info.end_time)}</div></div>
+                        <div class="col-6"><div class="info-label">数据行数</div><div class="info-value">${info.data_count.toLocaleString()} 条</div></div>
+                        <div class="col-6"><div class="info-label">文件大小</div><div class="info-value">${info.file_size}</div></div>
+                    </div>
+                `;
+                setTimeInputRange(info.start_time, info.end_time);
+            }
+        } catch (error) {
+            container.innerHTML = `<div class="alert alert-danger mb-0">加载失败: ${error.message}</div>`;
+        }
+    }
+
+    function setTimeInputRange(startTime, endTime) {
+        try {
+            const start = new Date(startTime);
+            const end = new Date(endTime);
+            const formatForInput = (date) => {
+                return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}T${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}:${String(date.getSeconds()).padStart(2,'0')}`;
+            };
+            document.getElementById('startTime').min = formatForInput(start);
+            document.getElementById('startTime').max = formatForInput(end);
+            document.getElementById('endTime').min = formatForInput(start);
+            document.getElementById('endTime').max = formatForInput(end);
+            
+            const defaultEnd = new Date(end.getTime() - 60000);
+            const defaultStart = new Date(defaultEnd.getTime() - 300000);
+            if (defaultStart >= start) {
+                document.getElementById('startTime').value = formatForInput(defaultStart);
+                document.getElementById('endTime').value = formatForInput(defaultEnd);
+            }
+        } catch (e) { console.warn('设置时间范围失败:', e); }
+    }
+
+    function formatDateTime(dateStr) {
+        if (!dateStr) return 'N/A';
+        try { return new Date(dateStr).toLocaleString('zh-CN'); } catch (e) { return dateStr; }
+    }
+
+    async function handleExtract(event) {
+        event.preventDefault();
+        const submitBtn = event.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>截取中...';
+        
+        try {
+            const response = await fetch('/data_management/api/extract_data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    start_time: document.getElementById('startTime').value.replace('T', ' '),
+                    end_time: document.getElementById('endTime').value.replace('T', ' ')
+                })
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert(`截取成功！\n文件名: ${result.result.filename}\n数据量: ${result.result.data_count} 条`);
+                refreshFileList();
+            } else { throw new Error(result.error); }
+        } catch (error) { alert('截取失败: ' + error.message); }
+        finally { submitBtn.disabled = false; submitBtn.innerHTML = originalText; }
+    }
+
+    async function refreshFileList() {
+        const container = document.getElementById('fileListContent');
+        container.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-secondary"></div></div>';
+        
+        try {
+            const response = await fetch('/data_management/api/collected_files');
+            const result = await response.json();
+            if (result.success) {
+                if (result.files.length === 0) {
+                    container.innerHTML = '<div class="no-files"><i class="fas fa-folder-open d-block"></i><p class="mb-0">暂无文件</p></div>';
+                } else {
+                    container.innerHTML = result.files.map(file => `
+                        <div class="file-list-item">
+                            <div><div class="file-name"><i class="fas fa-file-csv me-2 text-success"></i>${file.name}</div>
+                            <div class="file-meta"><span class="me-3">${file.size}</span><span>${file.modified}</span></div></div>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteFile('${file.name}')"><i class="fas fa-trash"></i></button>
+                        </div>
+                    `).join('');
+                }
+            }
+        } catch (error) { container.innerHTML = `<div class="alert alert-danger mb-0">${error.message}</div>`; }
+    }
+
+    async function deleteFile(filename) {
+        if (!confirm(`确定删除 "${filename}"？`)) return;
+        try {
+            const response = await fetch('/data_management/api/delete_file', {
+                method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename: filename })
+            });
+            if ((await response.json()).success) refreshFileList();
+        } catch (error) { alert('删除失败: ' + error.message); }
+    }
+
+    // ==================== 数据浏览功能 ====================
+    async function loadDirectories() {
+        try {
+            const response = await fetch('/data_management/api/browse/directories');
+            const result = await response.json();
+            if (result.success) { directories = result.directories; renderDirectories(); }
+        } catch (error) { document.getElementById('dirSelector').innerHTML = `<div class="text-danger">${error.message}</div>`; }
+    }
+
+    function renderDirectories() {
+        document.getElementById('dirSelector').innerHTML = directories.map(dir => `
+            <button class="dir-btn ${!dir.exists ? 'disabled' : ''} ${currentDir === dir.key ? 'active' : ''}"
+                    onclick="${dir.exists ? `selectDirectory('${dir.key}')` : ''}" ${!dir.exists ? 'disabled' : ''}>
+                <i class="fas fa-folder me-2"></i>${dir.name}
+                ${dir.subdirs.length > 0 ? `<span class="badge bg-secondary ms-2">${dir.subdirs.length}</span>` : ''}
+            </button>
+        `).join('');
+    }
+
+    function selectDirectory(dirKey) { currentDir = dirKey; currentSubdir = null; renderDirectories(); loadBrowseFiles(); }
+    function navigateToSubdir(subdirPath) { currentSubdir = subdirPath; loadBrowseFiles(); }
+    function navigateUp() { if (!currentSubdir) return; const parts = currentSubdir.split('/'); currentSubdir = parts.length <= 1 ? null : parts.slice(0, -1).join('/'); loadBrowseFiles(); }
+
+    async function loadBrowseFiles() {
+        const container = document.getElementById('browseFileList');
+        if (!currentDir) { container.innerHTML = '<div class="no-files"><i class="fas fa-folder-open d-block"></i><p>请选择数据目录</p></div>'; return; }
+        container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-secondary"></div></div>';
+        
+        try {
+            let url = `/data_management/api/browse/files?dir=${currentDir}`;
+            if (currentSubdir) url += `&subdir=${encodeURIComponent(currentSubdir)}`;
+            const result = await (await fetch(url)).json();
+            
+            if (result.success) {
+                document.getElementById('currentPathDisplay').style.display = 'block';
+                document.getElementById('currentPathText').textContent = result.current_path;
+                
+                let html = currentSubdir ? `<button class="btn btn-outline-secondary mb-3" onclick="navigateUp()"><i class="fas fa-arrow-left me-2"></i>返回上级</button>` : '';
+                
+                if (result.folders.length === 0 && result.files.length === 0) {
+                    html += '<div class="no-files"><i class="fas fa-folder-open d-block"></i><p>该目录下暂无内容</p></div>';
+                } else {
+                    html += `<div class="mb-3 text-muted">${result.folders.length > 0 ? result.folders.length + ' 个文件夹 ' : ''}${result.files.length > 0 ? result.files.length + ' 个文件' : ''}</div>`;
+                    html += result.folders.map(f => `<div class="browse-file-item" style="cursor:pointer" onclick="navigateToSubdir('${f.subdir_path}')"><div class="file-row"><div class="file-details"><div class="file-name"><i class="fas fa-folder me-2 text-warning"></i><strong>${f.name}</strong></div><div class="file-meta">${f.file_count} 个文件</div></div><i class="fas fa-chevron-right text-muted"></i></div></div>`).join('');
+                    html += result.files.map(f => `<div class="browse-file-item"><div class="file-row"><div class="file-details"><div class="file-name"><i class="fas fa-file-csv me-2 text-success"></i>${f.name}</div><div class="file-meta">${f.size} ${f.line_count ? '| ' + f.line_count.toLocaleString() + ' 行' : ''}</div></div><div class="file-actions-browse"><button class="btn btn-outline-secondary btn-sm" onclick="previewFile('${f.dir_key}','${f.relative_path}','${f.name}')"><i class="fas fa-eye"></i></button><button class="btn btn-outline-danger btn-sm" onclick="deleteBrowseFile('${f.dir_key}','${f.relative_path}','${f.name}')"><i class="fas fa-trash"></i></button></div></div></div>`).join('');
+                }
+                container.innerHTML = html;
+            }
+        } catch (error) { container.innerHTML = `<div class="alert alert-danger">${error.message}</div>`; }
+    }
+
+    // HTML转义函数
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // CSV解析函数（简单版本，处理基本CSV格式）
+    function parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                if (inQuotes && line[i + 1] === '"') {
+                    current += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        result.push(current.trim());
+        return result;
+    }
+
+    async function previewFile(dirKey, relativePath, fileName) {
+        // 保存当前滚动位置
+        const scrollY = window.scrollY || window.pageYOffset;
+        
+        document.getElementById('previewFileName').textContent = fileName;
+        document.getElementById('previewInfo').innerHTML = '';
+        document.getElementById('previewContent').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary"></div><p class="mt-3 text-muted">正在加载文件预览...</p></div>';
+        
+        // 确保模态框正确显示
+        if (!previewModal) {
+            const modalElement = document.getElementById('previewModal');
+            previewModal = new bootstrap.Modal(modalElement, {
+                backdrop: true,
+                keyboard: true,
+                focus: true
+            });
+            
+            // 监听模态框显示事件，防止页面滚动
+            modalElement.addEventListener('show.bs.modal', function() {
+                // 阻止默认行为
+                document.body.style.top = `-${scrollY}px`;
+                document.body.style.position = 'fixed';
+                document.body.style.width = '100%';
+            });
+            
+            // 监听模态框隐藏事件，恢复滚动位置
+            modalElement.addEventListener('hidden.bs.modal', function() {
+                document.body.style.position = '';
+                document.body.style.top = '';
+                document.body.style.width = '';
+                window.scrollTo(0, scrollY);
+            });
+        }
+        
+        // 显示模态框
+        previewModal.show();
+        
+        try {
+            const response = await fetch(`/data_management/api/browse/preview?dir=${encodeURIComponent(dirKey)}&file=${encodeURIComponent(relativePath)}&lines=100`);
+            const result = await response.json();
+            
+            if (result.success) {
+                const p = result.preview;
+                document.getElementById('previewInfo').innerHTML = `<span class="badge bg-secondary me-2">总行数: ${p.total_lines.toLocaleString()}</span><span class="badge bg-info">预览: ${p.preview_lines}</span>`;
+                
+                if (p.is_csv && p.headers && p.headers.length > 0) {
+                    // 解析CSV数据
+                    let rows = [];
+                    if (p.content && p.content.length > 1) {
+                        // 跳过第一行（表头），从第二行开始解析数据
+                        rows = p.content.slice(1).map(line => {
+                            try {
+                                return parseCSVLine(line);
+                            } catch (e) {
+                                // 如果解析失败，使用简单split作为后备
+                                return line.split(',').map(c => c.trim());
+                            }
+                        });
+                    }
+                    
+                    // 转义HTML并构建表格
+                    const headersHtml = p.headers.map(h => `<th>${escapeHtml(h)}</th>`).join('');
+                    const rowsHtml = rows.map(row => {
+                        const cells = row.map(cell => `<td>${escapeHtml(cell)}</td>`).join('');
+                        return `<tr>${cells}</tr>`;
+                    }).join('');
+                    
+                    document.getElementById('previewContent').innerHTML = `
+                        <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
+                            <table class="table table-sm table-striped table-bordered preview-table">
+                                <thead><tr>${headersHtml}</tr></thead>
+                                <tbody>${rowsHtml}</tbody>
+                            </table>
+                        </div>
+                    `;
+                } else if (p.content && p.content.length > 0) {
+                    // 非CSV文件，显示原始内容
+                    const content = p.content.join('\n');
+                    document.getElementById('previewContent').innerHTML = `<div class="preview-raw">${escapeHtml(content)}</div>`;
+                } else {
+                    document.getElementById('previewContent').innerHTML = '<div class="alert alert-warning">文件内容为空</div>';
+                }
+            } else {
+                // API返回失败
+                document.getElementById('previewContent').innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>加载失败: ${result.error || '未知错误'}</div>`;
+            }
+        } catch (error) {
+            console.error('预览文件错误:', error);
+            document.getElementById('previewContent').innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>网络错误: ${error.message}</div>`;
+        }
+    }
+
+    async function deleteBrowseFile(dirKey, relativePath, fileName) {
+        if (!confirm(`确定删除 "${fileName}"？`)) return;
+        try {
+            const response = await fetch('/data_management/api/browse/delete', {
+                method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dir: dirKey, file: relativePath })
+            });
+            if ((await response.json()).success) { loadBrowseFiles(); loadDirectories(); }
+        } catch (error) { alert('删除失败: ' + error.message); }
+    }
+
+    // ==================== 数据预处理功能 ====================
+    function selectTaskType(taskType) {
+        selectedTaskType = taskType;
+        
+        // 更新按钮状态
+        document.querySelectorAll('.task-type-btn').forEach(btn => btn.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        
+        // 显示预处理内容
+        document.getElementById('preprocessContent').style.display = 'block';
+        
+        // 根据任务类型显示/隐藏标注步骤
+        const isAnomalyDetection = taskType === 'anomaly_detection';
+        const isFaultDiagnosis = taskType === 'fault_diagnosis';
+        const isRulPrediction = taskType === 'rul_prediction';
+        const useMetaEditor = isAnomalyDetection || isFaultDiagnosis || isRulPrediction; // 所有任务都使用元数据编辑器
+        const hasLabel = false; // 所有任务都使用元数据编辑器
+        
+        document.getElementById('step2Card').style.display = hasLabel ? 'block' : 'none';
+        document.getElementById('step2AnomalyCard').style.display = useMetaEditor ? 'block' : 'none';
+        document.getElementById('labeledFilesCol').style.display = 'block'; // 所有任务都显示已标注文件列
+        
+        // 更新步骤指示器
+        updateStepIndicator(hasLabel, useMetaEditor);
+        
+        // 更新子目录显示
+        const subdirMap = { 'anomaly_detection': 'AnomalyDetection', 'fault_diagnosis': 'FaultDiagnosis', 'rul_prediction': 'RULPrediction' };
+        document.getElementById('processedSubdir').textContent = subdirMap[taskType];
+        
+        // 更新元数据标注卡片中的子目录显示
+        const metaSubdirMap = { 'anomaly_detection': 'AnomalyDetection', 'fault_diagnosis': 'FaultDiagnosis', 'rul_prediction': 'RULPrediction' };
+        const metaSubdirElement = document.getElementById('metaFileSourceHint');
+        if (metaSubdirElement && taskType in metaSubdirMap) {
+            metaSubdirElement.textContent = `从 processed/${metaSubdirMap[taskType]} 中选择`;
+        }
+        
+        // 更新元数据标注说明中的输出路径
+        const metaLabeledSubdir = document.getElementById('metaLabeledSubdir');
+        const metaMetaSubdir = document.getElementById('metaMetaSubdir');
+        if (metaLabeledSubdir && taskType in metaSubdirMap) {
+            metaLabeledSubdir.textContent = metaSubdirMap[taskType];
+        }
+        if (metaMetaSubdir && taskType in metaSubdirMap) {
+            metaMetaSubdir.textContent = metaSubdirMap[taskType];
+        }
+        
+        // 加载文件列表
+        loadSourceFiles();
+        loadAllProcessedFiles();
+        
+        // 如果使用元数据编辑器，加载预处理文件到标注选择框
+        if (useMetaEditor) {
+            if (isRulPrediction) {
+                loadRulProcessedFiles();
+            } else {
+                loadAnomalyProcessedFiles();
+            }
+        }
+    }
+
+    function updateStepIndicator(hasLabel, isAnomalyDetection) {
+        const indicator = document.getElementById('stepIndicator');
+        if (hasLabel) {
+            indicator.innerHTML = `
+                <div class="step active" id="step1"><span class="step-number">1</span>预处理</div>
+                <div class="step-connector"></div>
+                <div class="step" id="step2"><span class="step-number">2</span>标注</div>
+            `;
+        } else if (isAnomalyDetection || isFaultDiagnosis) {
+            indicator.innerHTML = `
+                <div class="step active" id="step1"><span class="step-number">1</span>预处理</div>
+                <div class="step-connector"></div>
+                <div class="step" id="step2"><span class="step-number">2</span>元数据标注</div>
+            `;
+        } else {
+            indicator.innerHTML = `<div class="step active" id="step1"><span class="step-number">1</span>预处理</div>`;
+        }
+    }
+
+    async function loadSourceFiles() {
+        const select = document.getElementById('ppSourceFile');
+        select.innerHTML = '<option value="">加载中...</option>';
+        
+        try {
+            const response = await fetch('/data_management/api/preprocess/source_files');
+            const result = await response.json();
+            if (result.success) {
+                select.innerHTML = '<option value="">请选择数据文件...</option>' +
+                    result.files.map(f => `<option value="${f.path}">${f.name} (${f.size})</option>`).join('');
+            }
+        } catch (error) { select.innerHTML = `<option value="">加载失败</option>`; }
+    }
+
+    async function handlePreprocess(event) {
+        event.preventDefault();
+        const submitBtn = event.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>处理中...';
+        
+        try {
+            const response = await fetch('/data_management/api/preprocess/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    task_type: selectedTaskType,
+                    source_file: document.getElementById('ppSourceFile').value,
+                    method: document.getElementById('ppMethod').value
+                })
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                const r = result.result;
+                document.getElementById('ppResult').style.display = 'block';
+                document.getElementById('ppResult').innerHTML = `
+                    <div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>${result.message}</div>
+                    <div class="row g-3">
+                        <div class="col-md-4"><div class="stat-card"><h6>输出文件</h6><div class="value" style="font-size:0.9rem">${r.output_file}</div></div></div>
+                        <div class="col-md-4"><div class="stat-card"><h6>处理行数</h6><div class="value">${r.total_rows.toLocaleString()}</div></div></div>
+                        <div class="col-md-4"><div class="stat-card"><h6>处理方法</h6><div class="value">${r.method}</div></div></div>
+                    </div>
+                `;
+                loadAllProcessedFiles();
+                
+                // 标记步骤1完成，激活步骤2
+                if (selectedTaskType === 'anomaly_detection') {
+                    document.getElementById('step1').classList.add('completed');
+                    document.getElementById('step1').classList.remove('active');
+                    document.getElementById('step2').classList.add('active');
+                    loadAnomalyProcessedFiles();
+                } else if (selectedTaskType !== 'anomaly_detection') {
+                    document.getElementById('step1').classList.add('completed');
+                    document.getElementById('step1').classList.remove('active');
+                    document.getElementById('step2').classList.add('active');
+                }
+            } else { throw new Error(result.error); }
+        } catch (error) {
+            document.getElementById('ppResult').style.display = 'block';
+            document.getElementById('ppResult').innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+        } finally { submitBtn.disabled = false; submitBtn.innerHTML = originalText; }
+    }
+
+    async function loadProcessedFiles() {
+        const select = document.getElementById('labelSourceFile');
+        if (!select) {
+            console.error('❌ [loadProcessedFiles] 未找到labelSourceFile元素');
+            return;
+        }
+        select.innerHTML = '<option value="">加载中...</option>';
+        
+        try {
+            console.log(`🔍 [loadProcessedFiles] 加载预处理文件, task_type=${selectedTaskType}`);
+            const response = await fetch(`/data_management/api/preprocess/processed_files?task_type=${selectedTaskType}`);
+            const result = await response.json();
+            console.log('📦 [loadProcessedFiles] API返回结果:', result);
+            if (result.success) {
+                if (result.files && result.files.length > 0) {
+                    console.log(`✅ [loadProcessedFiles] 找到 ${result.files.length} 个文件`);
+                    select.innerHTML = '<option value="">请选择文件...</option>' +
+                        result.files.map(f => `<option value="${f.name}">${f.name}</option>`).join('');
+                } else {
+                    console.warn('⚠️ [loadProcessedFiles] 没有找到文件');
+                    select.innerHTML = '<option value="">暂无文件</option>';
+                }
+            } else {
+                console.error('❌ [loadProcessedFiles] API返回失败:', result.error);
+                select.innerHTML = `<option value="">加载失败: ${result.error || '未知错误'}</option>`;
+            }
+        } catch (error) {
+            console.error('❌ [loadProcessedFiles] 加载失败:', error);
+            select.innerHTML = `<option value="">加载失败: ${error.message}</option>`;
+        }
+    }
+
+    async function loadAllProcessedFiles() {
+        // 加载预处理文件列表
+        try {
+            console.log(`🔍 [loadAllProcessedFiles] 加载预处理文件, task_type=${selectedTaskType}`);
+            const response = await fetch(`/data_management/api/preprocess/processed_files?task_type=${selectedTaskType}`);
+            const result = await response.json();
+            console.log(`📦 [loadAllProcessedFiles] API返回结果:`, result);
+            const container = document.getElementById('processedFilesList');
+            if (result.success && result.files && result.files.length > 0) {
+                console.log(`✅ [loadAllProcessedFiles] 找到 ${result.files.length} 个文件`);
+                container.innerHTML = result.files.map(f => `
+                    <div class="file-list-item"><div class="file-name"><i class="fas fa-file me-2 text-primary"></i>${f.name}</div>
+                    <div class="file-meta">${f.size} | ${f.modified}</div></div>
+                `).join('');
+            } else {
+                console.warn(`⚠️ [loadAllProcessedFiles] 没有找到文件, result:`, result);
+                container.innerHTML = '<span class="text-muted">暂无文件</span>';
+            }
+        } catch (error) {
+            console.error('❌ [loadAllProcessedFiles] 加载失败:', error);
+        }
+        
+        // 加载已标注文件列表
+        if (selectedTaskType === 'anomaly_detection') {
+            // 异常检测：加载已标注文件（带元文件信息）
+            try {
+                const response = await fetch(`/data_management/api/label/labeled_files?task_type=${selectedTaskType}`);
+                const result = await response.json();
+                const container = document.getElementById('labeledFilesList');
+                if (result.success && result.files.length > 0) {
+                    container.innerHTML = result.files.map(f => `
+                        <div class="file-list-item">
+                            <div>
+                                <div class="file-name">
+                                    <i class="fas fa-tag me-2 text-success"></i>${f.display_name || f.name}
+                                    ${f.has_meta ? '<span class="badge bg-info ms-2">已标注</span>' : ''}
+                                </div>
+                                <div class="file-meta">${f.size} | ${f.modified}</div>
+                            </div>
+                            <button class="btn btn-outline-primary btn-sm" onclick="editMetaFile('${f.name}')" title="编辑元数据">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
+                    `).join('');
+                } else { container.innerHTML = '<span class="text-muted">暂无文件</span>'; }
+            } catch (error) { console.error(error); }
+        } else {
+            loadProcessedFiles();
+            try {
+                const response = await fetch(`/data_management/api/label/labeled_files?task_type=${selectedTaskType}`);
+                const result = await response.json();
+                const container = document.getElementById('labeledFilesList');
+                if (result.success && result.files.length > 0) {
+                    container.innerHTML = result.files.map(f => `
+                        <div class="file-list-item"><div class="file-name"><i class="fas fa-tag me-2 text-success"></i>${f.name}</div>
+                        <div class="file-meta">${f.size} | ${f.modified}</div></div>
+                    `).join('');
+                } else { container.innerHTML = '<span class="text-muted">暂无文件</span>'; }
+            } catch (error) { console.error(error); }
+        }
+    }
+
+    // ==================== 异常检测元文件标注功能 ====================
+    let currentMetaFilename = null;
+    let metaEditorModal = null;
+
+    async function loadAnomalyProcessedFiles() {
+        const select = document.getElementById('anomalyLabelSourceFile');
+        if (!select) return;
+        
+        // 根据当前选择的任务类型确定task_type参数
+        const taskType = selectedTaskType || 'anomaly_detection';
+        
+        select.innerHTML = '<option value="">加载中...</option>';
+        
+        try {
+            const response = await fetch(`/data_management/api/preprocess/processed_files?task_type=${taskType}`);
+            const result = await response.json();
+            if (result.success) {
+                select.innerHTML = '<option value="">请选择文件...</option>' +
+                    result.files.map(f => `<option value="${f.name}">${f.name}</option>`).join('');
+                
+                // 启用编辑按钮
+                const existingHandler = select.getAttribute('data-has-handler');
+                if (!existingHandler) {
+                    select.addEventListener('change', function() {
+                        document.getElementById('btnOpenMetaEditor').disabled = !this.value;
+                    });
+                    select.setAttribute('data-has-handler', 'true');
+                }
+                document.getElementById('btnOpenMetaEditor').disabled = !select.value;
+            } else {
+                select.innerHTML = `<option value="">加载失败</option>`;
+            }
+        } catch (error) {
+            console.error('加载预处理文件失败:', error);
+            select.innerHTML = `<option value="">加载失败</option>`;
+        }
+    }
+
+    async function loadRulProcessedFiles() {
+        const select = document.getElementById('anomalyLabelSourceFile');
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">加载中...</option>';
+        
+        try {
+            const response = await fetch(`/data_management/api/preprocess/processed_files?task_type=rul_prediction`);
+            const result = await response.json();
+            if (result.success) {
+                select.innerHTML = '<option value="">请选择文件...</option>' +
+                    result.files.map(f => `<option value="${f.name}">${f.name}</option>`).join('');
+                
+                // 启用编辑按钮，但需要先确认
+                const existingHandler = select.getAttribute('data-has-handler');
+                if (!existingHandler) {
+                    select.addEventListener('change', function() {
+                        if (this.value) {
+                            // 保存当前滚动位置
+                            const scrollY = window.scrollY || window.pageYOffset;
+                            
+                            // 先弹出确认对话框
+                            const confirmModalElement = document.getElementById('rulConfirmModal');
+                            let confirmModal = bootstrap.Modal.getInstance(confirmModalElement);
+                            
+                            if (!confirmModal) {
+                                confirmModal = new bootstrap.Modal(confirmModalElement, {
+                                    backdrop: true,
+                                    keyboard: true,
+                                    focus: true
+                                });
+                                
+                                // 监听模态框显示事件，防止页面滚动
+                                confirmModalElement.addEventListener('show.bs.modal', function() {
+                                    document.body.style.top = `-${scrollY}px`;
+                                    document.body.style.position = 'fixed';
+                                    document.body.style.width = '100%';
+                                    confirmModalElement.dataset.scrollY = scrollY;
+                                });
+                                
+                                // 监听模态框隐藏事件，恢复滚动位置
+                                confirmModalElement.addEventListener('hidden.bs.modal', function() {
+                                    // 如果标记了跳过恢复，则不恢复滚动（因为要打开编辑弹窗）
+                                    if (confirmModalElement.dataset.skipRestore === 'true') {
+                                        confirmModalElement.dataset.skipRestore = 'false';
+                                        // 保持body固定状态，不恢复滚动
+                                        return;
+                                    }
+                                    
+                                    const savedScrollY = confirmModalElement.dataset.scrollY || 0;
+                                    document.body.style.position = '';
+                                    document.body.style.top = '';
+                                    document.body.style.width = '';
+                                    window.scrollTo(0, savedScrollY);
+                                });
+                            } else {
+                                // 如果模态框已存在，更新滚动位置
+                                confirmModalElement.dataset.scrollY = scrollY;
+                            }
+                            
+                            confirmModal.show();
+                            
+                            // 设置确认按钮的处理函数
+                            const confirmBtn = document.getElementById('btnConfirmRulFile');
+                            confirmBtn.onclick = function() {
+                                // 保存确认弹窗打开时的滚动位置（用于后续打开编辑弹窗）
+                                const confirmScrollY = confirmModalElement.dataset.scrollY || scrollY;
+                                
+                                // 标记这是从确认弹窗跳转到编辑弹窗，不要恢复滚动
+                                confirmModalElement.dataset.skipRestore = 'true';
+                                
+                                // 关闭确认弹窗
+                                confirmModal.hide();
+                                
+                                document.getElementById('btnOpenMetaEditor').disabled = false;
+                                
+                                // 延迟执行，等待模态框关闭动画完成
+                                setTimeout(() => {
+                                    // 使用确认弹窗保存的滚动位置打开编辑弹窗
+                                    // body应该还是固定状态，直接打开编辑弹窗即可
+                                    openRulMetaEditor(confirmScrollY);
+                                }, 300);
+                            };
+                        } else {
+                            document.getElementById('btnOpenMetaEditor').disabled = true;
+                        }
+                    });
+                    select.setAttribute('data-has-handler', 'true');
+                }
+                document.getElementById('btnOpenMetaEditor').disabled = !select.value;
+            } else {
+                select.innerHTML = `<option value="">加载失败</option>`;
+            }
+        } catch (error) {
+            console.error('加载预处理文件失败:', error);
+            select.innerHTML = `<option value="">加载失败</option>`;
+        }
+    }
+
+    // 刷新元数据标注文件列表（根据任务类型调用相应的函数）
+    async function refreshMetaFileList() {
+        const taskType = selectedTaskType || 'anomaly_detection';
+        
+        if (taskType === 'rul_prediction') {
+            await loadRulProcessedFiles();
+        } else {
+            await loadAnomalyProcessedFiles();
+        }
+    }
+
+    async function openMetaEditor() {
+        const filename = document.getElementById('anomalyLabelSourceFile').value;
+        if (!filename) {
+            alert('请先选择文件');
+            return;
+        }
+        
+        // 保存当前滚动位置
+        const scrollY = window.scrollY || window.pageYOffset;
+        
+        currentMetaFilename = filename;
+        
+        // 如果是RUL预测，使用专门的函数
+        if (selectedTaskType === 'rul_prediction') {
+            await openRulMetaEditor();
+            return;
+        }
+        
+        // 初始化模态框
+        const modalElement = document.getElementById('metaEditorModal');
+        if (!metaEditorModal) {
+            metaEditorModal = new bootstrap.Modal(modalElement, {
+                backdrop: true,
+                keyboard: true,
+                focus: true
+            });
+            
+            // 监听模态框显示事件，防止页面滚动
+            modalElement.addEventListener('show.bs.modal', function() {
+                document.body.style.top = `-${scrollY}px`;
+                document.body.style.position = 'fixed';
+                document.body.style.width = '100%';
+                modalElement.dataset.scrollY = scrollY;
+            });
+            
+            // 监听模态框隐藏事件，恢复滚动位置
+            modalElement.addEventListener('hidden.bs.modal', function() {
+                const savedScrollY = modalElement.dataset.scrollY || 0;
+                document.body.style.position = '';
+                document.body.style.top = '';
+                document.body.style.width = '';
+                window.scrollTo(0, savedScrollY);
+            });
+        } else {
+            // 如果模态框已存在，更新滚动位置
+            modalElement.dataset.scrollY = scrollY;
+        }
+        
+        // 隐藏RUL配置部分
+        document.getElementById('rulConfigSection').style.display = 'none';
+        
+        // 显示标签表格（非RUL预测任务需要标签）
+        document.getElementById('tagsLabelSection').style.display = 'block';
+        
+        // 根据当前选择的任务类型确定task_type参数
+        const taskType = selectedTaskType || 'anomaly_detection';
+        
+        // 加载元文件数据
+        try {
+            const response = await fetch(`/data_management/api/label/meta/${taskType}/${encodeURIComponent(filename)}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                const meta = result.meta_data;
+                
+                // 填充只读字段
+                document.getElementById('metaFileId').value = meta.file_id || '';
+                document.getElementById('metaFilePath').value = meta.file_path || '';
+                document.getElementById('metaCreatedAt').value = meta.created_at || '';
+                
+                // 填充可编辑字段
+                document.getElementById('metaDisplayName').value = meta.display_name || filename;
+                document.getElementById('metaComment').value = meta.comment || '';
+                
+                // 填充标签表格
+                const tagsLabelBody = document.getElementById('tagsLabelBody');
+                tagsLabelBody.innerHTML = '';
+                if (meta.tags_label && meta.tags_label.length > 0) {
+                    meta.tags_label.forEach(tag => {
+                        addTagLabelRow(tag.key, tag.value);
+                    });
+                } else {
+                    // 根据任务类型设置默认标签
+                    if (taskType === 'anomaly_detection') {
+                        addTagLabelRow('健康状态', '正常');
+                    } else if (taskType === 'fault_diagnosis') {
+                        addTagLabelRow('故障类型', '正常');
+                    } else {
+                        addTagLabelRow('标签', '正常');
+                    }
+                }
+                
+                // 填充工况表格
+                const tagsConditionBody = document.getElementById('tagsConditionBody');
+                tagsConditionBody.innerHTML = '';
+                if (meta.tags_condition && meta.tags_condition.length > 0) {
+                    meta.tags_condition.forEach(cond => {
+                        addTagConditionRow(cond.key, cond.value);
+                    });
+                }
+                
+                metaEditorModal.show();
+            } else {
+                alert('加载元文件失败: ' + (result.error || '未知错误'));
+            }
+        } catch (error) {
+            alert('加载元文件失败: ' + error.message);
+        }
+    }
+
+    async function openRulMetaEditor(savedScrollY = null) {
+        const filename = document.getElementById('anomalyLabelSourceFile').value;
+        if (!filename) {
+            alert('请先选择文件');
+            return;
+        }
+        
+        currentMetaFilename = filename;
+        
+        // 使用传入的滚动位置，如果没有则使用当前滚动位置
+        const scrollY = savedScrollY !== null ? savedScrollY : (window.scrollY || window.pageYOffset);
+        
+        // 初始化模态框
+        const modalElement = document.getElementById('metaEditorModal');
+        if (!metaEditorModal) {
+            metaEditorModal = new bootstrap.Modal(modalElement, {
+                backdrop: true,
+                keyboard: true,
+                focus: true
+            });
+            
+            // 监听模态框显示事件，防止页面滚动
+            modalElement.addEventListener('show.bs.modal', function() {
+                // 如果body还没有固定，先固定它
+                if (document.body.style.position !== 'fixed') {
+                    const currentScrollY = window.scrollY || window.pageYOffset;
+                    document.body.style.top = `-${currentScrollY}px`;
+                    document.body.style.position = 'fixed';
+                    document.body.style.width = '100%';
+                    modalElement.dataset.scrollY = currentScrollY;
+                } else {
+                    // 如果已经固定，使用保存的滚动位置
+                    modalElement.dataset.scrollY = scrollY;
+                }
+            });
+            
+            // 监听模态框隐藏事件，恢复滚动位置
+            modalElement.addEventListener('hidden.bs.modal', function() {
+                const savedScrollY = modalElement.dataset.scrollY || 0;
+                document.body.style.position = '';
+                document.body.style.top = '';
+                document.body.style.width = '';
+                window.scrollTo(0, savedScrollY);
+            });
+        } else {
+            // 如果模态框已存在，更新滚动位置
+            modalElement.dataset.scrollY = scrollY;
+        }
+        
+        // 隐藏标签表格（RUL预测不需要标签，标签是根据失效点自动计算的）
+        document.getElementById('tagsLabelSection').style.display = 'none';
+        
+        // 显示RUL配置部分
+        document.getElementById('rulConfigSection').style.display = 'block';
+        
+        // 显示加载状态
+        const rulConfigSection = document.getElementById('rulConfigSection');
+        const originalContent = rulConfigSection.innerHTML;
+        rulConfigSection.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary mb-3"></div>
+                <p class="text-muted">正在加载数据...</p>
+            </div>
+        `;
+        
+        // 先显示弹窗，然后再加载数据
+        metaEditorModal.show();
+        
+        const taskType = 'rul_prediction';
+        
+        // 先加载文件数据用于预览（不限制行数，读取全部数据）
+        try {
+            // 加载文件数据预览（不传max_lines参数，读取全部数据）
+            const previewResponse = await fetch(`/data_management/api/label/preview_file/${taskType}/${encodeURIComponent(filename)}`);
+            const previewResult = await previewResponse.json();
+            
+            if (!previewResult.success) {
+                rulConfigSection.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        加载文件预览失败: ${previewResult.error || '未知错误'}
+                    </div>
+                `;
+                return;
+            }
+            
+            // 保存全部数据到全局变量，用于分页
+            window.rulAllData = previewResult.data; // 对象数组，每行是一个对象 {index: 0, col1: val1, col2: val2, ...}
+            window.rulColumns = previewResult.columns || []; // 列名数组
+            window.rulCurrentPage = 1;
+            window.rulPageSize = 100;
+            window.rulTotalPages = Math.ceil(window.rulAllData.length / window.rulPageSize);
+            
+            // 加载元文件数据
+            const response = await fetch(`/data_management/api/label/meta/${taskType}/${encodeURIComponent(filename)}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                const meta = result.meta_data;
+                
+                // 恢复原始内容（数据已加载完成）
+                rulConfigSection.innerHTML = originalContent;
+                
+                // 填充只读字段
+                document.getElementById('metaFileId').value = meta.file_id || '';
+                document.getElementById('metaFilePath').value = meta.file_path || '';
+                document.getElementById('metaCreatedAt').value = meta.created_at || '';
+                
+                // 填充可编辑字段
+                document.getElementById('metaDisplayName').value = meta.display_name || filename;
+                document.getElementById('metaComment').value = meta.comment || '';
+                
+                // 填充工况表格
+                const tagsConditionBody = document.getElementById('tagsConditionBody');
+                tagsConditionBody.innerHTML = '';
+                if (meta.tags_condition && meta.tags_condition.length > 0) {
+                    meta.tags_condition.forEach(cond => {
+                        addTagConditionRow(cond.key, cond.value);
+                    });
+                }
+                
+                // 填充RUL配置
+                const rulConfig = meta.rul_config || {};
+                document.getElementById('rulUnit').value = rulConfig.rul_unit || 'cycle';
+                document.getElementById('rulMaxRul').value = rulConfig.max_rul || 200;
+                
+                // 渲染第一页
+                renderRulPage(1);
+                
+                // 如果有已保存的失效点，需要找到它所在的页面并跳转
+                if (rulConfig.failure_row_index !== undefined && rulConfig.failure_row_index !== null) {
+                    // 找到失效点所在的行索引
+                    const failureIndex = window.rulAllData.findIndex(row => row.index === rulConfig.failure_row_index);
+                    if (failureIndex >= 0) {
+                        // 计算失效点所在的页面
+                        const targetPage = Math.floor(failureIndex / window.rulPageSize) + 1;
+                        // 跳转到该页面
+                        renderRulPage(targetPage);
+                        // 选中对应的失效点（需要等待表格渲染完成）
+                        setTimeout(() => {
+                            const radio = document.querySelector(`input[name="failureRow"][value="${rulConfig.failure_row_index}"]`);
+                            if (radio) {
+                                radio.checked = true;
+                                // 滚动到选中的行
+                                radio.closest('tr').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }, 100);
+                    }
+                }
+            } else {
+                rulConfigSection.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        加载元文件失败: ${result.error || '未知错误'}
+                    </div>
+                `;
+            }
+        } catch (error) {
+            rulConfigSection.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    加载失败: ${error.message}
+                </div>
+            `;
+        }
+    }
+
+    function onFailureRowChange(rowIndex) {
+        // 失效点选择改变时的处理
+        console.log('选择失效点:', rowIndex);
+    }
+    
+    // RUL数据分页相关函数
+    function renderRulPage(page) {
+        if (!window.rulAllData || !window.rulColumns) {
+            return;
+        }
+        
+        const data = window.rulAllData;
+        const columns = window.rulColumns;
+        const pageSize = window.rulPageSize;
+        const totalPages = window.rulTotalPages;
+        
+        // 确保页面在有效范围内
+        page = Math.max(1, Math.min(page, totalPages));
+        window.rulCurrentPage = page;
+        
+        // 计算当前页的数据范围
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, data.length);
+        const pageData = data.slice(startIndex, endIndex);
+        
+        // 清空表格
+        const previewBody = document.getElementById('rulDataPreviewBody');
+        previewBody.innerHTML = '';
+        
+        // 检查是否有timestamp列
+        const hasTimestamp = columns.includes('timestamp');
+        
+        // 渲染当前页的数据
+        pageData.forEach((row, idx) => {
+            const rowIndex = row.index !== undefined ? row.index : (startIndex + idx);
+            
+            // 获取timestamp值
+            const timestamp = hasTimestamp && row.timestamp !== undefined ? row.timestamp : '';
+            
+            // 获取前5列的数据用于预览（排除index列）
+            const previewValues = [];
+            let colCount = 0;
+            for (const col of columns) {
+                if (col === 'index') continue; // 跳过index列
+                if (colCount >= 5) break;
+                const value = row[col];
+                previewValues.push(value !== null && value !== undefined ? String(value) : '');
+                colCount++;
+            }
+            const dataPreview = previewValues.join(', ');
+            const hasMore = colCount < columns.length - 1; // 减去index列
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="text-center">
+                    <input type="radio" name="failureRow" value="${rowIndex}" class="form-check-input" onchange="onFailureRowChange(${rowIndex})">
+                </td>
+                <td>${rowIndex}</td>
+                <td>${timestamp || '-'}</td>
+                <td><small>${dataPreview}${hasMore ? '...' : ''}</small></td>
+            `;
+            previewBody.appendChild(tr);
+        });
+        
+        // 更新分页信息
+        document.getElementById('rulPageInfo').textContent = 
+            `共 ${data.length} 条数据，第 ${page} / ${totalPages} 页（每页 ${pageSize} 条）`;
+        
+        // 更新分页按钮状态
+        document.getElementById('rulPrevPage').disabled = (page <= 1);
+        document.getElementById('rulNextPage').disabled = (page >= totalPages);
+        
+        // 更新页码显示（显示当前页前后各2页）
+        const pageNumbers = document.getElementById('rulPageNumbers');
+        let pageHtml = '';
+        const startPage = Math.max(1, page - 2);
+        const endPage = Math.min(totalPages, page + 2);
+        
+        if (startPage > 1) {
+            pageHtml += `<button type="button" class="btn btn-sm btn-outline-secondary" onclick="renderRulPage(1)">1</button>`;
+            if (startPage > 2) {
+                pageHtml += `<span class="mx-1">...</span>`;
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === page) {
+                pageHtml += `<button type="button" class="btn btn-sm btn-primary" disabled>${i}</button>`;
+            } else {
+                pageHtml += `<button type="button" class="btn btn-sm btn-outline-secondary" onclick="renderRulPage(${i})">${i}</button>`;
+            }
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                pageHtml += `<span class="mx-1">...</span>`;
+            }
+            pageHtml += `<button type="button" class="btn btn-sm btn-outline-secondary" onclick="renderRulPage(${totalPages})">${totalPages}</button>`;
+        }
+        
+        pageNumbers.innerHTML = pageHtml;
+    }
+    
+    function changeRulPage(delta) {
+        const newPage = window.rulCurrentPage + delta;
+        if (newPage >= 1 && newPage <= window.rulTotalPages) {
+            renderRulPage(newPage);
+        }
+    }
+
+    function addTagLabelRow(key = '', value = '') {
+        const tbody = document.getElementById('tagsLabelBody');
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="text" class="form-control form-control-sm tag-key" value="${key}" placeholder="键"></td>
+            <td><input type="text" class="form-control form-control-sm tag-value" value="${value}" placeholder="值"></td>
+            <td>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTagLabelRow(this)" ${tbody.children.length === 0 ? 'disabled' : ''}>
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+        updateTagLabelDeleteButtons();
+    }
+
+    function addTagConditionRow(key = '', value = '') {
+        const tbody = document.getElementById('tagsConditionBody');
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="text" class="form-control form-control-sm condition-key" value="${key}" placeholder="键"></td>
+            <td><input type="text" class="form-control form-control-sm condition-value" value="${value}" placeholder="值"></td>
+            <td>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTagConditionRow(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    }
+
+    function removeTagLabelRow(btn) {
+        const tbody = document.getElementById('tagsLabelBody');
+        if (tbody.children.length > 1) {
+            btn.closest('tr').remove();
+            updateTagLabelDeleteButtons();
+        } else {
+            alert('标签至少需要一行');
+        }
+    }
+
+    function removeTagConditionRow(btn) {
+        btn.closest('tr').remove();
+    }
+
+    function updateTagLabelDeleteButtons() {
+        const tbody = document.getElementById('tagsLabelBody');
+        const rows = tbody.querySelectorAll('tr');
+        rows.forEach(row => {
+            const btn = row.querySelector('button');
+            if (btn) {
+                btn.disabled = rows.length <= 1;
+            }
+        });
+    }
+
+    async function saveMetaData() {
+        // 验证表单
+        const form = document.getElementById('metaEditorForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+        
+        // 根据当前选择的任务类型确定task_type参数
+        const taskType = selectedTaskType || 'anomaly_detection';
+        const isRulPrediction = taskType === 'rul_prediction';
+        
+        // 收集标签数据（RUL预测不需要标签）
+        const tagsLabel = [];
+        if (!isRulPrediction) {
+            document.querySelectorAll('#tagsLabelBody tr').forEach(row => {
+                const key = row.querySelector('.tag-key').value.trim();
+                const value = row.querySelector('.tag-value').value.trim();
+                if (key && value) {
+                    tagsLabel.push({ key, value });
+                }
+            });
+            
+            if (tagsLabel.length === 0) {
+                alert('标签至少需要一行，且键和值都不能为空');
+                return;
+            }
+        }
+        
+        // 收集工况数据
+        const tagsCondition = [];
+        document.querySelectorAll('#tagsConditionBody tr').forEach(row => {
+            const key = row.querySelector('.condition-key').value.trim();
+            const value = row.querySelector('.condition-value').value.trim();
+            if (key && value) {
+                tagsCondition.push({ key, value });
+            }
+        });
+        
+        // 构建元数据对象
+        const metaData = {
+            display_name: document.getElementById('metaDisplayName').value.trim(),
+            comment: document.getElementById('metaComment').value.trim(),
+            tags_label: tagsLabel,
+            tags_condition: tagsCondition
+        };
+        
+        // RUL预测：添加RUL配置
+        if (isRulPrediction) {
+            // 获取选中的失效点
+            const selectedFailureRow = document.querySelector('input[name="failureRow"]:checked');
+            if (!selectedFailureRow) {
+                alert('请选择失效点');
+                return;
+            }
+            const failureRowIndex = parseInt(selectedFailureRow.value);
+            
+            metaData.rul_config = {
+                failure_row_index: failureRowIndex,
+                rul_unit: document.getElementById('rulUnit').value,
+                max_rul: parseInt(document.getElementById('rulMaxRul').value)
+            };
+        }
+        
+        try {
+            // 直接执行标注（复制文件到labeled目录并创建元文件）
+            // 元文件会在 run_label 中根据最终的文件名创建，避免重复创建
+            const labelResponse = await fetch('/data_management/api/label/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    task_type: taskType,
+                    source_file: currentMetaFilename,
+                    meta_data: metaData
+                })
+            });
+            
+            const labelResult = await labelResponse.json();
+            if (!labelResult.success) {
+                throw new Error(labelResult.error || '执行标注失败');
+            }
+            
+            // 关闭模态框
+            metaEditorModal.hide();
+            
+            // 显示成功消息
+            document.getElementById('anomalyLabelResult').style.display = 'block';
+            document.getElementById('anomalyLabelResult').innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>${labelResult.message}
+                </div>
+                <div class="stat-card">
+                    <h6>输出文件</h6>
+                    <div class="value" style="font-size:0.9rem">${labelResult.result.output_file}</div>
+                </div>
+            `;
+            
+            // 刷新文件列表
+            loadAllProcessedFiles();
+            if (selectedTaskType === 'anomaly_detection' || selectedTaskType === 'fault_diagnosis') {
+                loadAnomalyProcessedFiles();
+            }
+            
+            // 标记步骤2完成
+            document.getElementById('step2').classList.add('completed');
+            document.getElementById('step2').classList.remove('active');
+            
+        } catch (error) {
+            alert('保存失败: ' + error.message);
+        }
+    }
+
+    async function editMetaFile(filename, taskType = null) {
+        // 保存当前滚动位置
+        const scrollY = window.scrollY || window.pageYOffset;
+        
+        currentMetaFilename = filename;
+        
+        const modalElement = document.getElementById('metaEditorModal');
+        if (!metaEditorModal) {
+            metaEditorModal = new bootstrap.Modal(modalElement, {
+                backdrop: true,
+                keyboard: true,
+                focus: true
+            });
+            
+            // 监听模态框显示事件，防止页面滚动
+            modalElement.addEventListener('show.bs.modal', function() {
+                document.body.style.top = `-${scrollY}px`;
+                document.body.style.position = 'fixed';
+                document.body.style.width = '100%';
+                modalElement.dataset.scrollY = scrollY;
+            });
+            
+            // 监听模态框隐藏事件，恢复滚动位置
+            modalElement.addEventListener('hidden.bs.modal', function() {
+                const savedScrollY = modalElement.dataset.scrollY || 0;
+                document.body.style.position = '';
+                document.body.style.top = '';
+                document.body.style.width = '';
+                window.scrollTo(0, savedScrollY);
+            });
+        } else {
+            // 如果模态框已存在，更新滚动位置
+            modalElement.dataset.scrollY = scrollY;
+        }
+        
+        // 如果没有指定taskType，尝试从selectedTaskType获取，或根据文件名推断
+        if (!taskType) {
+            taskType = selectedTaskType || 'anomaly_detection';
+        }
+        
+        // 加载元文件数据
+        try {
+            const response = await fetch(`/data_management/api/label/meta/${taskType}/${encodeURIComponent(filename)}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                const meta = result.meta_data;
+                
+                // 填充字段（与openMetaEditor相同）
+                document.getElementById('metaFileId').value = meta.file_id || '';
+                document.getElementById('metaFilePath').value = meta.file_path || '';
+                document.getElementById('metaCreatedAt').value = meta.created_at || '';
+                document.getElementById('metaDisplayName').value = meta.display_name || filename;
+                document.getElementById('metaComment').value = meta.comment || '';
+                
+                // 填充标签表格
+                const tagsLabelBody = document.getElementById('tagsLabelBody');
+                tagsLabelBody.innerHTML = '';
+                if (meta.tags_label && meta.tags_label.length > 0) {
+                    meta.tags_label.forEach(tag => {
+                        addTagLabelRow(tag.key, tag.value);
+                    });
+                } else {
+                    // 根据任务类型设置默认标签
+                    if (taskType === 'anomaly_detection') {
+                        addTagLabelRow('健康状态', '正常');
+                    } else if (taskType === 'fault_diagnosis') {
+                        addTagLabelRow('故障类型', '正常');
+                    } else {
+                        addTagLabelRow('标签', '正常');
+                    }
+                }
+                
+                // 填充工况表格
+                const tagsConditionBody = document.getElementById('tagsConditionBody');
+                tagsConditionBody.innerHTML = '';
+                if (meta.tags_condition && meta.tags_condition.length > 0) {
+                    meta.tags_condition.forEach(cond => {
+                        addTagConditionRow(cond.key, cond.value);
+                    });
+                }
+                
+                metaEditorModal.show();
+            } else {
+                alert('加载元文件失败: ' + (result.error || '未知错误'));
+            }
+        } catch (error) {
+            alert('加载元文件失败: ' + error.message);
+        }
+    }
+
+    function addConditionRow() {
+        const container = document.getElementById('conditionsContainer');
+        const row = document.createElement('div');
+        row.className = 'row g-2 mb-2 condition-row';
+        row.innerHTML = `
+            <div class="col-md-5"><input type="text" class="form-control condition-name" placeholder="工况名"></div>
+            <div class="col-md-5"><input type="text" class="form-control condition-value" placeholder="工况值"></div>
+            <div class="col-md-2"><button type="button" class="btn btn-outline-danger w-100" onclick="this.parentElement.parentElement.remove()"><i class="fas fa-minus"></i></button></div>
+        `;
+        container.appendChild(row);
+    }
+
+    async function handleLabel(event) {
+        event.preventDefault();
+        const submitBtn = event.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>标注中...';
+        
+        // 收集工况信息
+        const conditions = {};
+        document.querySelectorAll('.condition-row').forEach(row => {
+            const name = row.querySelector('.condition-name').value.trim();
+            const value = row.querySelector('.condition-value').value.trim();
+            if (name && value) conditions[name] = value;
+        });
+        
+        try {
+            const response = await fetch('/data_management/api/label/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    task_type: selectedTaskType,
+                    source_file: document.getElementById('labelSourceFile').value,
+                    label: document.getElementById('labelValue').value,
+                    conditions: conditions
+                })
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                document.getElementById('labelResult').style.display = 'block';
+                document.getElementById('labelResult').innerHTML = `
+                    <div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>${result.message}</div>
+                    <div class="stat-card"><h6>输出文件</h6><div class="value" style="font-size:0.9rem">${result.result.output_file}</div></div>
+                `;
+                loadAllProcessedFiles();
+                
+                // 标记步骤2完成
+                document.getElementById('step2').classList.add('completed');
+                document.getElementById('step2').classList.remove('active');
+            } else { throw new Error(result.error); }
+        } catch (error) {
+            document.getElementById('labelResult').style.display = 'block';
+            document.getElementById('labelResult').innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+        } finally { submitBtn.disabled = false; submitBtn.innerHTML = originalText; }
+    }
+</script>
+{% endblock %}

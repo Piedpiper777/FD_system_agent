@@ -1,0 +1,865 @@
+{% extends "base.html" %}
+
+{% block title %}模型管理 - 工业智能维护系统{% endblock %}
+
+{% block content %}
+<style>
+    /* 全局字体与背景优化 */
+    :root {
+        --model-gradient: linear-gradient(135deg, #C58CFF 0%, #8E44D6 100%);
+        --anomaly-gradient: linear-gradient(135deg, #FFBF86 0%, #F2994A 100%);
+        --diagnosis-gradient: linear-gradient(135deg, #FF8A8A 0%, #D84343 100%);
+        --rul-gradient: linear-gradient(135deg, #63D2FF 0%, #008BB0 100%);
+        --card-shadow: 0 20px 27px 0 rgba(0, 0, 0, 0.05);
+        --hover-shadow: 0 20px 27px 0 rgba(0, 0, 0, 0.1);
+        --text-main: #1B2559;
+        --text-secondary: #A3AED0;
+        --bg-color: #F4F7FE;
+    }
+
+    .model-management-page {
+        background-color: var(--bg-color);
+        min-height: 100vh;
+        padding: 30px;
+        font-family: 'DM Sans', 'Inter', sans-serif;
+    }
+
+    /* 页面头部优化 */
+    .page-header {
+        background: transparent;
+        padding: 0;
+        margin-bottom: 40px;
+        border: none;
+        position: relative;
+        transition: all 0.3s ease;
+        text-align: center;
+    }
+    
+    .page-header h2 {
+        font-weight: 700;
+        font-size: 32px;
+        color: var(--text-main);
+        margin-bottom: 12px;
+        letter-spacing: -0.5px;
+        text-align: center;
+    }
+    
+    .page-header p {
+        color: var(--text-secondary);
+        margin: 0;
+        font-size: 16px;
+        font-weight: 500;
+        text-align: center;
+    }
+
+    /* 模块选择标签美化 */
+    .module-selector-card {
+        background: #FFFFFF;
+        border-radius: 30px;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 30px;
+        overflow: hidden;
+        border: none;
+        padding: 20px;
+    }
+
+    .module-tab {
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 20px;
+        padding: 24px 20px;
+        text-align: center;
+        background: #F4F7FE;
+        border: 2px solid transparent;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .module-tab::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.1);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .module-tab:hover {
+        background: #F0F5FF;
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(197, 140, 255, 0.2);
+    }
+
+    .module-tab.active {
+        background: var(--model-gradient);
+        color: white;
+        box-shadow: 0 10px 30px rgba(197, 140, 255, 0.4);
+        transform: translateY(-5px);
+        border-color: transparent;
+    }
+
+    .module-tab.active::before {
+        opacity: 1;
+    }
+
+    .module-tab.active:hover {
+        background: linear-gradient(135deg, #B87AFF 0%, #7D3AC5 100%);
+        box-shadow: 0 15px 40px rgba(197, 140, 255, 0.5);
+    }
+
+    .module-tab i {
+        font-size: 36px;
+        margin-bottom: 12px;
+        display: block;
+        transition: all 0.3s ease;
+    }
+
+    .module-tab.active i {
+        color: white;
+        transform: scale(1.1);
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+    }
+
+    .module-tab h6 {
+        font-weight: 600;
+        margin: 0;
+        font-size: 16px;
+        transition: all 0.3s ease;
+    }
+
+    .module-tab.active h6 {
+        color: white;
+    }
+
+    /* 模型卡片美化 */
+    .model-card {
+        background: #FFFFFF;
+        border-radius: 24px;
+        box-shadow: var(--card-shadow);
+        border: none;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: fadeInUp 0.6s ease-out both;
+        overflow: hidden;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .model-card:hover {
+        box-shadow: var(--hover-shadow);
+        transform: translateY(-8px);
+    }
+
+    .model-card .card-body {
+        padding: 24px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .model-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #F4F7FE;
+    }
+
+    .model-icon-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .model-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        color: white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .model-icon.anomaly {
+        background: var(--anomaly-gradient);
+    }
+
+    .model-icon.diagnosis {
+        background: var(--diagnosis-gradient);
+    }
+
+    .model-icon.rul {
+        background: var(--rul-gradient);
+    }
+
+    .model-icon.model {
+        background: var(--model-gradient);
+    }
+
+    .model-title {
+        font-weight: 700;
+        font-size: 18px;
+        color: var(--text-main);
+        margin: 0 0 4px 0;
+    }
+
+    .model-subtitle {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    .model-info-section {
+        margin-bottom: 16px;
+    }
+
+    .model-info-label {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .model-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .model-badge {
+        background: #F4F7FE;
+        color: var(--text-main);
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid #E0E5F2;
+        transition: all 0.3s ease;
+    }
+
+    .model-badge:hover {
+        background: #E0E5F2;
+        transform: translateY(-2px);
+    }
+
+    .model-badge.info {
+        background: linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%);
+        color: #0369A1;
+        border-color: #7DD3FC;
+    }
+
+    .model-time {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    .model-actions {
+        margin-top: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding-top: 16px;
+        border-top: 1px solid #F4F7FE;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        letter-spacing: 0.3px;
+        border: none;
+    }
+
+    .btn-primary {
+        background: var(--model-gradient);
+        box-shadow: 0 10px 20px rgba(197, 140, 255, 0.2);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        box-shadow: 0 15px 30px rgba(197, 140, 255, 0.3);
+        transform: translateY(-2px);
+        background: linear-gradient(135deg, #B87AFF 0%, #7D3AC5 100%);
+    }
+
+    .btn-danger {
+        background: linear-gradient(135deg, #FF5B5B 0%, #EE0979 100%);
+        box-shadow: 0 10px 20px rgba(255, 91, 91, 0.2);
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        box-shadow: 0 15px 30px rgba(255, 91, 91, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .btn-outline-primary {
+        color: #8E44D6;
+        border: 2px solid #8E44D6;
+        background: transparent;
+    }
+    
+    .btn-outline-primary:hover {
+        background: var(--model-gradient);
+        color: white;
+        box-shadow: 0 10px 20px rgba(197, 140, 255, 0.2);
+        transform: translateY(-2px);
+    }
+
+    /* 列表标题区域 */
+    .list-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding: 20px 24px;
+        background: #FFFFFF;
+        border-radius: 20px;
+        box-shadow: var(--card-shadow);
+    }
+
+    .list-header h4 {
+        font-weight: 700;
+        font-size: 22px;
+        color: var(--text-main);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .list-header h4 i {
+        background: var(--model-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 24px;
+    }
+
+    .badge {
+        padding: 0.5em 0.8em;
+        border-radius: 8px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+    
+    .bg-primary {
+        background: var(--model-gradient) !important;
+    }
+
+    /* 加载状态 */
+    .loading-indicator {
+        text-align: center;
+        padding: 60px 40px;
+        background: #FFFFFF;
+        border-radius: 24px;
+        box-shadow: var(--card-shadow);
+    }
+
+    .spinner-border {
+        width: 3rem;
+        height: 3rem;
+        border-width: 0.3em;
+    }
+
+    /* 空状态 */
+    .empty-state {
+        text-align: center;
+        padding: 60px 40px;
+        background: #FFFFFF;
+        border-radius: 24px;
+        border: 2px dashed #E0E5F2;
+        margin-top: 20px;
+    }
+
+    .empty-state i {
+        font-size: 64px;
+        margin-bottom: 20px;
+        background: linear-gradient(135deg, #E0E5F2 0%, #A3AED0 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    /* 错误状态 */
+    .alert {
+        border-radius: 16px;
+        border: none;
+        padding: 20px 24px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .alert-danger {
+        background: linear-gradient(135deg, #FFF5F5 0%, #FFE5E5 100%);
+        color: #C53030;
+        border-left: 4px solid #EF4444;
+    }
+
+    .alert-info {
+        background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+        color: #1E40AF;
+        border-left: 4px solid #3B82F6;
+    }
+
+    /* 动画 */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translate3d(0, 30px, 0);
+        }
+        to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+        }
+    }
+
+    .model-card:nth-child(1) { animation-delay: 0.1s; }
+    .model-card:nth-child(2) { animation-delay: 0.2s; }
+    .model-card:nth-child(3) { animation-delay: 0.3s; }
+    .model-card:nth-child(4) { animation-delay: 0.4s; }
+    .model-card:nth-child(5) { animation-delay: 0.5s; }
+    .model-card:nth-child(6) { animation-delay: 0.6s; }
+
+    /* 模态框美化 */
+    .modal-content {
+        border-radius: 24px;
+        border: none;
+        box-shadow: 0 40px 80px rgba(0,0,0,0.2);
+    }
+    
+    .modal-header {
+        background: var(--model-gradient);
+        color: white;
+        border-bottom: none;
+        padding: 24px 30px;
+        border-radius: 24px 24px 0 0;
+    }
+    
+    .modal-title {
+        font-weight: 700;
+        color: white;
+    }
+
+    .btn-close {
+        filter: invert(1);
+    }
+    
+    .modal-body {
+        padding: 30px;
+        background: #FFFFFF;
+    }
+    
+    .modal-footer {
+        border-top: 1px solid #F4F7FE;
+        padding: 20px 30px;
+        background: #FFFFFF;
+        border-radius: 0 0 24px 24px;
+    }
+
+    .modal-body h6 {
+        font-weight: 700;
+        color: var(--text-main);
+        margin-top: 0;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #F4F7FE;
+        font-size: 16px;
+    }
+
+    .modal-body table {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .modal-body table td {
+        padding: 12px 16px;
+        border-color: #F4F7FE;
+    }
+
+    .modal-body table td:first-child {
+        font-weight: 600;
+        color: var(--text-secondary);
+        background: #F4F7FE;
+        width: 30%;
+    }
+
+    .modal-body code {
+        background: #F4F7FE;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 13px;
+        color: #8E44D6;
+    }
+
+    .modal-body pre {
+        background: #1B2559;
+        color: #E0E5F2;
+        padding: 20px;
+        border-radius: 12px;
+        border: none;
+        font-size: 13px;
+        overflow-x: auto;
+    }
+
+    .modal-body pre code {
+        background: transparent;
+        color: #E0E5F2;
+        padding: 0;
+    }
+
+    /* 返回首页按钮 */
+    .back-home-btn {
+        text-align: center;
+        margin-top: 40px;
+        margin-bottom: 20px;
+    }
+</style>
+
+<div class="model-management-page">
+    <div class="container">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <h2>
+                <i class="fas fa-cogs me-2"></i>模型管理中心
+            </h2>
+            <p>统一管理异常检测、故障诊断、RUL预测的模型</p>
+        </div>
+
+        <!-- 模块选择标签 -->
+        <div class="module-selector-card">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <div class="module-tab active" data-module="all" onclick="switchModule('all')">
+                        <i class="fas fa-th-large"></i>
+                        <h6>全部模型</h6>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="module-tab" data-module="anomaly_detection" onclick="switchModule('anomaly_detection')">
+                        <i class="fas fa-chart-line"></i>
+                        <h6>异常检测</h6>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="module-tab" data-module="fault_diagnosis" onclick="switchModule('fault_diagnosis')">
+                        <i class="fas fa-tools"></i>
+                        <h6>故障诊断</h6>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="module-tab" data-module="rul_prediction" onclick="switchModule('rul_prediction')">
+                        <i class="fas fa-clock"></i>
+                        <h6>RUL预测</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模型列表 -->
+        <div class="mb-5">
+            <div class="list-header">
+                <h4>
+                    <i class="fas fa-robot"></i>
+                    模型列表
+                    <span id="modelCount" class="badge bg-primary ms-2">0</span>
+                </h4>
+                <button class="btn btn-outline-primary" onclick="loadModels()">
+                    <i class="fas fa-sync-alt me-1"></i>刷新列表
+                </button>
+            </div>
+            <div id="modelsContainer" class="row g-4">
+                <!-- 模型卡片将在这里动态生成 -->
+            </div>
+        </div>
+
+        <!-- 加载状态 -->
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+            <p class="mt-3 text-muted">正在加载数据...</p>
+        </div>
+
+        <!-- 返回首页按钮 -->
+        <div class="back-home-btn">
+            <a href="/" class="btn btn-outline-primary btn-lg">
+                <i class="fas fa-home me-2"></i>返回首页
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- 模型信息弹窗 -->
+<div class="modal fade" id="modelInfoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle me-2"></i>模型详细信息
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modelInfoContent">
+                <!-- 模型信息将在这里动态生成 -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>关闭
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentModule = 'all';
+const modules = {
+    'anomaly_detection': { name: '异常检测', icon: 'chart-line', color: 'anomaly', gradient: 'linear-gradient(135deg, #FFBF86 0%, #F2994A 100%)' },
+    'fault_diagnosis': { name: '故障诊断', icon: 'tools', color: 'diagnosis', gradient: 'linear-gradient(135deg, #FF8A8A 0%, #D84343 100%)' },
+    'rul_prediction': { name: 'RUL预测', icon: 'clock', color: 'rul', gradient: 'linear-gradient(135deg, #63D2FF 0%, #008BB0 100%)' }
+};
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadModels();
+});
+
+// 切换模块
+function switchModule(module) {
+    currentModule = module;
+    
+    // 更新标签样式
+    document.querySelectorAll('.module-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelector(`[data-module="${module}"]`).classList.add('active');
+    
+    // 重新加载模型
+    loadModels();
+}
+
+// 加载模型列表
+async function loadModels() {
+    const container = document.getElementById('modelsContainer');
+    const loading = document.getElementById('loadingIndicator');
+    
+    try {
+        loading.style.display = 'block';
+        container.innerHTML = '';
+        
+        const url = currentModule === 'all' 
+            ? '/model_management/api/models'
+            : `/model_management/api/models?module=${currentModule}`;
+        
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (result.success) {
+            displayModels(result.models);
+            document.getElementById('modelCount').textContent = result.models.length;
+        } else {
+            throw new Error(result.error || '加载模型失败');
+        }
+    } catch (error) {
+        console.error('Load models error:', error);
+        container.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    加载模型列表失败: ${error.message}
+                </div>
+            </div>
+        `;
+    } finally {
+        loading.style.display = 'none';
+    }
+}
+
+// 显示模型列表
+function displayModels(models) {
+    const container = document.getElementById('modelsContainer');
+    
+    if (models.length === 0) {
+        container.innerHTML = `
+            <div class="col-12">
+                <div class="empty-state">
+                    <i class="fas fa-robot d-block"></i>
+                    <h5 class="mt-3 mb-2">暂无模型</h5>
+                    <p class="text-muted mb-0">请先进行模型训练</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = models.map((model, index) => {
+        const moduleInfo = modules[model.module] || { name: model.module_name || model.module, icon: 'cog', color: 'model', gradient: 'linear-gradient(135deg, #C58CFF 0%, #8E44D6 100%)' };
+        const iconClass = moduleInfo.color || 'model';
+        
+        return `
+        <div class="col-md-6 col-lg-4">
+            <div class="card model-card h-100" style="animation-delay: ${index * 0.1}s;">
+                <div class="card-body">
+                    <div class="model-card-header">
+                        <div class="model-icon-wrapper">
+                            <div class="model-icon ${iconClass}">
+                                <i class="fas fa-${moduleInfo.icon}"></i>
+                            </div>
+                            <div>
+                                <h6 class="model-title">${model.task_id}</h6>
+                                <p class="model-subtitle">${moduleInfo.name} - ${model.model_type}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${model.config ? `
+                    <div class="model-info-section">
+                        <span class="model-info-label">训练配置</span>
+                        <div class="model-badges">
+                            ${model.config.sequence_length ? `
+                            <span class="model-badge">序列长度: ${model.config.sequence_length}</span>
+                            ` : ''}
+                            ${model.config.hidden_units ? `
+                            <span class="model-badge">隐藏层: ${model.config.hidden_units}</span>
+                            ` : ''}
+                            ${model.config.epochs ? `
+                            <span class="model-badge">训练轮次: ${model.config.epochs}</span>
+                            ` : ''}
+                            ${model.config.batch_size ? `
+                            <span class="model-badge">批大小: ${model.config.batch_size}</span>
+                            ` : ''}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <div class="model-info-section">
+                        <span class="model-info-label">文件大小</span>
+                        <span class="model-badge info">${formatFileSize(model.size)}</span>
+                    </div>
+                    
+                    <div class="model-info-section">
+                        <span class="model-info-label">创建时间</span>
+                        <p class="model-time">${new Date(model.created_at).toLocaleString('zh-CN')}</p>
+                    </div>
+                    
+                    <div class="model-actions">
+                        <button class="btn btn-primary btn-sm" onclick="showModelInfo('${model.module}', '${model.task_id}')">
+                            <i class="fas fa-info-circle me-1"></i>查看详情
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteModel('${model.module}', '${model.task_id}')">
+                            <i class="fas fa-trash me-1"></i>删除模型
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+// 显示模型信息
+async function showModelInfo(module, taskId) {
+    try {
+        const response = await fetch(`/model_management/api/models/${module}/${taskId}/info`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const info = result.model_info;
+            const content = document.getElementById('modelInfoContent');
+            
+            content.innerHTML = `
+                <div>
+                    <h6><i class="fas fa-info-circle me-2"></i>基本信息</h6>
+                    <table class="table table-bordered">
+                        <tr><td>任务ID</td><td>${info.task_id}</td></tr>
+                        <tr><td>模块</td><td>${info.module_name}</td></tr>
+                        <tr><td>模型类型</td><td>${info.model_type}</td></tr>
+                        <tr><td>路径</td><td><code>${info.path}</code></td></tr>
+                    </table>
+                </div>
+                
+                ${Object.keys(info.config).length > 0 ? `
+                <div>
+                    <h6><i class="fas fa-cog me-2"></i>训练配置</h6>
+                    <pre class="bg-light p-3 rounded"><code>${JSON.stringify(info.config, null, 2)}</code></pre>
+                </div>
+                ` : ''}
+                
+                ${Object.keys(info.files).length > 0 ? `
+                <div>
+                    <h6><i class="fas fa-folder me-2"></i>文件列表</h6>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>文件名</th>
+                                <th>大小</th>
+                                <th>修改时间</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${Object.entries(info.files).map(([name, file]) => `
+                                <tr>
+                                    <td><code>${name}</code></td>
+                                    <td>${formatFileSize(file.size)}</td>
+                                    <td>${new Date(file.modified_at).toLocaleString('zh-CN')}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                ` : ''}
+            `;
+            
+            const modal = new bootstrap.Modal(document.getElementById('modelInfoModal'));
+            modal.show();
+        } else {
+            alert('获取模型信息失败: ' + result.error);
+        }
+    } catch (error) {
+        alert('获取模型信息失败: ' + error.message);
+    }
+}
+
+// 删除模型
+async function deleteModel(module, taskId) {
+    if (!confirm(`确定要删除模型 ${taskId} 吗？此操作不可恢复。`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/model_management/api/models/${module}/${taskId}`, {
+            method: 'DELETE'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message || '模型已删除');
+            loadModels();
+        } else {
+            alert('删除失败: ' + result.error);
+        }
+    } catch (error) {
+        alert('删除失败: ' + error.message);
+    }
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+</script>
+{% endblock %}

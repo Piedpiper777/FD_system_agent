@@ -1,0 +1,1383 @@
+{% extends "base.html" %}
+
+{% block title %}训练进度监控 - 异常检测 (v4.0-{{ range(1000000, 9999999) | random }}){% endblock %}
+
+{% block content %}
+<style>
+.training-progress-page {
+    background: #F4F7FE;
+    min-height: 100vh;
+    padding: 2rem 0;
+}
+
+.progress-header {
+    background: linear-gradient(135deg, #FFBF86 0%, #F2994A 100%);
+    color: #fff;
+    padding: 3rem 2rem;
+    border-radius: 1.25rem;
+    box-shadow: 0 20px 40px rgba(242, 153, 74, 0.25);
+    margin-bottom: 2.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.35), transparent 55%);
+    opacity: 0.4;
+}
+
+.progress-header h2,
+.progress-header p {
+    position: relative;
+    z-index: 1;
+}
+
+.progress-header h2 {
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.progress-header p {
+    margin-bottom: 0;
+    opacity: 0.95;
+}
+
+.progress-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 1rem;
+    box-shadow: 0 12px 30px rgba(20, 30, 90, 0.08);
+    margin-bottom: 1.75rem;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.progress-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+}
+
+.progress-card-header {
+    background: #f8f9fa;
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 1rem;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.progress-card-header i {
+    color: #F2994A;
+    font-size: 1.25rem;
+}
+
+.progress-card-body {
+    padding: 2rem;
+}
+
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.35rem 1.25rem;
+    border-radius: 999px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    color: #fff;
+}
+
+.status-indicator.status-training {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.status-indicator.status-completed {
+    background: linear-gradient(135deg, #007bff, #6610f2);
+}
+
+.status-indicator.status-error {
+    background: linear-gradient(135deg, #dc3545, #fd7e14);
+}
+
+.progress-container {
+    margin-bottom: 1.5rem;
+}
+
+.progress-bg {
+    position: relative;
+    height: 1.5rem;
+    border-radius: 999px;
+    background: #e9ecef;
+    overflow: hidden;
+}
+
+.progress-bar-custom {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #FFBF86 0%, #F2994A 100%);
+    transition: width 0.4s ease;
+    position: relative;
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.metric-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 0.85rem;
+    padding: 1.5rem;
+    text-align: center;
+    border: 1px solid #e5e7eb;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px rgba(15, 23, 42, 0.12);
+}
+
+.metric-card.muted {
+    background: #fff;
+}
+
+.metric-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #F2994A;
+}
+
+.metric-value-sm {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #F2994A;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.metric-value-id {
+    font-size: 1.4rem;
+    word-break: break-all;
+    line-height: 1.2;
+}
+
+.metric-subvalue {
+    margin-top: 0.4rem;
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.metric-subvalue span {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.metric-label {
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+    color: #6c757d;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.info-pill {
+    background: #eef5ff;
+    border-radius: 0.75rem;
+    padding: 0.85rem 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    font-size: 0.95rem;
+    color: #0f172a;
+}
+
+.info-pill .pill-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.section-title {
+    font-weight: 600;
+    color: #F2994A;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.logs-container {
+    background: #f8f9fa;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+    padding: 1.5rem;
+    max-height: 420px;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.9rem;
+    color: #111827;
+}
+
+.log-entry {
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.log-entry:last-child {
+    border-bottom: none;
+}
+
+.log-timestamp {
+    color: #6c757d;
+    margin-right: 0.75rem;
+}
+
+.threshold-code {
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.85rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.85rem;
+    color: #495057;
+}
+
+.chart-card .chart-fixed-frame {
+    height: 360px;
+}
+
+.badge-soft {
+    background: rgba(99, 210, 255, 0.2);
+    color: #008BB0;
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.alert-info {
+    border-radius: 0.75rem;
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .progress-card-body {
+        padding: 1.5rem;
+    }
+
+    .progress-header {
+        padding: 2.25rem 1.25rem;
+    }
+
+    .info-pill {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+}
+</style>
+
+<div class="training-progress-page">
+    <div class="container">
+        <div class="progress-header text-center text-white">
+            <h2 class="mb-2"><i class="fas fa-chart-line me-2"></i>异常检测训练进度</h2>
+        </div>
+
+        <div class="progress-card fade-in">
+            <div class="progress-card-header justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fas fa-info-circle"></i>
+                    <span>任务信息</span>
+                </div>
+                <div id="statusIndicator" class="status-indicator status-training">
+                    <i id="statusIcon" class="fas fa-circle-notch fa-spin"></i>
+                    <span id="statusText">正在初始化训练...</span>
+                </div>
+            </div>
+            <div class="progress-card-body">
+                <div class="row g-4">
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value metric-value-id" id="taskIdDisplay">--</div>
+                            <div class="metric-label">任务 ID</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="modelTypeDisplay">--</div>
+                            <div class="metric-label">模型类型</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="startTimeDisplay">--</div>
+                            <div class="metric-label">开始时间</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="elapsedTime">00:00</div>
+                            <div class="metric-label">运行时间</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="progress-card fade-in">
+            <div class="progress-card-header">
+                <i class="fas fa-chart-bar"></i>
+                <span>训练进度</span>
+            </div>
+            <div class="progress-card-body">
+                <div class="progress-container">
+                    <div class="progress-bg">
+                        <div class="progress-bar-custom progress-fill" id="progressFill" style="width: 0%"></div>
+                        <div class="progress-text" id="progressText">准备开始训练</div>
+                    </div>
+                </div>
+                <div class="row g-4 mt-4">
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="epochCurrent">0</div>
+                            <div class="metric-label">当前轮次</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="epochTotal">--</div>
+                            <div class="metric-label">总轮次</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="lossValue">--</div>
+                            <div class="metric-label">最新损失</div>
+                            <div class="metric-subvalue">验证：<span id="valLossValue">--</span></div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="learningRateDisplay">--</div>
+                            <div class="metric-label">学习率</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="progress-card fade-in" id="evaluationResultsCard" style="display: none;">
+            <div class="progress-card-header">
+                <i class="fas fa-clipboard-check"></i>
+                <span>测试集评估结果</span>
+            </div>
+            <div class="progress-card-body">
+                <div class="info-pill mb-4">
+                    <div class="pill-item">
+                        <i class="fas fa-database text-primary"></i>
+                        测试文件：<span id="evalTestFileText">--</span>
+                    </div>
+                    <div class="pill-item">
+                        <i class="fas fa-hashtag text-primary"></i>
+                        样本总数：<span id="evalSamplesQuickText">--</span>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-3">
+                        <div class="metric-card muted">
+                            <div class="metric-value" id="evalMeanErrorText">--</div>
+                            <div class="metric-label">平均误差</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card muted">
+                            <div class="metric-value" id="evalStdErrorText">--</div>
+                            <div class="metric-label">误差标准差</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card muted">
+                            <div class="metric-value" id="evalP95Text">--</div>
+                            <div class="metric-label">95%分位</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card muted">
+                            <div class="metric-value" id="evalMedianErrorText">--</div>
+                            <div class="metric-label">中位误差</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4 mt-2">
+                    <div class="col-md-3">
+                        <div class="metric-card muted">
+                            <div class="metric-value" id="evalMinErrorText">--</div>
+                            <div class="metric-label">最小误差</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card muted">
+                            <div class="metric-value" id="evalMaxErrorText">--</div>
+                            <div class="metric-label">最大误差</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card muted">
+                            <div class="metric-value" id="evalSamplesText">--</div>
+                            <div class="metric-label">有效样本</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card muted">
+                            <div class="metric-value" id="evalP99Text">--</div>
+                            <div class="metric-label">99%分位</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="classificationMetrics" class="mt-4" style="display: none;">
+                    <div class="section-title">
+                        <i class="fas fa-project-diagram"></i>
+                        带标签性能指标
+                    </div>
+                    <div class="row g-4">
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-value" id="evalAccuracyText">--</div>
+                                <div class="metric-label">准确率</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-value" id="evalPrecisionText">--</div>
+                                <div class="metric-label">精确率</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-value" id="evalRecallText">--</div>
+                                <div class="metric-label">召回率</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-value" id="evalF1Text">--</div>
+                                <div class="metric-label">F1 值</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-4 mt-2">
+                        <div class="col-md-4">
+                            <div class="metric-card muted">
+                                <div class="metric-value" id="evalNormalSamplesText">--</div>
+                                <div class="metric-label">正常样本</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="metric-card muted">
+                                <div class="metric-value" id="evalAnomalySamplesText">--</div>
+                                <div class="metric-label">异常样本</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="metric-card muted">
+                                <div class="metric-value" id="evalThresholdUsedText">--</div>
+                                <div class="metric-label">阈值 (使用)</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-4 mt-2">
+                        <div class="col-12">
+                            <div class="metric-card muted">
+                                <div class="metric-value-sm" id="evalConfusionText">TP: --, TN: --<br>FP: --, FN: --</div>
+                                <div class="metric-label">混淆矩阵</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="errorComparisonSection" class="mt-4" style="display: none;">
+                    <div class="section-title">
+                        <i class="fas fa-random"></i>
+                        正常 / 异常误差对比
+                    </div>
+                    <div class="row g-4">
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-value" id="evalNormalErrorMeanText">--</div>
+                                <div class="metric-label">正常均值</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-value" id="evalNormalErrorStdText">--</div>
+                                <div class="metric-label">正常标准差</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-value" id="evalAnomalyErrorMeanText">--</div>
+                                <div class="metric-label">异常均值</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-value" id="evalAnomalyErrorStdText">--</div>
+                                <div class="metric-label">异常标准差</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-4 mb-0">
+                    <strong>评估说明：</strong> 指标基于测试集统计结果。对于无标签数据，可根据 95% / 99% 分位数设置阈值；有标签数据请重点关注混淆矩阵与 F1 表现。
+                </div>
+            </div>
+        </div>
+
+        <div class="progress-card fade-in" id="thresholdInfoCard" style="display: none;">
+            <div class="progress-card-header">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-bullseye me-2"></i>
+                    <span>自动阈值计算</span>
+                </div>
+                <span class="badge-soft">Threshold</span>
+            </div>
+            <div class="progress-card-body">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="me-3 text-primary" style="font-size: 2rem;">
+                        <i class="fas fa-crosshairs"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">当前阈值</div>
+                        <div class="fs-3 fw-bold" id="thresholdValueText">--</div>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="metric-label">阈值方法</div>
+                        <div id="thresholdMethodText">--</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-label">样本量</div>
+                        <div id="thresholdSampleText">--</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-label">文件状态</div>
+                        <div id="thresholdFileStatus">--</div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="metric-label">阈值 / 路径</div>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <code class="threshold-code flex-grow-1" id="thresholdPathText">--</code>
+                        <button class="btn btn-sm btn-outline-secondary" id="copyThresholdPathBtn">
+                            <i class="fas fa-copy me-1"></i>复制
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="progress-card chart-card fade-in" id="chartContainer" style="display: none;">
+            <div class="progress-card-header">
+                <i class="fas fa-chart-area"></i>
+                <span>训练损失曲线</span>
+            </div>
+            <div class="progress-card-body">
+                <div class="chart-fixed-frame">
+                    <canvas id="lossChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="progress-card fade-in">
+            <div class="progress-card-header">
+                <i class="fas fa-terminal"></i>
+                <span>训练日志</span>
+            </div>
+            <div class="progress-card-body">
+                <div class="logs-container" id="logContainer">
+                    <div class="log-entry">
+                        <span class="log-timestamp">[00:00:00]</span>
+                        等待训练开始...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4" id="downloadModelContainer" style="display: none;">
+            <button class="btn btn-primary btn-lg px-5 py-3" id="downloadModelBtn" disabled>
+                <i class="fas fa-download me-2"></i>下载模型到本地
+            </button>
+        </div>
+
+        <div class="text-center mt-3">
+            <a href="/anomaly_detection/train" class="btn btn-outline-primary btn-lg px-5 py-3">
+                <i class="fas fa-arrow-left me-2"></i>返回训练配置
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+class TrainingProgressMonitor {
+    constructor() {
+        this.taskId = this.getTaskIdFromUrl();
+        this.chart = null;
+        this.lossData = [];
+        this.valLossData = [];
+        this.epochData = [];
+        this.displayedMessages = new Set();
+        this.thresholdPath = '';
+        this.thresholdValue = null;
+        this.startTime = new Date();
+        this.syncedStartTime = false;
+        this.isTraining = true;
+        this.updateInterval = null;
+        this.timeInterval = null;
+
+        this.initializePlaceholders();
+        this.initializeChart();
+        this.startMonitoring();
+        this.bindEvents();
+    }
+
+    initializePlaceholders() {
+        this.setText('taskIdDisplay', this.taskId);
+        this.setText('progressText', '准备中...');
+        this.setText('lossValue', '等待中...');
+        const logContainer = document.getElementById('logContainer');
+        if (logContainer) {
+            logContainer.innerHTML = '<div class="log-entry"><span class="log-timestamp">[00:00:00]</span>🚀 训练监控已启动，等待训练数据...</div>';
+        }
+    }
+
+    setText(id, value, fallback = '--') {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (value === undefined || value === null || value === '') {
+            el.textContent = fallback;
+        } else {
+            el.textContent = value;
+        }
+    }
+
+    getTaskIdFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('task_id') || 'default';
+    }
+
+    initializeChart() {
+        const canvas = document.getElementById('lossChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        this.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: '训练损失',
+                    data: [],
+                    borderColor: '#007bff',
+                    backgroundColor: 'rgba(0, 123, 255, 0.12)',
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 2
+                }, {
+                    label: '验证损失',
+                    data: [],
+                    borderColor: '#ff6b6b',
+                    backgroundColor: 'rgba(255, 107, 107, 0.12)',
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: '损失值'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: '轮次'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    }
+
+    startMonitoring() {
+        this.updateInterval = setInterval(() => this.fetchTrainingStatus(), 2000);
+        this.timeInterval = setInterval(() => this.updateElapsedTime(), 1000);
+        this.fetchTrainingStatus();
+    }
+
+    async fetchTrainingStatus() {
+        try {
+            const response = await fetch(`/anomaly_detection/api/training_status/${this.taskId}?_t=${Date.now()}`);
+            const taskData = await response.json();
+            const cleanData = this.normalizeResponse(taskData || {});
+            this.updateTrainingStatus(cleanData);
+        } catch (error) {
+            console.error('获取训练状态失败:', error);
+            this.addLogEntry('错误: 无法获取训练状态');
+        }
+    }
+
+    normalizeResponse(taskData) {
+        const rawConfig = this.ensureObject(taskData.config);
+        const trainingConfig = this.ensureObject(taskData.training_config ?? taskData.trainingConfig);
+        const mergedConfig = Object.keys(rawConfig).length ? rawConfig : trainingConfig;
+        const datasetConfig = this.ensureObject(
+            taskData.dataset_config
+            ?? mergedConfig?.dataset_config
+            ?? trainingConfig?.dataset_config
+            ?? taskData.datasetConfig
+        );
+        const metadata = this.ensureObject(taskData.metadata ?? taskData.meta);
+        const info = this.ensureObject(taskData.info);
+        const params = this.ensureObject(taskData.params);
+        const thresholdMetadata = this.ensureObject(taskData.threshold_metadata ?? taskData.thresholdMetadata);
+        const pickString = (...candidates) => {
+            for (const candidate of candidates) {
+                if (typeof candidate === 'string' && candidate.trim().length > 0) {
+                    return candidate;
+                }
+            }
+            return undefined;
+        };
+        const parseNumber = (val) => {
+            if (val === undefined || val === null || val === '') return null;
+            const num = typeof val === 'number' ? val : parseFloat(val);
+            return Number.isFinite(num) ? num : null;
+        };
+
+        return {
+            status: taskData.status || 'unknown',
+            epoch: parseInt(taskData.epoch ?? taskData.current_epoch ?? 0, 10) || 0,
+            total_epochs: parseInt(taskData.total_epochs ?? mergedConfig?.epochs ?? trainingConfig?.epochs ?? 0, 10) || 0,
+            loss: parseNumber(taskData.loss ?? taskData.train_loss ?? taskData.performance?.train_loss),
+            val_loss: parseNumber(taskData.val_loss ?? taskData.validation_loss ?? taskData.performance?.val_loss),
+            logs: Array.isArray(taskData.logs) ? taskData.logs : [],
+            message: taskData.message || '',
+            task_id: taskData.task_id || taskData.taskId || this.taskId,
+            model_type: pickString(
+                taskData.model_type,
+                taskData.model,
+                taskData.model_name,
+                taskData.modelType,
+                mergedConfig?.model_type,
+                mergedConfig?.model,
+                trainingConfig?.model_type,
+                datasetConfig?.model_type,
+                metadata?.model_type,
+                info?.model_type,
+                params?.model_type
+            ),
+            dataset_mode: pickString(
+                taskData.dataset_mode,
+                taskData.data_mode,
+                datasetConfig?.mode,
+                datasetConfig?.dataset_mode,
+                mergedConfig?.dataset_mode,
+                trainingConfig?.dataset_mode,
+                params?.dataset_mode
+            ),
+            validation_split: taskData.validation_split
+                ?? datasetConfig?.validation_split
+                ?? mergedConfig?.validation_split
+                ?? mergedConfig?.val_ratio
+                ?? params?.validation_split,
+            learning_rate: taskData.learning_rate
+                ?? mergedConfig?.learning_rate
+                ?? trainingConfig?.learning_rate
+                ?? metadata?.learning_rate
+                ?? params?.learning_rate,
+            start_time: taskData.start_time
+                || taskData.started_at
+                || taskData.created_at
+                || mergedConfig?.start_time
+                || metadata?.start_time,
+            evaluation: taskData.evaluation || taskData.evaluation_results,
+            threshold_value: taskData.threshold_value ?? taskData.thresholdValue ?? null,
+            threshold_path: taskData.threshold_path ?? taskData.thresholdPath ?? null,
+            threshold_metadata: thresholdMetadata,
+            config: mergedConfig,
+            dataset_config: datasetConfig,
+            metadata,
+            info,
+            params
+        };
+    }
+
+    updateTrainingStatus(data) {
+        if (!data) return;
+        this.updateTaskOverview(data);
+
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const statusIcon = document.getElementById('statusIcon');
+        const status = data.status;
+        let showDownloadButton = false;
+        let iconClass = 'fas fa-circle-notch fa-spin';
+
+        if (status === 'training') {
+            statusIndicator.className = 'status-indicator status-training';
+            statusText.textContent = '训练中';
+        } else if (status === 'calculating_threshold') {
+            statusIndicator.className = 'status-indicator status-training';
+            statusText.textContent = '正在计算阈值...';
+            iconClass = 'fas fa-sync-alt fa-spin';
+        } else if (status === 'completed' || status === 'threshold_completed') {
+            statusIndicator.className = 'status-indicator status-completed';
+            statusText.textContent = status === 'threshold_completed' ? '训练完成，阈值已计算' : '训练已完成';
+            iconClass = 'fas fa-check-circle';
+            showDownloadButton = true;
+            this.isTraining = false;
+            this.stopMonitoring();
+        } else if (status === 'error') {
+            statusIndicator.className = 'status-indicator status-error';
+            statusText.textContent = '训练出错';
+            iconClass = 'fas fa-exclamation-triangle';
+            this.isTraining = false;
+            this.stopMonitoring();
+        } else {
+            statusIndicator.className = 'status-indicator status-training';
+            statusText.textContent = '同步训练状态中...';
+        }
+
+        if (statusIcon) {
+            statusIcon.className = iconClass;
+        }
+        this.showDownloadModelButton(showDownloadButton);
+
+        this.updateProgress(data);
+        this.updateLoss(data);
+        this.updateLogs(data);
+
+        if (data.epoch >= 1) {
+            const chartContainer = document.getElementById('chartContainer');
+            if (chartContainer) chartContainer.style.display = 'block';
+        }
+
+        this.updateThresholdInfo(data);
+        this.updateEvaluationResults(data);
+    }
+
+    updateTaskOverview(data) {
+        const rawTaskId = data.task_id || this.taskId;
+        this.setText('taskIdDisplay', this.formatTaskId(rawTaskId));
+
+        const modelTypeText = this.deriveModelTypeText(data);
+        this.setText('modelTypeDisplay', modelTypeText || '--');
+
+        if (data.start_time) {
+            const formatted = this.formatDateTime(data.start_time);
+            this.setText('startTimeDisplay', formatted);
+            if (!this.syncedStartTime) {
+                const parsed = new Date(data.start_time);
+                if (!isNaN(parsed.getTime())) {
+                    this.startTime = parsed;
+                    this.syncedStartTime = true;
+                }
+            }
+        }
+
+        const datasetModeText = this.formatEnumLabel(data.dataset_mode);
+        this.setText('datasetModeDisplay', datasetModeText || '--');
+
+        if (data.validation_split !== undefined && data.validation_split !== null) {
+            const split = Number(data.validation_split);
+            if (Number.isFinite(split)) {
+                const pct = split >= 1 ? split : split * 100;
+                this.setText('validationSplitDisplay', `${pct.toFixed(split >= 1 ? 0 : 1)}%`);
+            } else {
+                this.setText('validationSplitDisplay', data.validation_split);
+            }
+        }
+
+        if (data.learning_rate !== undefined && data.learning_rate !== null) {
+            this.setText('learningRateDisplay', this.formatLearningRate(data.learning_rate));
+        }
+    }
+
+    formatDateTime(value) {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) return value || '--';
+        return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+    }
+
+    formatLearningRate(value) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) return value ?? '--';
+        if (num === 0) return '0';
+        if (Math.abs(num) < 1e-3) return num.toExponential(2);
+        if (Math.abs(num) >= 1) return num.toFixed(3);
+        return num.toFixed(5);
+    }
+
+    formatTaskId(value) {
+        if (!value) return '--';
+        const match = value.match(/^(\d{8}_\d{6})/);
+        if (match) return match[1];
+        if (typeof value === 'string' && value.endsWith('_000')) return value.slice(0, -4);
+        return value;
+    }
+
+    normalizeNumericValue(value) {
+        if (value === undefined || value === null || value === '') {
+            return null;
+        }
+        const num = Number(value);
+        return Number.isFinite(num) ? num : null;
+    }
+
+    ensureObject(value) {
+        if (!value) {
+            return {};
+        }
+        if (typeof value === 'object' && !Array.isArray(value)) {
+            return value;
+        }
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if (!trimmed) return {};
+            const tryParse = (text) => {
+                try {
+                    const parsed = JSON.parse(text);
+                    return typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+                } catch (error) {
+                    return null;
+                }
+            };
+            const parsed = tryParse(trimmed);
+            if (parsed) return parsed;
+            // 尝试替换单引号为双引号以兼容不规范的JSON
+            const normalized = trimmed
+                .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":')
+                .replace(/'/g, '"');
+            const fallback = tryParse(normalized);
+            if (fallback) return fallback;
+        }
+        return {};
+    }
+
+    formatEnumLabel(value) {
+        if (!value && value !== 0) return null;
+        const normalized = value.toString().replace(/[_-]+/g, ' ').trim();
+        if (!normalized) return null;
+        return normalized.split(' ').map((word) => {
+            if (!word) return '';
+            if (word.length <= 3) return word.toUpperCase();
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }).join(' ');
+    }
+
+    deriveModelTypeText(data) {
+        const candidate = data?.model_type
+            || data?.config?.model_type
+            || data?.dataset_config?.model_type
+            || data?.metadata?.model_type
+            || data?.params?.model_type
+            || data?.info?.model_type;
+        return this.formatEnumLabel(candidate);
+    }
+
+    updateProgress(data) {
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        if (!progressFill || !progressText) return;
+
+        const total = data.total_epochs || 0;
+        const current = data.epoch || 0;
+        const ratio = total > 0 ? Math.min(current / total, 1) : 0;
+        progressFill.style.width = `${(ratio * 100).toFixed(1)}%`;
+        progressText.textContent = total > 0 ? `第 ${current} 轮 / 共 ${total} 轮` : '正在准备训练...';
+        this.setText('epochCurrent', current || 0);
+        this.setText('epochTotal', total || '--');
+    }
+
+    updateLoss(data) {
+        const lossDisplay = document.getElementById('lossValue');
+        const valLossDisplay = document.getElementById('valLossValue');
+        const trainLoss = this.normalizeNumericValue(data.loss ?? data.train_loss);
+        const valLoss = this.normalizeNumericValue(data.val_loss);
+
+        if (lossDisplay) {
+            if (trainLoss !== null) {
+                lossDisplay.textContent = trainLoss.toFixed(6);
+            } else if (!lossDisplay.textContent || lossDisplay.textContent === '--') {
+                lossDisplay.textContent = '计算中...';
+            }
+        }
+
+        if (valLossDisplay) {
+            if (valLoss !== null) {
+                valLossDisplay.textContent = valLoss.toFixed(6);
+            } else if (!valLossDisplay.textContent) {
+                valLossDisplay.textContent = '--';
+            }
+        }
+
+        if (data.epoch && data.epoch > 0 && (trainLoss !== null || valLoss !== null)) {
+            this.updateChart(data.epoch, trainLoss, valLoss);
+        }
+    }
+
+    updateLogs(data) {
+        const logs = Array.isArray(data.logs) ? data.logs : [];
+        if (logs.length) {
+            logs.forEach(log => {
+                if (log && !this.displayedMessages.has(log) && this.shouldDisplayLog(log, data.epoch)) {
+                    this.displayedMessages.add(log);
+                    this.addLogEntry(log);
+                }
+            });
+        } else if (data.message && !this.displayedMessages.has(data.message) && this.shouldDisplayLog(data.message, data.epoch)) {
+            this.displayedMessages.add(data.message);
+            this.addLogEntry(data.message);
+        }
+    }
+
+    updateThresholdInfo(data) {
+        const card = document.getElementById('thresholdInfoCard');
+        if (!card) return;
+
+        const valuePresent = data.threshold_value !== undefined && data.threshold_value !== null;
+        const pathPresent = Boolean(data.threshold_path);
+
+        if (!valuePresent && !pathPresent) {
+            card.style.display = 'none';
+            this.thresholdPath = '';
+            this.thresholdValue = null;
+            return;
+        }
+
+        card.style.display = 'block';
+        if (valuePresent) {
+            const numericValue = Number(data.threshold_value);
+            const formatted = Number.isFinite(numericValue) ? numericValue.toFixed(6) : data.threshold_value;
+            this.setText('thresholdValueText', formatted);
+        } else {
+            this.setText('thresholdValueText', '--');
+        }
+
+        if (pathPresent) {
+            this.setText('thresholdPathText', data.threshold_path);
+        } else if (!valuePresent) {
+            this.setText('thresholdPathText', '等待计算阈值...');
+        } else {
+            this.setText('thresholdPathText', '--');
+        }
+
+        const metadata = data.threshold_metadata || {};
+        const methodParts = [];
+        if (metadata.method) methodParts.push(metadata.method.toString().toUpperCase());
+        if (metadata.residual_metric) methodParts.push(metadata.residual_metric);
+        if (metadata.percentile) methodParts.push(`P${metadata.percentile}`);
+        this.setText('thresholdMethodText', methodParts.join(' · ') || '自动计算');
+        this.setText('thresholdSampleText', metadata.sample_size ? `${metadata.sample_size} 条样本` : '样本量未知');
+        this.setText('thresholdFileStatus', pathPresent ? '已生成' : '生成中...');
+
+        this.thresholdPath = pathPresent ? data.threshold_path : '';
+        this.thresholdValue = valuePresent ? Number(data.threshold_value) : null;
+    }
+
+    copyThresholdPath() {
+        if (!this.thresholdValue && !this.thresholdPath) {
+            alert('阈值尚未生成');
+            return;
+        }
+
+        const payload = this.thresholdValue ? this.thresholdValue.toString() : this.thresholdPath;
+        if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(payload)
+                .then(() => this.addLogEntry(`阈值信息已复制：${payload}`))
+                .catch(() => this.fallbackCopy(payload));
+        } else {
+            this.fallbackCopy(payload);
+        }
+    }
+
+    fallbackCopy(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = 0;
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+            this.addLogEntry(`阈值信息已复制：${text}`);
+        } catch (error) {
+            alert('复制失败，请手动复制');
+        }
+        document.body.removeChild(textarea);
+    }
+
+    updateEvaluationResults(data) {
+        const card = document.getElementById('evaluationResultsCard');
+        if (!card) return;
+        const evalData = data.evaluation;
+        if (!evalData) {
+            card.style.display = 'none';
+            return;
+        }
+
+        card.style.display = 'block';
+        const formatNumber = (num, decimals = 6) => {
+            if (num === undefined || num === null || num === '') return '--';
+            return Number(num).toFixed(decimals);
+        };
+        const formatPercent = (num) => {
+            if (num === undefined || num === null || num === '') return '--';
+            return `${(Number(num) * 100).toFixed(2)}%`;
+        };
+
+        const totalSamples = evalData.total_samples ?? evalData.sample_count;
+        this.setText('evalTestFileText', evalData.test_file || '测试数据');
+        this.setText('evalSamplesText', totalSamples ?? '--');
+        this.setText('evalSamplesQuickText', totalSamples ?? '--');
+        this.setText('evalMeanErrorText', formatNumber(evalData.mean_error));
+        this.setText('evalStdErrorText', formatNumber(evalData.std_error));
+        this.setText('evalP95Text', formatNumber(evalData.percentile_95));
+        this.setText('evalMedianErrorText', formatNumber(evalData.median_error));
+        this.setText('evalMinErrorText', formatNumber(evalData.min_error));
+        this.setText('evalMaxErrorText', formatNumber(evalData.max_error));
+        this.setText('evalP99Text', formatNumber(evalData.percentile_99));
+
+        const classificationSection = document.getElementById('classificationMetrics');
+        const errorComparisonSection = document.getElementById('errorComparisonSection');
+
+        if (evalData.has_labels) {
+            if (classificationSection) classificationSection.style.display = 'block';
+            if (errorComparisonSection) errorComparisonSection.style.display = 'block';
+
+            this.setText('evalAccuracyText', formatPercent(evalData.accuracy));
+            this.setText('evalPrecisionText', formatPercent(evalData.precision));
+            this.setText('evalRecallText', formatPercent(evalData.recall));
+            this.setText('evalF1Text', formatPercent(evalData.f1_score));
+            this.setText('evalNormalSamplesText', evalData.normal_samples ?? '--');
+            this.setText('evalAnomalySamplesText', evalData.anomaly_samples ?? '--');
+            this.setText('evalThresholdUsedText', formatNumber(evalData.threshold_used));
+
+            const tp = evalData.true_positive ?? 0;
+            const tn = evalData.true_negative ?? 0;
+            const fp = evalData.false_positive ?? 0;
+            const fn = evalData.false_negative ?? 0;
+            const matrixEl = document.getElementById('evalConfusionText');
+            if (matrixEl) {
+                matrixEl.innerHTML = `TP: ${tp}, TN: ${tn}<br>FP: ${fp}, FN: ${fn}`;
+            }
+
+            this.setText('evalNormalErrorMeanText', formatNumber(evalData.normal_error_mean));
+            this.setText('evalNormalErrorStdText', formatNumber(evalData.normal_error_std));
+            this.setText('evalAnomalyErrorMeanText', formatNumber(evalData.anomaly_error_mean));
+            this.setText('evalAnomalyErrorStdText', formatNumber(evalData.anomaly_error_std));
+
+            this.addLogEntry(`📊 测试集评估完成 - 准确率: ${formatPercent(evalData.accuracy)}, F1: ${formatPercent(evalData.f1_score)}, 样本数: ${totalSamples ?? '--'}`);
+        } else {
+            if (classificationSection) classificationSection.style.display = 'none';
+            if (errorComparisonSection) errorComparisonSection.style.display = 'none';
+            this.addLogEntry(`📊 测试集评估完成 - 平均误差: ${formatNumber(evalData.mean_error)}, 样本数: ${totalSamples ?? '--'}`);
+        }
+    }
+
+    updateChart(epoch, trainLoss, valLoss) {
+        if (!this.chart || !epoch) return;
+        const label = `第${epoch}轮`;
+        const index = this.epochData.indexOf(epoch);
+
+        if (index === -1) {
+            this.epochData.push(epoch);
+            this.lossData.push(trainLoss !== null ? trainLoss : null);
+            this.valLossData.push(valLoss !== null ? valLoss : null);
+            this.chart.data.labels.push(label);
+        } else {
+            if (trainLoss !== null) {
+                this.lossData[index] = trainLoss;
+            }
+            if (valLoss !== null) {
+                this.valLossData[index] = valLoss;
+            }
+        }
+
+        this.chart.data.datasets[0].data = this.lossData;
+        this.chart.data.datasets[1].data = this.valLossData;
+        this.chart.update('none');
+    }
+
+    shouldDisplayLog(message, currentEpoch) {
+        if (!message || typeof message !== 'string') return false;
+        const epochMatch = message.match(/Epoch (\d+)/i);
+        if (epochMatch) {
+            const epochValue = parseInt(epochMatch[1], 10);
+            if (!Number.isFinite(epochValue)) return false;
+            if (!currentEpoch || currentEpoch <= 20) return true;
+            return epochValue === 1 || epochValue % 5 === 0 || epochValue === currentEpoch;
+        }
+
+        const keywords = ['开始训练', '训练完成', '训练失败', 'Starting model training', 'Training completed', 'Training failed', '阈值计算', 'Threshold calculation', 'Error', 'Failed', '错误'];
+        return keywords.some(keyword => message.includes(keyword));
+    }
+
+    addLogEntry(message) {
+        const logContainer = document.getElementById('logContainer');
+        if (!logContainer) return;
+        const timestamp = new Date().toLocaleTimeString();
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML = `<span class="log-timestamp">[${timestamp}]</span>${message}`;
+        logContainer.appendChild(entry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+
+        const entries = logContainer.querySelectorAll('.log-entry');
+        if (entries.length > 200) {
+            entries[0].remove();
+        }
+    }
+
+    updateElapsedTime() {
+        if (!(this.startTime instanceof Date) || isNaN(this.startTime.getTime())) return;
+        const elapsed = Date.now() - this.startTime.getTime();
+        if (elapsed < 0) return;
+        const minutes = Math.floor(elapsed / 60000);
+        const seconds = Math.floor((elapsed % 60000) / 1000);
+        this.setText('elapsedTime', `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+    }
+
+    showDownloadModelButton(show) {
+        const container = document.getElementById('downloadModelContainer');
+        const btn = document.getElementById('downloadModelBtn');
+        if (!container || !btn) return;
+        container.style.display = show ? 'block' : 'none';
+        btn.disabled = !show;
+    }
+
+    stopMonitoring() {
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+            this.updateInterval = null;
+        }
+        if (this.timeInterval) {
+            clearInterval(this.timeInterval);
+            this.timeInterval = null;
+        }
+    }
+
+    bindEvents() {
+        const copyBtn = document.getElementById('copyThresholdPathBtn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => this.copyThresholdPath());
+        }
+
+        const downloadModelBtn = document.getElementById('downloadModelBtn');
+        if (downloadModelBtn) {
+            downloadModelBtn.addEventListener('click', () => this.downloadModelToLocal());
+        }
+    }
+
+    async downloadModelToLocal() {
+        const btn = document.getElementById('downloadModelBtn');
+        if (!btn || btn.disabled) return;
+        const originalLabel = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>下载中...';
+        btn.disabled = true;
+        try {
+            this.addLogEntry('开始从云端下载模型到本地...');
+            const response = await fetch(`/anomaly_detection/api/download_model_from_cloud/${this.taskId}`, { method: 'POST' });
+            const result = await response.json();
+            if (result.success) {
+                this.addLogEntry(`模型下载成功：${result.message || ''}`);
+                alert(`模型已成功下载到本地！\n目标位置：${result.local_path || '本地模型目录'}\n文件数量：${result.files_count || '未知'}`);
+            } else {
+                const errorMsg = result.error || '未知错误';
+                this.addLogEntry(`模型下载失败：${errorMsg}`);
+                alert(`模型下载失败：${errorMsg}`);
+            }
+        } catch (error) {
+            console.error('下载模型失败:', error);
+            this.addLogEntry(`模型下载异常：${error.message}`);
+            alert(`模型下载异常：${error.message}`);
+        } finally {
+            btn.innerHTML = originalLabel;
+            btn.disabled = false;
+        }
+    }
+
+    destroy() {
+        this.stopMonitoring();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('TRAINING PROGRESS PAGE LOADED - VERSION 4.0');
+    if (window.XMLHttpRequest) {
+        const originalOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+            if (url.includes('training_status')) {
+                const separator = url.includes('?') ? '&' : '?';
+                url += `${separator}_t=${Date.now()}`;
+            }
+            return originalOpen.call(this, method, url, ...rest);
+        };
+    }
+    window.trainingMonitor = new TrainingProgressMonitor();
+});
+
+window.addEventListener('beforeunload', () => {
+    if (window.trainingMonitor) {
+        window.trainingMonitor.destroy();
+    }
+});
+</script>
+{% endblock %}

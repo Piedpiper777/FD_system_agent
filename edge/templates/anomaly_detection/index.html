@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}异常检测 - 工业智能维护系统{% endblock %}
+
+{% block content %}
+<div class="module-landing anomaly-landing">
+    <header class="page-heading text-center">
+        <p class="heading-kicker">Anomaly · Intelligence</p>
+        <h1 class="heading-title">异常检测</h1>
+        <p class="heading-subtitle">构建从数据采集、模型训练到在线异常告警的一站式流程，实时洞察设备健康。</p>
+    </header>
+
+    <div class="cards-grid module-card-grid">
+        <div class="feature-card">
+            <div class="card-header card--train">
+                <div class="card-icon-wrapper">
+                    <div class="icon-circle">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                </div>
+                <h3 class="card-title">模型训练</h3>
+                <p class="card-caption">窗口定义 · 阈值策略 · 指标跟踪</p>
+            </div>
+            <div class="card-body">
+                <p class="card-description">通过参数化向导快速完成模型配置与训练，结合多工况数据稳步迭代。</p>
+                <ul class="card-list">
+                    <li><i class="fas fa-check-circle"></i> 多模型模版可选，适配不同工况</li>
+                    <li><i class="fas fa-check-circle"></i> 告警阈值与指标统一配置</li>
+                    <li><i class="fas fa-check-circle"></i> 训练日志与版本记录一目了然</li>
+                </ul>
+                <a href="/anomaly_detection/train" class="card-btn">
+                    <span>开始训练</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+        <div class="feature-card">
+            <div class="card-header card--infer">
+                <div class="card-icon-wrapper">
+                    <div class="icon-circle">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+                <h3 class="card-title">异常检测</h3>
+                <p class="card-caption">实时监测 · 告警分级 · 报告导出</p>
+            </div>
+            <div class="card-body">
+                <p class="card-description">加载最新模型，监控数据流并输出异常得分、告警记录与摘要说明。</p>
+                <ul class="card-list">
+                    <li><i class="fas fa-check-circle"></i> 多通道数据同步分析</li>
+                    <li><i class="fas fa-check-circle"></i> 告警规则与分级灵活配置</li>
+                    <li><i class="fas fa-check-circle"></i> 检测结果支持导出与共享</li>
+                </ul>
+                <a href="/anomaly_detection/inference" class="card-btn">
+                    <span>开始推理</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <section class="insight-row">
+        <div class="insight-card">
+            <div class="insight-icon insight-orange">
+                <i class="fas fa-layer-group"></i>
+            </div>
+            <div>
+                <h5>多模态特征融合</h5>
+                <p>时域与统计特征协同分析，覆盖机械、电气、环境多维信号。</p>
+            </div>
+        </div>
+        <div class="insight-card">
+            <div class="insight-icon insight-amber">
+                <i class="fas fa-broadcast-tower"></i>
+            </div>
+            <div>
+                <h5>智能阈值联动</h5>
+                <p>异常分级、阈值一次设定，多场景自动复用。</p>
+            </div>
+        </div>
+        <div class="insight-card">
+            <div class="insight-icon insight-red">
+                <i class="fas fa-search-location"></i>
+            </div>
+            <div>
+                <h5>结果可追溯</h5>
+                <p>输出异常摘要与关键指标，让定位原因更直观。</p>
+            </div>
+        </div>
+    </section>
+</div>
+
+<style>
+.module-landing {
+    padding: 2rem 0 3rem;
+}
+
+.page-heading {
+    margin-bottom: 2.5rem;
+}
+
+.heading-kicker {
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    margin-bottom: 0.4rem;
+    color: #7c6b58;
+}
+
+.heading-title {
+    font-size: clamp(2.2rem, 5vw, 3.2rem);
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+    color: #2f1b07;
+}
+
+.heading-subtitle {
+    font-size: 1.05rem;
+    color: #6f5a4a;
+}
+
+.module-card-grid {
+    margin-bottom: 2.5rem;
+}
+
+.module-card-grid .feature-card {
+    background: #fff;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(122, 84, 35, 0.18);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.35s ease;
+    animation: fadeInUp 0.6s ease both;
+}
+
+.module-card-grid .feature-card:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.module-card-grid .feature-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 18px 40px rgba(122, 84, 35, 0.25);
+}
+
+.module-card-grid .card-header {
+    padding: 28px 28px 20px;
+    text-align: center;
+    color: #fff;
+    min-height: 160px;
+}
+
+.card--train {
+    background: linear-gradient(135deg, #5AD792, #219653);
+}
+
+.card--infer {
+    background: linear-gradient(135deg, #FFBF86, #F2994A);
+}
+
+.card-icon-wrapper {
+    margin-bottom: 1rem;
+}
+
+.icon-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.icon-circle i {
+    font-size: 26px;
+    color: #fff;
+}
+
+.feature-card:hover .icon-circle {
+    transform: scale(1.08);
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.card-title {
+    font-size: 1.6rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem 0;
+}
+
+.card-caption {
+    margin: 0;
+    font-size: 0.95rem;
+    opacity: 0.85;
+}
+
+.card-body {
+    padding: 24px 28px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.card-description {
+    font-size: 0.95rem;
+    color: #4b4134;
+    margin: 0;
+}
+
+.card-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    color: #4b4134;
+}
+
+.card-list li {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.4rem;
+    font-size: 0.92rem;
+}
+
+.card-list i {
+    color: #219653;
+}
+
+.module-card-grid .feature-card:nth-child(2) .card-list i {
+    color: #F2994A;
+}
+
+.card-btn {
+    align-self: center;
+    padding: 10px 28px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #FFFFFF, #F3F4F6);
+    color: #2f1b07;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 6px 18px rgba(122, 84, 35, 0.18);
+    transition: all 0.3s ease;
+}
+
+.card-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(122, 84, 35, 0.26);
+    color: #2f1b07;
+}
+
+.card-btn i {
+    transition: transform 0.3s ease;
+}
+
+.card-btn:hover i {
+    transform: translateX(4px);
+}
+
+.insight-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+    margin-top: 3rem;
+}
+
+.insight-card {
+    background: #fff;
+    border-radius: 1.25rem;
+    padding: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    box-shadow: 0 1rem 2rem rgba(122, 84, 35, 0.12);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.insight-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 1.5rem 2.4rem rgba(122, 84, 35, 0.2);
+}
+
+.insight-card h5 {
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+}
+
+.insight-card p {
+    margin: 0;
+    color: #6f5a4a;
+}
+
+.insight-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #fff;
+}
+
+.insight-orange { background: linear-gradient(135deg, #F2994A, #F25D27); }
+.insight-amber { background: linear-gradient(135deg, #FFB347, #FFCC33); }
+.insight-red { background: linear-gradient(135deg, #FF7E5F, #E84A5F); }
+
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(25px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .heading-title {
+        font-size: 2rem;
+    }
+
+    .heading-subtitle {
+        font-size: 0.95rem;
+    }
+
+    .card-body {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 576px) {
+    .insight-row {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

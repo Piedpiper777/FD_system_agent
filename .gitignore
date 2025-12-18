@@ -1,0 +1,73 @@
+# 操作系统与编辑器生成文件
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+
+# Python 缓存与虚拟环境
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+.env
+.env.*.local
+.python-version
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage.*
+.cache/
+.nox/
+.tox/
+*.egg-info/
+*.eggs/
+build/
+dist/
+
+# 日志与临时文件
+*.log
+*.tmp
+
+# 前端/Node 依赖与缓存
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.parcel-cache/
+
+# 文档/测试输出
+htmlcov/
+site/
+docs/_build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# 数据文件
+*.csv
+*.json
+*.npy
+*.npz
+*.pkl
+*.jsonl
+
+#模型文件
+*.onnx
+*.pb
+*.pth
+*.pt
+*.pkl
+*.pkl.gz
+*.pkl.bz2
+*.pkl.zip
+*.pkl.tar
+*.pkl.tar.gz
+*.pkl.tar.bz2
+*.pkl.tar.zip
+*.ckpt

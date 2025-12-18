@@ -1,0 +1,800 @@
+{% extends "base.html" %}
+
+{% block title %}模型管理 - 异常检测{% endblock %}
+
+{% block content %}
+<style>
+.model-card {
+    transition: all 0.3s ease;
+    border: 1px solid #e3e6f0;
+    border-radius: 0.75rem;
+}
+
+.model-card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.evaluation-card {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    color: white;
+    border: none;
+}
+
+.evaluation-card .card-body {
+    padding: 1.5rem;
+}
+
+.metric-badge {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.btn-outline-light {
+    border-color: rgba(255, 255, 255, 0.5);
+    color: white;
+}
+
+.btn-outline-light:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: white;
+    color: white;
+}
+
+/* 模型信息弹窗样式优化 */
+#modelInfoModal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+#modelInfoModal .modal-body > div {
+    margin-bottom: 1.5rem;
+}
+
+#modelInfoModal .modal-body > div:last-child {
+    margin-bottom: 0;
+}
+
+#modelInfoModal .modal-body h6 {
+    font-weight: 600;
+    color: #495057;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
+#modelInfoModal .list-group {
+    border-radius: 0.375rem;
+    border: 1px solid #dee2e6;
+}
+
+#modelInfoModal .list-group-item {
+    padding: 0.75rem 1rem;
+    transition: background-color 0.2s ease;
+    border-left: none;
+    border-right: none;
+}
+
+#modelInfoModal .list-group-item:first-child {
+    border-top: none;
+    border-top-left-radius: 0.375rem;
+    border-top-right-radius: 0.375rem;
+}
+
+#modelInfoModal .list-group-item:last-child {
+    border-bottom: none;
+    border-bottom-left-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+}
+
+#modelInfoModal .list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+#modelInfoModal .table {
+    margin-bottom: 0;
+}
+
+#modelInfoModal .table td {
+    vertical-align: middle;
+    padding: 0.75rem;
+}
+
+#modelInfoModal .table td:first-child {
+    width: 35%;
+    color: #6c757d;
+    background-color: #f8f9fa;
+}
+</style>
+
+<div class="text-center mb-5">
+    <h2 class="mb-3">
+        <i class="fas fa-cogs me-3 text-primary"></i>
+        模型管理中心
+    </h2>
+    <p class="text-muted lead">管理本地训练好的模型</p>
+</div>
+
+<!-- 模型列表 -->
+<div class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0">
+            <i class="fas fa-robot me-2 text-primary"></i>
+            训练好的模型
+        </h4>
+        <div class="btn-group" role="group">
+            <button class="btn btn-success" onclick="syncAllModels()" id="syncAllBtn">
+                <i class="fas fa-cloud-download-alt me-1"></i>同步云端模型
+            </button>
+            <button class="btn btn-outline-primary" onclick="loadModels()">
+                <i class="fas fa-sync-alt me-1"></i>刷新列表
+            </button>
+        </div>
+    </div>
+    <div id="modelsContainer" class="row g-4">
+        <!-- 模型卡片将在这里动态生成 -->
+    </div>
+</div>
+
+<!-- 加载状态 -->
+<div id="loadingIndicator" class="text-center py-5" style="display: none;">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">加载中...</span>
+    </div>
+    <p class="mt-2 text-muted">正在加载数据...</p>
+</div>
+
+    <script>
+        // 从后端获取云端服务URL配置
+        const CLOUD_BASE_URL = {{ cloud_base_url|tojson }};
+// 获取模型类型图标
+function getModelTypeIcon(modelType) {
+    switch(modelType) {
+        case 'lstm_predictor':
+            return '<i class="fas fa-chart-line fa-2x text-primary me-3" title="LSTM预测器"></i>';
+        case 'lstm_autoencoder':
+            return '<i class="fas fa-compress-arrows-alt fa-2x text-info me-3" title="LSTM自编码器"></i>';
+        case 'cnn_1d_autoencoder':
+            return '<i class="fas fa-layer-group fa-2x text-success me-3" title="1D CNN自编码器"></i>';
+        default:
+            return '<i class="fas fa-brain fa-2x text-primary me-3" title="异常检测模型"></i>';
+    }
+}
+
+// 获取模型类型描述
+function getModelTypeDescription(modelType) {
+    switch(modelType) {
+        case 'lstm_predictor':
+            return 'LSTM预测器 - 基于预测误差的异常检测';
+        case 'lstm_autoencoder':
+            return 'LSTM自编码器 - 基于重构误差的异常检测';
+        case 'cnn_1d_autoencoder':
+            return '1D CNN自编码器 - 基于1D卷积重构误差的异常检测';
+        default:
+            return modelType || '异常检测模型';
+    }
+}
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadModels();
+    // 评估功能已移除，不再加载评估结果
+    // loadEvaluations();
+});
+
+// 加载模型列表
+async function loadModels() {
+    const container = document.getElementById('modelsContainer');
+    const loading = document.getElementById('loadingIndicator');
+    
+    try {
+        loading.style.display = 'block';
+        
+        const response = await fetch('/anomaly_detection/api/models');
+        const result = await response.json();
+        
+        if (result.success) {
+            displayModels(result.models);
+            console.log(`✅ 已加载 ${result.total_count} 个模型`);
+        } else {
+            throw new Error(result.error || '加载模型失败');
+        }
+    } catch (error) {
+        console.error('Load models error:', error);
+        container.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    加载模型列表失败: ${error.message}
+                    <br><small class="mt-2 d-block">请检查云端服务是否正常运行</small>
+                </div>
+            </div>
+        `;
+    } finally {
+        loading.style.display = 'none';
+    }
+}
+
+// 显示模型列表
+function displayModels(models) {
+    const container = document.getElementById('modelsContainer');
+    
+    if (models.length === 0) {
+        container.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    暂无训练好的模型，请先进行模型训练。
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = models.map(model => {
+        // 确定模型状态标签
+        let statusBadge = '';
+        let syncButton = '';
+        
+        switch(model.status) {
+            case 'local':
+                statusBadge = '<span class="badge bg-primary"><i class="fas fa-desktop me-1"></i>本地</span>';
+                break;
+            case 'synced':
+                statusBadge = '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>已同步</span>';
+                break;
+            case 'cloud_only':
+                statusBadge = '<span class="badge bg-info"><i class="fas fa-cloud me-1"></i>云端</span>';
+                syncButton = `<button class="btn btn-success btn-sm" 
+                                    onclick="syncModel('${model.task_id}')" 
+                                    title="下载到本地">
+                                <i class="fas fa-download me-1"></i>下载
+                            </button>`;
+                break;
+            default:
+                statusBadge = '<span class="badge bg-secondary">未知</span>';
+        }
+        
+        return `
+        <div class="col-md-6 col-lg-4">
+            <div class="card model-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="d-flex align-items-center">
+                            ${getModelTypeIcon(model.model_type)}
+                            <div>
+                                <h6 class="card-title mb-1">${model.task_id}</h6>
+                                <small class="text-muted">${getModelTypeDescription(model.model_type)}</small>
+                            </div>
+                        </div>
+                        <div>${statusBadge}</div>
+                    </div>
+                    
+                    <!-- 训练配置信息 -->
+                    ${model.config ? `
+                    <div class="mb-3">
+                        <small class="text-muted d-block">训练配置</small>
+                        <div class="row g-1">
+                            <div class="col-6">
+                                <span class="badge bg-light text-dark">序列长度: ${model.config.sequence_length || 50}</span>
+                            </div>
+                            <div class="col-6">
+                                <span class="badge bg-light text-dark">隐藏层: ${model.config.hidden_units || 128}</span>
+                            </div>
+                            <div class="col-6">
+                                <span class="badge bg-light text-dark">训练轮次: ${model.config.epochs || 'N/A'}</span>
+                            </div>
+                            <div class="col-6">
+                                <span class="badge bg-light text-dark">批大小: ${model.config.batch_size || 32}</span>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- 模型文件状态 -->
+                    ${model.files && model.status !== 'cloud_only' ? `
+                    <div class="mb-3">
+                        <small class="text-muted d-block">文件状态</small>
+                        <div class="d-flex gap-2">
+                            <span class="badge ${model.files.model?.exists ? 'bg-success' : 'bg-secondary'}">
+                                <i class="fas fa-brain me-1"></i>模型
+                            </span>
+                            <span class="badge ${model.files.scaler?.exists ? 'bg-success' : 'bg-secondary'}">
+                                <i class="fas fa-arrows-alt-v me-1"></i>标准化
+                            </span>
+                            <span class="badge ${model.files.threshold?.exists ? 'bg-success' : 'bg-secondary'}">
+                                <i class="fas fa-crosshairs me-1"></i>阈值
+                            </span>
+                        </div>
+                        ${model.files.threshold?.value ? `
+                            <div class="mt-1">
+                                <small class="text-success">阈值: ${model.files.threshold.value.toFixed(6)}</small>
+                            </div>
+                        ` : ''}
+                    </div>
+                    ` : (model.status === 'cloud_only' ? `
+                    <div class="mb-3">
+                        <div class="alert alert-info py-2 mb-0">
+                            <i class="fas fa-cloud me-2"></i>此模型仅在云端，点击下载到本地使用
+                        </div>
+                    </div>
+                    ` : '')}
+                    
+                    ${model.status !== 'cloud_only' ? `
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block">文件大小</small>
+                            <span class="fw-bold">${formatFileSize(model.size)}</span>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">创建时间</small>
+                            <span class="fw-bold">${formatDate(model.created_at || model.modified_at)}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteModel('${model.task_id}')">
+                            <i class="fas fa-trash me-1"></i>删除模型
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" onclick="viewModelInfo('${model.task_id}')">
+                            <i class="fas fa-info-circle me-1"></i>查看详情
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" 
+                                onclick="evaluateModel('${model.task_id}')">
+                            <i class="fas fa-search me-1"></i>推理
+                        </button>
+                    </div>
+                    ` : `
+                    <!-- 云端模型信息 -->
+                    <div class="mb-3">
+                        <div class="row g-2">
+                            ${model.size ? `
+                            <div class="col-6">
+                                <small class="text-muted d-block">文件大小</small>
+                                <span class="fw-bold">${formatFileSize(model.size)}</span>
+                            </div>
+                            ` : ''}
+                            ${model.created_at ? `
+                            <div class="col-6">
+                                <small class="text-muted d-block">创建时间</small>
+                                <span class="fw-bold">${formatDate(model.created_at)}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-info btn-sm" onclick="viewCloudModelInfo('${model.task_id}')">
+                            <i class="fas fa-info-circle me-1"></i>查看详情
+                        </button>
+                        ${syncButton}
+                    </div>
+                    `}
+                </div>
+            </div>
+        </div>
+    `;
+    }).join('');
+}
+
+// 加载评估结果列表（已移除，不再使用）
+// async function loadEvaluations() {
+//     const container = document.getElementById('evaluationsContainer');
+//     
+//     if (!container) {
+//         console.warn('评估结果容器不存在，跳过加载');
+//         return;
+//     }
+//     
+//     try {
+//         const response = await fetch('/anomaly_detection/api/evaluations');
+//         const result = await response.json();
+//         
+//         if (result.success) {
+//             displayEvaluations(result.evaluations);
+//         } else {
+//             throw new Error(result.error || '加载评估结果失败');
+//         }
+//     } catch (error) {
+//         console.error('Load evaluations error:', error);
+//         if (container) {
+//             container.innerHTML = `
+//                 <div class="col-12">
+//                     <div class="alert alert-danger">
+//                         <i class="fas fa-exclamation-triangle me-2"></i>
+//                         加载评估结果失败: ${error.message}
+//                     </div>
+//                 </div>
+//             `;
+//         }
+//     }
+// }
+
+// 推理模型
+function evaluateModel(taskId) {
+    // 跳转到推理页面，并预选择模型
+    window.location.href = `/anomaly_detection/inference?model=${encodeURIComponent(taskId)}`;
+}
+
+// 删除模型
+async function deleteModel(taskId) {
+    if (!confirm(`确定要删除模型 ${taskId} 吗？此操作不可恢复！`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/anomaly_detection/api/models/${taskId}`, {
+            method: 'DELETE'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('模型删除成功！');
+            location.reload();
+        } else {
+            throw new Error(result.error || '删除模型失败');
+        }
+    } catch (error) {
+        alert(`删除模型失败: ${error.message}`);
+        console.error('Delete model error:', error);
+    }
+}
+
+// 查看模型详细信息
+async function viewModelInfo(taskId) {
+    try {
+        const response = await fetch(`/anomaly_detection/api/models/${taskId}/info`);
+        const result = await response.json();
+        
+        if (result.success) {
+            showModelInfoModal(result.model_info);
+        } else {
+            throw new Error(result.error || '获取模型信息失败');
+        }
+    } catch (error) {
+        alert(`获取模型信息失败: ${error.message}`);
+    }
+}
+
+// 显示模型信息模态框
+function showModelInfoModal(modelInfo) {
+    const modalHtml = `
+        <div class="modal fade" id="modelInfoModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-brain me-2"></i>
+                            模型详细信息
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- 基本信息 -->
+                        <div class="mb-4">
+                            <h6 class="mb-3 pb-2 border-bottom">
+                                <i class="fas fa-info-circle text-primary me-2"></i>基本信息
+                            </h6>
+                            <table class="table table-sm table-bordered">
+                                <tbody>
+                                    <tr><td class="fw-bold">任务ID</td><td>${modelInfo.task_id}</td></tr>
+                                    <tr><td class="fw-bold">模型类型</td><td>${modelInfo.model_type}</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 训练配置 -->
+                        <div class="mb-4">
+                            <h6 class="mb-3 pb-2 border-bottom">
+                                <i class="fas fa-cog text-info me-2"></i>训练配置
+                            </h6>
+                            <table class="table table-sm table-bordered">
+                                <tbody>
+                                    ${Object.entries(modelInfo.config || {}).map(([key, value]) => 
+                                        `<tr><td class="fw-bold">${key}</td><td>${value}</td></tr>`
+                                    ).join('')}
+                                    ${Object.keys(modelInfo.config || {}).length === 0 ? `
+                                        <tr><td colspan="2" class="text-center text-muted py-3">暂无配置信息</td></tr>
+                                    ` : ''}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 文件列表 -->
+                        <div class="mb-3">
+                            <h6 class="mb-3 pb-2 border-bottom">
+                                <i class="fas fa-folder-open text-success me-2"></i>文件列表
+                            </h6>
+                            <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                                ${Object.entries(modelInfo.files || {}).map(([filename, info]) => `
+                                    <div class="list-group-item d-flex justify-content-between align-items-start border-bottom">
+                                        <div class="flex-grow-1">
+                                            <strong class="d-block mb-1">${filename}</strong>
+                                            <small class="text-muted d-block">
+                                                <i class="fas fa-hdd me-1"></i>${formatFileSize(info.size)}
+                                            </small>
+                                        </div>
+                                        <small class="text-muted text-nowrap ms-2">
+                                            <i class="fas fa-clock me-1"></i>${formatDate(info.created_at)}
+                                        </small>
+                                    </div>
+                                `).join('')}
+                                ${Object.keys(modelInfo.files || {}).length === 0 ? `
+                                    <div class="list-group-item text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                                        <p class="mb-0">暂无文件信息</p>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                        <button type="button" class="btn btn-danger" onclick="deleteModel('${modelInfo.task_id}')">
+                            <i class="fas fa-trash me-1"></i>删除模型
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 移除已存在的模态框
+    const existingModal = document.getElementById('modelInfoModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // 添加新模态框
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // 显示模态框
+    const modal = new bootstrap.Modal(document.getElementById('modelInfoModal'));
+    modal.show();
+}
+
+// 同步模型
+async function syncModel(taskId) {
+    try {
+        // 显示加载状态
+        const syncBtn = event.target;
+        const originalContent = syncBtn.innerHTML;
+        syncBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>同步中...';
+        syncBtn.disabled = true;
+        
+        const response = await fetch(`/anomaly_detection/api/models/${taskId}/sync`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            // 根据同步状态显示不同消息
+            let message = '操作成功！';
+            
+            switch (result.status) {
+                case 'already_exists':
+                    message = '模型已存在于本地，无需重复下载。';
+                    break;
+                case 'downloaded':
+                    message = '模型已成功从云端下载到本地！';
+                    break;
+                case 'updated':
+                    message = '模型已成功更新！';
+                    break;
+                default:
+                    message = result.message || '模型同步成功！';
+            }
+            
+            alert(`${message}\n页面将刷新显示最新状态。`);
+            location.reload();
+            
+        } else {
+            throw new Error(result.error || '模型同步失败');
+        }
+    } catch (error) {
+        alert(`模型同步失败: ${error.message}`);
+        console.error('Sync model error:', error);
+    } finally {
+        // 恢复按钮状态
+        if (event.target) {
+            event.target.innerHTML = originalContent;
+            event.target.disabled = false;
+        }
+    }
+}
+
+// 查看云端模型信息
+async function viewCloudModelInfo(taskId) {
+    try {
+        // 从云端获取模型信息
+        const response = await fetch(`${CLOUD_BASE_URL}/api/anomaly_detection/models/${taskId}/info`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const model = result.model;
+            
+            // 显示云端模型信息
+            document.getElementById('modelInfoContent').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-tag text-primary me-2"></i>模型标识</h6>
+                        <p class="mb-3">${model.task_id}</p>
+                        
+                        <h6><i class="fas fa-cog text-info me-2"></i>训练配置</h6>
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr><td>序列长度</td><td>${model.config?.sequence_length || 'N/A'}</td></tr>
+                                <tr><td>隐藏层单元</td><td>${model.config?.hidden_units || 'N/A'}</td></tr>
+                                <tr><td>网络层数</td><td>${model.config?.num_layers || 'N/A'}</td></tr>
+                                <tr><td>训练轮次</td><td>${model.config?.epochs || 'N/A'}</td></tr>
+                                <tr><td>批量大小</td><td>${model.config?.batch_size || 'N/A'}</td></tr>
+                                <tr><td>特征维度</td><td>${model.config?.feature_dim || 'N/A'}</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-info-circle text-success me-2"></i>模型状态</h6>
+                        <div class="alert alert-info">
+                            <i class="fas fa-cloud me-2"></i>此模型位于云端，需要下载到本地才能使用
+                        </div>
+                        
+                        <h6><i class="fas fa-file text-warning me-2"></i>文件信息</h6>
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr><td>文件大小</td><td>${formatFileSize(model.size || 0)}</td></tr>
+                                <tr><td>创建时间</td><td>${formatDate(model.created_at)}</td></tr>
+                                <tr><td>更新时间</td><td>${formatDate(model.modified_at)}</td></tr>
+                            </tbody>
+                        </table>
+                        
+                        <div class="d-grid gap-2 mt-3">
+                            <button class="btn btn-success" onclick="syncModel('${taskId}')">
+                                <i class="fas fa-download me-2"></i>下载到本地
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modelInfoModalLabel').textContent = `云端模型信息 - ${model.task_id}`;
+            
+            const modal = new bootstrap.Modal(document.getElementById('modelInfoModal'));
+            modal.show();
+            
+        } else {
+            throw new Error(result.error || '获取云端模型信息失败');
+        }
+        
+    } catch (error) {
+        alert(`获取云端模型信息失败: ${error.message}`);
+        console.error('View cloud model info error:', error);
+    }
+}
+
+// 查看评估详情（已移除，不再使用）
+// function viewEvaluationDetails(evalName) {
+//     // 这里可以打开一个模态框显示详细结果
+//     alert(`查看评估详情: ${evalName}\n\n功能开发中...`);
+// }
+
+// 下载评估摘要（已移除，不再使用）
+// function downloadEvaluationSummary(evalName) {
+//     // 构造下载链接
+//     const downloadUrl = `/anomaly_detection/api/evaluations/${evalName}/summary/download`;
+//     window.open(downloadUrl, '_blank');
+// }
+
+// 工具函数
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// 同步所有云端模型
+async function syncAllModels() {
+    const btn = document.getElementById('syncAllBtn');
+    const originalContent = btn.innerHTML;
+    
+    if (!confirm('确定要同步所有云端模型到本地吗？\n\n这将下载所有本地不存在的云端模型。')) {
+        return;
+    }
+    
+    try {
+        // 禁用按钮并显示加载状态
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>同步中...';
+        
+        const response = await fetch('/anomaly_detection/api/models/sync_all', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        // 检查响应状态
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: '网络请求失败' }));
+            throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 处理空列表情况（云端没有模型）
+            if (result.empty_list) {
+                alert('云端暂无模型可同步\n\n提示：请先在云端训练模型，然后再进行同步。');
+                // 仍然刷新模型列表
+                await loadModels();
+                return;
+            }
+            
+            let message = `同步完成！\n\n`;
+            message += `总计: ${result.total_count} 个模型\n`;
+            message += `成功: ${result.synced_count} 个\n`;
+            message += `失败: ${result.failed_count} 个\n\n`;
+            
+            if (result.failed_count > 0) {
+                message += '失败的模型：\n';
+                result.results.filter(r => r.status === 'failed').forEach(r => {
+                    message += `- ${r.task_id}: ${r.error}\n`;
+                });
+            }
+            
+            alert(message);
+            
+            // 刷新模型列表
+            await loadModels();
+        } else {
+            // 处理同步失败的情况
+            let errorMsg = result.error || '同步失败';
+            
+            // 如果是云端连接问题，提供更详细的提示
+            if (result.cloud_available === false) {
+                errorMsg += `\n\n提示：请检查云端服务器是否已启动（${CLOUD_BASE_URL}）`;
+            }
+            
+            throw new Error(errorMsg);
+        }
+    } catch (error) {
+        console.error('Sync all models error:', error);
+        
+        // 显示友好的错误提示
+        let errorMessage = error.message || '同步失败';
+        if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+            errorMessage = '网络连接失败，请检查网络连接或服务器状态';
+        }
+        
+        alert(`同步失败\n\n${errorMessage}`);
+    } finally {
+        // 恢复按钮状态
+        btn.disabled = false;
+        btn.innerHTML = originalContent;
+    }
+}
+</script>
+
+<div class="text-center mt-5">
+    <a href="/anomaly_detection" class="btn btn-outline-primary btn-lg px-5 py-3">
+        <i class="fas fa-arrow-left me-2"></i>
+        返回异常检测主页
+    </a>
+</div>
+{% endblock %}

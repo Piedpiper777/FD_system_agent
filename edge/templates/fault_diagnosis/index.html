@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}故障诊断 - 工业智能维护系统{% endblock %}
+
+{% block content %}
+<div class="module-landing fault-landing">
+    <header class="page-heading text-center">
+        <p class="heading-kicker">Diagnostics · Insight</p>
+        <h1 class="heading-title">故障诊断</h1>
+        <p class="heading-subtitle">统合历史经验与实时特征，让诊断决策更准确、更可执行。</p>
+    </header>
+
+    <div class="cards-grid module-card-grid">
+        <div class="feature-card">
+            <div class="card-header card--train">
+                <div class="card-icon-wrapper">
+                    <div class="icon-circle">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                </div>
+                <h3 class="card-title">模型训练</h3>
+                <p class="card-caption">多源数据 · 故障谱系 · 标签治理</p>
+            </div>
+            <div class="card-body">
+                <p class="card-description">结合常见特征模板与训练流程，快速构建适配场景的故障诊断模型。</p>
+                <ul class="card-list">
+                    <li><i class="fas fa-check-circle"></i> 历史数据与标签集中管理</li>
+                    <li><i class="fas fa-check-circle"></i> 训练过程指标随时查看</li>
+                    <li><i class="fas fa-check-circle"></i> 模型版本切换简单直观</li>
+                </ul>
+                <a href="/fault_diagnosis/train" class="card-btn">
+                    <span>开始训练</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+        <div class="feature-card">
+            <div class="card-header card--infer">
+                <div class="card-icon-wrapper">
+                    <div class="icon-circle">
+                        <i class="fas fa-stethoscope"></i>
+                    </div>
+                </div>
+                <h3 class="card-title">在线诊断</h3>
+                <p class="card-caption">实时推理 · 事件溯源 · 策略联动</p>
+            </div>
+            <div class="card-body">
+                <p class="card-description">接入实时数据，输出诊断结论、置信提示与处理建议，辅助运维闭环。</p>
+                <ul class="card-list">
+                    <li><i class="fas fa-check-circle"></i> 多级告警逻辑灵活配置</li>
+                    <li><i class="fas fa-check-circle"></i> 诊断结论附带关键依据</li>
+                    <li><i class="fas fa-check-circle"></i> 结果支持输出日报/周报</li>
+                </ul>
+                <a href="/fault_diagnosis/inference" class="card-btn">
+                    <span>开始诊断</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <section class="insight-row">
+        <div class="insight-card">
+            <div class="insight-icon insight-green">
+                <i class="fas fa-project-diagram"></i>
+            </div>
+            <div>
+                <h5>经验库驱动</h5>
+                <p>结合历史案例与模型输出，帮助覆盖更多工况场景。</p>
+            </div>
+        </div>
+        <div class="insight-card">
+            <div class="insight-icon insight-emerald">
+                <i class="fas fa-link"></i>
+            </div>
+            <div>
+                <h5>多级诊断链路</h5>
+                <p>子系统、部件、故障模式信息可在同一视图快速对照。</p>
+            </div>
+        </div>
+        <div class="insight-card">
+            <div class="insight-icon insight-orange">
+                <i class="fas fa-sync-alt"></i>
+            </div>
+            <div>
+                <h5>维护策略闭环</h5>
+                <p>诊断结果可与计划、备件策略对齐，形成发现-处理-记录链路。</p>
+            </div>
+        </div>
+    </section>
+</div>
+
+<style>
+.module-landing {
+    padding: 2rem 0 3rem;
+}
+
+.page-heading {
+    margin-bottom: 2.5rem;
+}
+
+.heading-kicker {
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    margin-bottom: 0.4rem;
+    color: #3d5c45;
+}
+
+.heading-title {
+    font-size: clamp(2.2rem, 5vw, 3.2rem);
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+    color: #143321;
+}
+
+.heading-subtitle {
+    font-size: 1.05rem;
+    color: #4b624f;
+}
+
+.module-card-grid {
+    margin-bottom: 2.5rem;
+}
+
+.module-card-grid .feature-card {
+    background: #fff;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(20, 66, 45, 0.15);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.35s ease;
+    animation: fadeInUp 0.6s ease both;
+}
+
+.module-card-grid .feature-card:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.module-card-grid .feature-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 18px 40px rgba(20, 66, 45, 0.25);
+}
+
+.module-card-grid .card-header {
+    padding: 28px 28px 20px;
+    text-align: center;
+    color: #fff;
+    min-height: 160px;
+}
+
+.card--train {
+    background: linear-gradient(135deg, #5AD792, #219653);
+}
+
+.card--infer {
+    background: linear-gradient(135deg, #FF8A8A, #D84343);
+}
+
+.card-icon-wrapper {
+    margin-bottom: 1rem;
+}
+
+.icon-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.icon-circle i {
+    font-size: 26px;
+    color: #fff;
+}
+
+.feature-card:hover .icon-circle {
+    transform: scale(1.08);
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.card-title {
+    font-size: 1.6rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem 0;
+}
+
+.card-caption {
+    margin: 0;
+    font-size: 0.95rem;
+    opacity: 0.85;
+}
+
+.card-body {
+    padding: 24px 28px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.card-description {
+    font-size: 0.95rem;
+    color: #2b4231;
+    margin: 0;
+}
+
+.card-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    color: #2b4231;
+}
+
+.card-list li {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.4rem;
+    font-size: 0.92rem;
+}
+
+.card-list i {
+    color: #219653;
+}
+
+.module-card-grid .feature-card:nth-child(2) .card-list i {
+    color: #D84343;
+}
+
+.card-btn {
+    align-self: center;
+    padding: 10px 28px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #FFFFFF, #F3F4F6);
+    color: #143321;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 6px 18px rgba(20, 66, 45, 0.18);
+    transition: all 0.3s ease;
+}
+
+.card-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(20, 66, 45, 0.26);
+    color: #143321;
+}
+
+.card-btn i {
+    transition: transform 0.3s ease;
+}
+
+.card-btn:hover i {
+    transform: translateX(4px);
+}
+
+.insight-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+    margin-top: 3rem;
+}
+
+.insight-card {
+    background: #fff;
+    border-radius: 1.25rem;
+    padding: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    box-shadow: 0 1rem 2rem rgba(20, 66, 45, 0.12);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.insight-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 1.5rem 2.4rem rgba(20, 66, 45, 0.2);
+}
+
+.insight-card h5 {
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+}
+
+.insight-card p {
+    margin: 0;
+    color: #4b624f;
+}
+
+.insight-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #fff;
+}
+
+.insight-green { background: linear-gradient(135deg, #4CAF50, #2E8B57); }
+.insight-emerald { background: linear-gradient(135deg, #3BB78F, #0BAB64); }
+.insight-orange { background: linear-gradient(135deg, #FFB347, #FF7E5F); }
+
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(25px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .heading-title {
+        font-size: 2rem;
+    }
+
+    .heading-subtitle {
+        font-size: 0.95rem;
+    }
+
+    .card-body {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 576px) {
+    .insight-row {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

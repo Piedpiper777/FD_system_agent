@@ -1,0 +1,845 @@
+{% extends "base.html" %}
+
+{% block title %}异常检测推理{% endblock %}
+
+{% block content %}
+<style>
+    /* 页面整体样式 */
+    .inference-page {
+        min-height: 100vh;
+        padding: 2rem 0;
+    }
+
+    .page-header {
+        background: transparent;
+        color: #495057;
+        padding: 1rem 0 2rem;
+        margin-bottom: 1rem;
+        text-align: center;
+        border: none;
+        box-shadow: none;
+    }
+
+    .page-header h2 {
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: #F2994A;
+    }
+
+    .page-header p {
+        opacity: 0.8;
+        margin-bottom: 0;
+        color: #6c757d;
+    }
+
+    /* 卡片样式 */
+    .inference-card {
+        border: none;
+        border-radius: 1rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        overflow: hidden;
+    }
+
+    .inference-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    }
+
+    .inference-card .card-header {
+        background: #f8f9fa;
+        color: #495057;
+        border: none;
+        padding: 1.25rem 1.5rem;
+        font-weight: 600;
+    }
+
+    .inference-card .card-body {
+        padding: 2rem;
+    }
+
+    /* 统计卡片样式 */
+    .stat-card {
+        background: #fff;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: #F2994A;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        border-color: #F2994A;
+    }
+
+    .stat-card h4 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-card.primary h4 { color: #F2994A; }
+    .stat-card.danger h4 { color: #dc3545; }
+    .stat-card.warning h4 { color: #ffc107; }
+    .stat-card.info h4 { color: #17a2b8; }
+
+    /* 表单样式 */
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.75rem;
+    }
+
+    .form-control, .form-select {
+        border-radius: 0.5rem;
+        border: 2px solid #e9ecef;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #F2994A;
+        box-shadow: 0 0 0 0.2rem rgba(242, 153, 74, 0.25);
+    }
+
+    .form-text {
+        color: #6c757d;
+    }
+
+    /* 按钮样式 */
+    .btn-primary {
+        background: linear-gradient(135deg, #FFBF86, #F2994A);
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(242, 153, 74, 0.3);
+        background: linear-gradient(135deg, #F2994A, #E67E22);
+    }
+
+    .btn-outline-primary {
+        color: #F2994A;
+        border-color: #F2994A;
+    }
+    
+    .btn-outline-primary:hover {
+        background-color: #F2994A;
+        border-color: #F2994A;
+        color: white;
+    }
+
+    /* 结果区域样式 */
+    .results-section {
+        animation: fadeInUp 0.5s ease;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* 图表容器 */
+    .chart-container {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        margin-bottom: 1.5rem;
+    }
+
+    /* 加载动画 */
+    .loading-spinner {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* 消息提示样式 */
+    .alert-message {
+        border-radius: 0.75rem;
+        border: none;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        animation: slideInRight 0.3s ease;
+    }
+
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    /* Custom text colors */
+    .text-primary-custom {
+        color: #F2994A !important;
+    }
+
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+        .page-header {
+            padding: 1.5rem;
+        }
+
+        .stat-card h4 {
+            font-size: 1.5rem;
+        }
+    }
+    
+    .bg-primary-custom {
+        background-color: #F2994A !important;
+        color: white;
+    }
+</style>
+
+<div class="inference-page">
+    <div class="container">
+        <!-- 页面标题和导航 -->
+        <div class="page-header">
+            <h2 class="mb-2">
+                <i class="fas fa-search me-2"></i>异常检测推理
+            </h2>
+            <p class="mb-4">选择训练好的模型和数据文件，进行异常检测</p>
+        </div>
+
+        <!-- 推理配置表单 -->
+        <div class="inference-card card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-cogs me-2"></i>推理配置
+                </h5>
+            </div>
+            <div class="card-body">
+        <form id="inferenceForm">
+            <div class="row g-4">
+                <!-- 模型选择 -->
+                <div class="col-md-6">
+                    <label class="form-label" for="modelSelect">
+                        <i class="fas fa-brain me-2"></i>选择训练好的模型
+                        <span class="text-danger">*</span>
+                    </label>
+                    <div class="d-flex gap-2">
+                        <select class="form-select" id="modelSelect" name="task_id" required>
+                            <option value="">请选择模型...</option>
+                        </select>
+                        <button type="button" class="btn btn-outline-primary" id="refreshModelsBtn" title="刷新模型列表">
+                            <i class="fas fa-sync"></i>
+                        </button>
+                    </div>
+                    <div class="form-text">从 edge\models\anomaly_detection 选择训练好的模型</div>
+                </div>
+
+                <!-- 数据文件选择 -->
+                <div class="col-md-6">
+                    <label class="form-label" for="dataFileSelect">
+                        <i class="fas fa-file-csv me-2"></i>数据文件
+                        <span class="text-danger">*</span>
+                    </label>
+                    <div class="d-flex gap-2">
+                        <select class="form-select" id="dataFileSelect" name="data_file_path" required>
+                            <option value="">请选择数据文件...</option>
+                        </select>
+                        <button type="button" class="btn btn-outline-primary" id="refreshDataFilesBtn" title="刷新文件列表">
+                            <i class="fas fa-sync"></i>
+                        </button>
+                    </div>
+                    <div class="form-text">从edge\data\processed\AnomalyDetection目录中选择时序数据文件</div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label" for="batchSize">
+                        <i class="fas fa-layer-group me-2"></i>批处理大小
+                    </label>
+                    <input type="number" class="form-control" id="batchSize" 
+                           name="batch_size" value="32" min="1" max="512">
+                    <div class="form-text">推理时的批处理大小</div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="col-12">
+                    <div class="d-flex gap-3 justify-content-center">
+                        <button type="submit" class="btn btn-primary btn-lg" id="runInferenceBtn">
+                            <i class="fas fa-play me-2"></i>开始推理
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-lg" onclick="resetForm()">
+                            <i class="fas fa-undo me-2"></i>重置表单
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+        <!-- 推理结果显示区域 -->
+        <div id="resultsSection" style="display: none;" class="results-section">
+            <div class="inference-card card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>推理结果
+                    </h5>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-light" id="downloadResultBtn" style="display: none;">
+                            <i class="fas fa-download me-1"></i>下载结果
+                        </button>
+                        <button class="btn btn-sm btn-light" onclick="hideResults()">
+                            <i class="fas fa-times me-1"></i>隐藏
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- 结果统计 -->
+                    <div class="row g-4 mb-4" id="resultStats">
+                        <div class="col-md-3">
+                            <div class="stat-card primary">
+                                <h4 id="totalSamples">-</h4>
+                                <small class="text-muted">
+                                    <i class="fas fa-database me-1"></i>总样本数
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card danger">
+                                <h4 id="anomaliesCount">-</h4>
+                                <small class="text-muted">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>异常检出数
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card warning">
+                                <h4 id="anomalyRate">-</h4>
+                                <small class="text-muted">
+                                    <i class="fas fa-percentage me-1"></i>异常率
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card info">
+                                <h4 id="thresholdValue">-</h4>
+                                <small class="text-muted">
+                                    <i class="fas fa-crosshairs me-1"></i>检测阈值
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 异常分数可视化 -->
+                    <div class="chart-container">
+                        <h6 class="mb-3">
+                            <i class="fas fa-chart-area me-2 text-primary-custom"></i>异常分数时序图
+                        </h6>
+                        <div style="height: 350px; position: relative;">
+                            <canvas id="anomalyScoreChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 异常分布统计 -->
+                    <div class="chart-container">
+                        <h6 class="mb-3">
+                            <i class="fas fa-chart-bar me-2 text-primary-custom"></i>异常分数分布
+                        </h6>
+                        <div style="height: 250px; position: relative;">
+                            <canvas id="anomalyDistChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4 mb-2">
+            <a href="/anomaly_detection" class="btn btn-outline-primary btn-lg px-5 py-3">
+                <i class="fas fa-arrow-left me-2"></i>返回异常检测主页
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+class InferenceManager {
+    constructor() {
+        this.anomalyChart = null;
+        this.distChart = null;
+        this.currentResult = null;
+        this.selectedModelInfo = null;
+        this.bindEvents();
+        this.loadAvailableModels();
+        this.loadAvailableDataFiles();
+    }
+
+    bindEvents() {
+        // 表单提交
+        document.getElementById('inferenceForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.runInference();
+        });
+
+        // 刷新模型列表
+        document.getElementById('refreshModelsBtn').addEventListener('click', () => {
+            this.loadAvailableModels();
+        });
+
+        // 刷新数据文件列表
+        document.getElementById('refreshDataFilesBtn').addEventListener('click', () => {
+            this.loadAvailableDataFiles();
+        });
+
+        // 模型选择变化
+        document.getElementById('modelSelect').addEventListener('change', (e) => {
+            this.updateModelInfo(e.target.value);
+        });
+
+        // 下载结果
+        document.getElementById('downloadResultBtn').addEventListener('click', () => {
+            this.downloadResult();
+        });
+    }
+
+    async loadAvailableModels() {
+        const btn = document.getElementById('refreshModelsBtn');
+        const select = document.getElementById('modelSelect');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        try {
+            const response = await fetch('/anomaly_detection/api/available_models');
+            const result = await response.json();
+            
+            if (result.success) {
+                this.populateModelSelect(result.models);
+                this.showMessage('模型列表已更新', 'success');
+            } else {
+                throw new Error(result.error || '获取模型列表失败');
+            }
+        } catch (error) {
+            console.error('加载模型失败:', error);
+            this.showMessage(`加载模型失败: ${error.message}`, 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync"></i>';
+        }
+    }
+
+    populateModelSelect(models) {
+        const select = document.getElementById('modelSelect');
+        select.innerHTML = '<option value="">请选择模型...</option>';
+        
+        models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.task_id;
+            option.textContent = `${model.task_id} (${model.model_type}, ${model.sequence_length}步)`;
+            option.dataset.modelInfo = JSON.stringify(model);
+            
+            // 标记模型状态
+            if (model.status === 'synced') {
+                option.textContent += ' ✓';
+            }
+            
+            select.appendChild(option);
+        });
+    }
+
+    async loadAvailableDataFiles() {
+        const btn = document.getElementById('refreshDataFilesBtn');
+        const select = document.getElementById('dataFileSelect');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        try {
+            const response = await fetch('/anomaly_detection/api/data_files');
+            const result = await response.json();
+            
+            if (result.success) {
+                this.populateDataFileSelect(result.files);
+                this.showMessage('数据文件列表已更新', 'success');
+            } else {
+                throw new Error(result.error || '获取数据文件列表失败');
+            }
+        } catch (error) {
+            console.error('加载数据文件失败:', error);
+            this.showMessage(`加载数据文件失败: ${error.message}`, 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync"></i>';
+        }
+    }
+
+    populateDataFileSelect(files) {
+        const select = document.getElementById('dataFileSelect');
+        select.innerHTML = '<option value="">请选择数据文件...</option>';
+        
+        files.forEach(file => {
+            const option = document.createElement('option');
+            option.value = file.path;
+            option.textContent = `${file.name} (${this.formatFileSize(file.size)})`;
+            select.appendChild(option);
+        });
+    }
+
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    updateModelInfo(taskId) {
+        const select = document.getElementById('modelSelect');
+        const option = select.querySelector(`option[value="${taskId}"]`);
+        
+        if (option && option.dataset.modelInfo) {
+            const modelInfo = JSON.parse(option.dataset.modelInfo);
+            this.selectedModelInfo = modelInfo;
+            
+            // 显示模型信息提示
+            this.showMessage(
+                `已选择模型 ${taskId}: 序列长度=${modelInfo.sequence_length}, 隐藏单元=${modelInfo.hidden_units}, 训练轮次=${modelInfo.epochs}`,
+                'info'
+            );
+        } else {
+            this.selectedModelInfo = null;
+        }
+    }
+
+    async runInference() {
+        const formData = new FormData(document.getElementById('inferenceForm'));
+        const btn = document.getElementById('runInferenceBtn');
+        
+        // 验证必填字段
+        const taskId = formData.get('task_id');
+        const dataFilePath = formData.get('data_file_path');
+        const sequenceLength = this.selectedModelInfo?.sequence_length || 50;
+        
+        if (!taskId) {
+            this.showMessage('请选择一个模型', 'warning');
+            return;
+        }
+        
+        if (!dataFilePath) {
+            this.showMessage('请选择一个数据文件', 'warning');
+            return;
+        }
+
+        // 更新按钮状态
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading-spinner me-2"></span>推理中...';
+        
+        try {
+            this.showMessage('正在执行异常检测推理，请稍候...', 'info');
+            
+            // 构建请求数据，包含文件路径而不是文件对象
+            const requestData = {
+                task_id: taskId,
+                data_file_path: dataFilePath,
+                sequence_length: sequenceLength,
+                batch_size: parseInt(formData.get('batch_size')) || 32
+            };
+            
+            const response = await fetch('/anomaly_detection/api/run_inference', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.currentResult = result.result;
+                this.displayResults(result.result);
+                this.showMessage('推理完成！', 'success');
+            } else {
+                throw new Error(result.error || '推理失败');
+            }
+            
+        } catch (error) {
+            console.error('推理失败:', error);
+            this.showMessage(`推理失败: ${error.message}`, 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-play me-2"></i>开始推理';
+        }
+    }
+
+    displayResults(result) {
+        // 显示结果区域
+        document.getElementById('resultsSection').style.display = 'block';
+        document.getElementById('downloadResultBtn').style.display = 'inline-block';
+        
+        // 更新统计数据
+        document.getElementById('totalSamples').textContent = result.total_samples;
+        document.getElementById('anomaliesCount').textContent = result.anomalies_detected;
+        document.getElementById('anomalyRate').textContent = result.anomaly_percentage + '%';
+        document.getElementById('thresholdValue').textContent = result.threshold_value.toFixed(4);
+        
+        // 绘制异常分数时序图
+        this.drawAnomalyScoreChart(result);
+        
+        // 绘制异常分数分布图
+        this.drawAnomalyDistChart(result);
+        
+        // 滚动到结果区域
+        document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    drawAnomalyScoreChart(result) {
+        const ctx = document.getElementById('anomalyScoreChart').getContext('2d');
+        
+        if (this.anomalyChart) {
+            this.anomalyChart.destroy();
+        }
+        
+        const timestamps = result.timestamps.map((ts, idx) => idx); // 使用索引作为X轴
+        const scores = result.anomaly_scores;
+        const flags = result.anomaly_flags;
+        const threshold = result.threshold_value;
+        
+        // 分离正常和异常点
+        const normalData = scores.map((score, idx) => flags[idx] ? null : score);
+        const anomalyData = scores.map((score, idx) => flags[idx] ? score : null);
+        
+        this.anomalyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: timestamps,
+                datasets: [
+                    {
+                        label: '正常点',
+                        data: normalData,
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        pointRadius: 1,
+                        pointHoverRadius: 3
+                    },
+                    {
+                        label: '异常点',
+                        data: anomalyData,
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.3)',
+                        pointRadius: 2,
+                        pointHoverRadius: 4
+                    },
+                    {
+                        label: '检测阈值',
+                        data: new Array(timestamps.length).fill(threshold),
+                        borderColor: '#ffc107',
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '时间点'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '异常分数'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                return `时间点: ${context[0].label}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    drawAnomalyDistChart(result) {
+        const ctx = document.getElementById('anomalyDistChart').getContext('2d');
+        
+        if (this.distChart) {
+            this.distChart.destroy();
+        }
+        
+        // 创建分数分布直方图
+        const scores = result.anomaly_scores;
+        const bins = this.createHistogram(scores, 20);
+        
+        this.distChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: bins.labels,
+                datasets: [{
+                    label: '样本数量',
+                    data: bins.counts,
+                    backgroundColor: 'rgba(242, 153, 74, 0.6)',
+                    borderColor: 'rgba(242, 153, 74, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '异常分数区间'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '样本数量'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+
+    createHistogram(data, binCount) {
+        const min = Math.min(...data);
+        const max = Math.max(...data);
+        const binSize = (max - min) / binCount;
+        
+        const bins = Array(binCount).fill(0);
+        const labels = [];
+        
+        for (let i = 0; i < binCount; i++) {
+            const binStart = min + i * binSize;
+            const binEnd = min + (i + 1) * binSize;
+            labels.push(`${binStart.toFixed(3)}-${binEnd.toFixed(3)}`);
+        }
+        
+        data.forEach(value => {
+            const binIndex = Math.min(Math.floor((value - min) / binSize), binCount - 1);
+            bins[binIndex]++;
+        });
+        
+        return { labels, counts: bins };
+    }
+
+    downloadResult() {
+        if (!this.currentResult) {
+            this.showMessage('没有可下载的结果', 'warning');
+            return;
+        }
+        
+        // 创建下载链接
+        const dataStr = JSON.stringify(this.currentResult, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `inference_result_${this.currentResult.inference_id}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    showMessage(message, type = 'info') {
+        // 创建或更新消息提示
+        let alertDiv = document.querySelector('.alert-message');
+        if (!alertDiv) {
+            alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-message mt-3';
+            document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild.nextSibling);
+        }
+        
+        alertDiv.className = `alert alert-${type} alert-message mt-3`;
+        alertDiv.innerHTML = `
+            <i class="fas fa-info-circle me-2"></i>${message}
+            <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+        `;
+        
+        // 自动消失
+        setTimeout(() => {
+            if (alertDiv.parentElement) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+}
+    // 辅助：重置表单并隐藏结果
+    function resetForm() {
+        const form = document.getElementById('inferenceForm');
+        if (form) form.reset();
+        const select = document.getElementById('modelSelect');
+        if (select) select.value = '';
+        const resultsSection = document.getElementById('resultsSection');
+        if (resultsSection) resultsSection.style.display = 'none';
+        const downloadBtn = document.getElementById('downloadResultBtn');
+        if (downloadBtn) downloadBtn.style.display = 'none';
+        if (window.inferenceManager) {
+            window.inferenceManager.currentResult = null;
+            window.inferenceManager.selectedModelInfo = null;
+        }
+    }
+
+    function hideResults() {
+        document.getElementById('resultsSection').style.display = 'none';
+    }
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    window.inferenceManager = new InferenceManager();
+});
+</script>
+
+{% endblock %}

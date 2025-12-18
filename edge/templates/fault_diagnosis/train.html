@@ -1,0 +1,1993 @@
+{% extends "base.html" %}
+
+{% block title %}训练 - 故障诊断{% endblock %}
+
+{% block content %}
+
+<style>
+:root {
+    --fault-primary: #D84343;
+    --fault-secondary: #FF8A8A;
+    --fault-dark: #B71C1C;
+}
+
+/* 页面整体样式 */
+.train-page {
+    background: transparent;
+    min-height: 100vh;
+    padding: 2rem 0 3rem;
+}
+
+/* 页面标题区域 */
+.page-header {
+    background: transparent;
+    color: #495057;
+    padding: 0;
+    margin-bottom: 2.5rem;
+    border: none;
+    text-align: center;
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.page-header h2 {
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--fault-primary);
+    text-align: center;
+}
+
+.page-header p {
+    opacity: 0.8;
+    margin-bottom: 0;
+    color: #6c757d;
+    text-align: center;
+}
+
+/* 美化卡片样式 */
+.param-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    margin-bottom: 2rem;
+    overflow: hidden;
+    width: 100%;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+    transition: all 0.3s ease;
+}
+
+.param-card:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+.param-card-header {
+    background: #f8f9fa;
+    color: #495057;
+    padding: 1.5rem 2rem;
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.param-card-header i {
+    font-size: 1.2rem;
+    color: var(--fault-primary);
+}
+
+.param-card-body {
+    padding: 2rem;
+}
+
+.param-section {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.75rem;
+    padding: 1.75rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.param-section:hover {
+    background: #f8f9fa;
+    border-color: var(--fault-primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    transform: translateY(-1px);
+}
+
+.param-subsection {
+    border: 1px dashed rgba(216, 67, 67, 0.25);
+    border-radius: 0.65rem;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    background: #ffffff;
+    transition: background 0.2s ease;
+}
+
+.param-subsection:last-child {
+    margin-bottom: 0;
+}
+
+.param-subsection-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--fault-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.85rem;
+}
+
+.param-subsection-title i {
+    color: inherit;
+}
+
+.param-section h6 {
+    color: #495057;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    font-size: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.param-section h6 i {
+    color: var(--fault-primary);
+    margin-right: 0.5rem;
+    font-size: 1em;
+}
+
+/* 参数行样式 */
+.param-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.param-row:last-child {
+    margin-bottom: 0;
+}
+
+.param-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.param-item.full-width {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 768px) {
+    .param-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
+/* 表单控件美化 */
+.form-control, .form-select {
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.9375rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    background-color: white;
+}
+
+.form-control:hover, .form-select:hover {
+    border-color: var(--fault-primary);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--fault-primary);
+    box-shadow: 0 0 0 0.2rem rgba(216, 67, 67, 0.15);
+    outline: none;
+}
+
+.form-select-lg {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+}
+
+/* 标签样式 */
+.form-label {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.form-label.align-left {
+    justify-content: flex-start;
+}
+
+.form-label i {
+    color: var(--fault-primary);
+    font-size: 0.9em;
+}
+
+/* 按钮 */
+.btn-primary {
+    background-color: var(--fault-primary);
+    border-color: var(--fault-primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--fault-dark);
+    border-color: var(--fault-dark);
+}
+
+.btn-outline-primary {
+    color: var(--fault-primary);
+    border-color: var(--fault-primary);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--fault-primary);
+    border-color: var(--fault-primary);
+    color: #fff;
+}
+
+/* Badge & 开关 */
+.badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+}
+
+.badge.bg-primary,
+.badge.bg-danger {
+    background-color: var(--fault-primary) !important;
+    color: #fff;
+}
+
+.badge.bg-success {
+    background-color: #27AE60 !important;
+    color: #fff;
+}
+
+.badge.bg-warning {
+    background-color: var(--fault-secondary) !important;
+    color: #fff;
+}
+
+.form-text {
+    font-size: 0.8125rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.form-check-input:checked {
+    background-color: var(--fault-primary);
+    border-color: var(--fault-primary);
+}
+
+/* 动态内容切换动画 */
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 错误状态样式 */
+.is-invalid {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.invalid-feedback {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: #dc3545;
+}
+
+/* 页面内 primary 统一成红色调 */
+.text-primary {
+    color: var(--fault-primary) !important;
+}
+
+.border-primary {
+    border-color: var(--fault-primary) !important;
+}
+</style>
+
+
+<div class="train-page">
+<div class="container-fluid">
+<div class="page-header">
+    <h2>
+        <i class="fas fa-tools me-2"></i>
+        故障诊断模型训练
+    </h2>
+    <p>配置并训练面向故障识别的分类模型，流程与RUL训练体验保持一致</p>
+</div>
+
+<div id="zeroCodeDiv">
+    <form id="zeroCodeForm" novalidate>
+        <!-- 模型选择 -->
+        <div class="param-card mb-4">
+            <div class="param-card-header">
+                <i class="fas fa-robot"></i>
+                <span>模型选择</span>
+            </div>
+            <div class="param-card-body">
+                <div class="row align-items-end g-3">
+                    <div class="col-md-8">
+                        <label for="modelType" class="form-label align-left">
+                            <i class="fas fa-cog"></i>
+                            选择模型类型
+                        </label>
+                        <select class="form-select form-select-lg" id="modelType" data-action="switch-model-type">
+                            <option value="cnn_1d_classifier" selected>🖼️ CNN 1D 分类器</option>
+                            <option value="lstm_classifier">📈 LSTM 分类器</option>
+                            <option value="resnet_1d_classifier">🔗 ResNet 1D 分类器</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="button" id="loadDefaultsBtn" class="btn btn-primary w-100 py-3">
+                            <i class="fas fa-magic me-2"></i>
+                            加载默认配置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模型说明区域 -->
+        <div id="modelConfig" class="mb-4">
+            <div class="param-card">
+                <div class="param-card-header">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="modelConfigTitle">模型说明</span>
+                </div>
+                <div class="param-card-body">
+                    <!-- 动态模型配置内容区域（仅显示模型说明） -->
+                    <div id="dynamicModelConfig" class="fade-in">
+                        <!-- 模型说明将在这里动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 参数配置区域 -->
+        <div id="paramConfig" class="mb-4">
+            <div class="param-card">
+                <div class="param-card-header">
+                    <i class="fas fa-cog"></i>
+                    <span>参数配置</span>
+                </div>
+                <div class="param-card-body">
+                    <!-- 网络参数 -->
+                    <div class="param-section" id="networkParamsSection">
+                        <h6><i class="fas fa-network-wired"></i> 网络参数</h6>
+                        <div id="networkParamsContent">
+                            <div class="alert alert-info mb-3">
+                                <small><i class="fas fa-info-circle me-2"></i>请先选择模型类型，网络参数将根据模型类型自动显示</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 任务/数据参数 -->
+                    <div class="param-section">
+                        <h6><i class="fas fa-database"></i> 任务/数据参数</h6>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label align-left" id="sequenceLengthLabel">
+                                    <i class="fas fa-ruler-horizontal"></i>
+                                    <span>序列长度</span>
+                                </label>
+                                <input type="number" class="form-control" id="sequenceLength" name="sequenceLength" value="50" min="10" max="200" aria-label="序列长度" title="输入序列的时间步长度">
+                                <div class="form-text">输入序列的时间步长度，影响模型对时序模式的捕捉能力</div>
+                            </div>
+                            <div class="param-item">
+                                <label class="form-label align-left" id="numClassesLabel">
+                                    <i class="fas fa-tags"></i>
+                                    <span>分类标签</span>
+                                </label>
+                                <input type="text" class="form-control" id="numClasses" name="numClasses" value="" placeholder="将从训练集文件自动提取" readonly style="background-color: #f8f9fa; cursor: not-allowed;">
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle text-info me-1"></i>
+                                    标签将从选中的训练集文件的元数据中自动提取，无需手动输入
+                                </div>
+                            </div>
+                        </div>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label align-left" for="stride">
+                                    <i class="fas fa-arrows-alt-h"></i>
+                                    <span>窗口步长</span>
+                                </label>
+                                <input type="number"
+                                       class="form-control"
+                                       id="stride"
+                                       name="stride"
+                                       value="1"
+                                       min="1"
+                                       max="100"
+                                       aria-label="窗口步长">
+                                <div class="form-text">滑动窗口的步长，用于从时序数据中提取样本。步长越小，生成的样本越多</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 优化器设置 -->
+                    <div class="param-section">
+                        <h6><i class="fas fa-tachometer-alt"></i> 优化器设置</h6>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label">
+                                    学习率
+                                </label>
+                                <input type="number" class="form-control" id="learningRate" name="learningRate" value="0.001" step="0.0001" min="0.00001" max="0.1" aria-label="学习率" title="学习率">
+                                <div class="form-text">Adam优化器的学习率，通常在0.0001-0.01之间</div>
+                            </div>
+                            <div class="param-item">
+                                <label class="form-label">
+                                    权重衰减 (L2正则化)
+                                </label>
+                                <input type="number" class="form-control" id="weightDecay" name="weightDecay" value="0.0001" step="0.00001" min="0" max="0.01" aria-label="权重衰减" title="权重衰减">
+                                <div class="form-text">L2正则化系数，防止过拟合</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 训练控制 -->
+                    <div class="param-section">
+                        <h6><i class="fas fa-cogs"></i> 训练控制</h6>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label">
+                                    训练轮数
+                                </label>
+                                <input type="number" class="form-control" id="numEpochs" name="numEpochs" value="50" min="1" max="500" aria-label="训练轮次" title="训练轮次">
+                                <div class="form-text">最大训练轮数</div>
+                            </div>
+                            <div class="param-item">
+                                <label class="form-label">
+                                    批次大小
+                                </label>
+                                <input type="number" class="form-control" id="batchSize" name="batchSize" value="32" min="1" max="512" step="8" aria-label="批次大小" title="批次大小">
+                                <div class="form-text">训练批次大小，影响内存使用和训练速度</div>
+                            </div>
+                        </div>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label">
+                                    早停耐心值
+                                </label>
+                                <input type="number" class="form-control" id="patience" name="patience" value="10" min="0" max="50" aria-label="早停耐心" title="早停耐心">
+                                <div class="form-text">验证损失多少轮不下降则早停，0表示不启用早停</div>
+                            </div>
+                            <div class="param-item">
+                                <label class="form-label">
+                                    梯度裁剪范数
+                                </label>
+                                <input type="number" class="form-control" id="clipGradNorm" name="clipGradNorm" value="5.0" step="0.1" min="0" max="20" aria-label="梯度裁剪范数" title="梯度裁剪范数">
+                                <div class="form-text">梯度裁剪的最大范数，防止梯度爆炸</div>
+                            </div>
+                        </div>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label">
+                                    随机种子
+                                </label>
+                                <input type="number" class="form-control" id="randomSeed" name="randomSeed" value="42" min="0" max="999999" aria-label="随机种子" title="随机种子">
+                                <div class="form-text">随机种子，确保实验可重现</div>
+                            </div>
+                            <div class="param-item">
+                                <label class="form-label">
+                                    计算设备
+                                </label>
+                                <select class="form-select" id="device" name="device" aria-label="计算设备" title="计算设备">
+                                    <option value="cpu">CPU</option>
+                                    <option value="gpu" selected>GPU</option>
+                                    <option value="ascend">昇腾 (Ascend)</option>
+                                </select>
+                                <div class="form-text">训练使用的计算设备，GPU速度更快</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据集配置区域 -->
+        <div id="datasetConfig" class="mb-4">
+            <div class="param-card">
+                <div class="param-card-header">
+                    <i class="fas fa-database"></i>
+                    <span>数据集配置</span>
+                </div>
+                <div class="param-card-body">
+                    <div class="alert alert-info mb-4">
+                        <h6><i class="fas fa-info-circle"></i> 数据集配置说明</h6>
+                        <p class="mb-2">故障诊断采用监督学习，需要选择包含不同标签和工况的数据文件进行训练。</p>
+                        <p class="mb-0">系统将根据工况条件筛选数据文件，训练集和测试集将显示所有标签的文件（正常、异常、各种故障类型等）。</p>
+                        <p class="mb-0 mt-2">
+                            <small class="text-muted">
+                                需要对原始数据做清洗、对齐或归一化？请先前往
+                                <a href="{{ url_for('data_management.index') }}" class="text-decoration-none fw-bold">数据管理模块</a>
+                                完成操作，再返回训练页面选择预处理后的文件。
+                            </small>
+                        </p>
+                    </div>
+
+                    <!-- 工况选择区域 -->
+                    <div class="param-section dataset-section">
+                        <h6><i class="fas fa-filter"></i> 工况筛选</h6>
+                        <div class="alert alert-info mb-3">
+                            <small>
+                                <i class="fas fa-info-circle me-2"></i>
+                                选择工况条件来筛选数据文件。训练集和测试集将显示所有标签的文件（不过滤标签）。
+                            </small>
+                        </div>
+                        <div id="conditionSelectionArea">
+                            <div class="text-center py-3">
+                                <div class="spinner-border spinner-border-sm text-primary"></div>
+                                <span class="ms-2 text-muted">加载工况选项...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 训练集文件选择区域 -->
+                    <div class="param-section dataset-section mt-4" id="trainFileSelectionArea" style="display: none;">
+                        <h6><i class="fas fa-folder-open"></i> 训练集文件选择</h6>
+                        <div class="alert alert-success mb-3">
+                            <small>
+                                <i class="fas fa-check-circle me-2"></i>
+                                已筛选出 <span id="trainFileCount">0</span> 个符合条件的文件（所有标签）
+                            </small>
+                        </div>
+                        <div id="trainFileList" style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 1rem;">
+                            <div class="text-muted text-center py-3">请先选择工况条件</div>
+                        </div>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllTrainFiles()">
+                                <i class="fas fa-check-square me-1"></i>全选
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="deselectAllTrainFiles()">
+                                <i class="fas fa-square me-1"></i>取消全选
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="param-section dataset-section mt-4">
+                        <h6><i class="fas fa-chart-pie"></i> 数据划分设置</h6>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label" for="faultDiagnosisValSplit">
+                                    <i class="fas fa-percentage"></i>
+                                    <span>验证集比例</span>
+                                </label>
+                                <input type="number"
+                                       class="form-control"
+                                       id="faultDiagnosisValSplit"
+                                       name="faultDiagnosisValSplit"
+                                       value="0.2"
+                                       min="0.1"
+                                       max="0.5"
+                                       step="0.05"
+                                       aria-label="验证集比例">
+                                <div class="form-text">从训练数据中划分的验证集比例</div>
+                            </div>
+                        </div>
+                        <div class="alert alert-light border">
+                            <small>
+                                <i class="fas fa-lightbulb text-warning me-2"></i>
+                                监督学习模式：训练集用于学习分类模式，验证集用于调参和早停
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- 测试集文件选择区域 -->
+                    <div class="param-section dataset-section mt-4" id="testFileSelectionArea" style="display: none;">
+                        <h6><i class="fas fa-flask"></i> 测试集配置（可选）</h6>
+                        <div id="testFileList" style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 1rem;">
+                            <div class="text-muted text-center py-3">请先选择工况条件</div>
+                        </div>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllTestFiles()">
+                                <i class="fas fa-check-square me-1"></i>全选
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="deselectAllTestFiles()">
+                                <i class="fas fa-square me-1"></i>取消全选
+                            </button>
+                        </div>
+                        <div class="alert alert-info border mt-3">
+                            <small>
+                                <i class="fas fa-info-circle text-info me-2"></i>
+                                <strong>评估说明：</strong>如果提供测试集，训练完成后将自动评估模型性能，并计算分类指标（准确率、精确率、召回率、F1分数等）
+                            </small>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-5 mb-5">
+            <div class="row justify-content-center g-3">
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-success btn-lg w-100 py-3 shadow-sm">
+                        <i class="fas fa-play me-2"></i>
+                        <strong>开始训练</strong>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- 训练状态显示区域 -->
+    <div id="trainingStatus" class="mt-4" style="display: none;">
+    </div>
+</div>
+</div>
+</div>
+
+<!-- 隐藏的模板区域 -->
+<div style="display: none;">
+    <!-- CNN 1D 分类器参数模板 -->
+    <div id="cnn1dClassifierTemplate" class="model-config-template">
+        <div class="alert alert-light border border-primary p-3 rounded mb-4">
+            <div class="d-flex align-items-start">
+                <div class="me-3" style="font-size: 2rem;">🖼️</div>
+                <div class="flex-grow-1">
+                    <h6 class="alert-heading text-primary mb-2">
+                        <i class="fas fa-info-circle"></i> 模型说明
+                    </h6>
+                    <ul class="small mb-0">
+                        <li><strong>类型:</strong> 1D-CNN 故障分类器</li>
+                        <li><strong>适用场景:</strong> 需要快速捕捉局部时序模式并完成多类别故障判别的任务</li>
+                        <li><strong>优势:</strong> 结构与RUL模块一致，支持多尺度卷积、BatchNorm与轻量级分类头，推理效率高</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="param-section">
+            <h6><i class="fas fa-wave-square"></i> 卷积网络参数</h6>
+
+            <div class="param-subsection">
+                <div class="param-subsection-title">
+                    <i class="fas fa-layer-group"></i>
+                    卷积堆栈
+                </div>
+                <div class="param-row">
+                    <div class="param-item">
+                        <label class="form-label">
+                            卷积通道配置
+                        </label>
+                        <input type="text" class="form-control" id="convChannels" name="convChannels" value="64,128,256" placeholder="64,128,256" aria-label="卷积通道配置">
+                        <div class="form-text">使用逗号分隔的整数，定义每个卷积层的输出通道数</div>
+                    </div>
+                    <div class="param-item">
+                        <label class="form-label">
+                            卷积核大小
+                        </label>
+                        <input type="text" class="form-control" id="kernelSizes" name="kernelSizes" value="7,5,3" placeholder="7,5,3" aria-label="卷积核大小">
+                        <div class="form-text">与卷积层数对应，建议逐层减小以覆盖多尺度特征</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="param-subsection">
+                <div class="param-subsection-title">
+                    <i class="fas fa-shield-alt"></i>
+                    正则化与激活
+                </div>
+                <div class="param-row">
+                    <div class="param-item">
+                        <label class="form-label">
+                            Dropout率
+                        </label>
+                        <input type="number" class="form-control" id="cnnDropout" name="dropout" value="0.3" step="0.05" min="0" max="0.6" aria-label="Dropout率">
+                        <div class="form-text">卷积块与分类头共同使用的丢弃比例，建议0.2-0.4</div>
+                    </div>
+                    <div class="param-item">
+                        <label class="form-label">
+                            激活函数
+                        </label>
+                        <select class="form-select" id="cnnActivation" name="activation" aria-label="激活函数">
+                            <option value="relu" selected>ReLU</option>
+                            <option value="leakyrelu">LeakyReLU</option>
+                            <option value="gelu">GELU</option>
+                            <option value="tanh">Tanh</option>
+                            <option value="sigmoid">Sigmoid</option>
+                        </select>
+                        <div class="form-text">卷积块与分类头使用的激活函数，与RUL模块保持一致</div>
+                    </div>
+                </div>
+                <div class="param-row">
+                    <div class="param-item">
+                        <label class="form-label">
+                            使用BatchNorm
+                        </label>
+                        <select class="form-select" id="useBatchNorm" name="useBatchNorm" aria-label="BatchNorm">
+                            <option value="true" selected>是</option>
+                            <option value="false">否</option>
+                        </select>
+                        <div class="form-text">在每个卷积层后使用批归一化以稳定训练</div>
+                    </div>
+                    <div class="param-item">
+                        <div class="form-text text-muted" style="margin-top: 2.6rem;">
+                            当前版本默认使用全局平均池化，保持与RUL模块一致的特征聚合策略
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="param-subsection">
+                <div class="param-subsection-title">
+                    <i class="fas fa-project-diagram"></i>
+                    分类头配置
+                </div>
+                <div class="param-row">
+                    <div class="param-item full-width">
+                        <div class="alert alert-secondary mb-0">
+                            <small>
+                                <i class="fas fa-info-circle me-2"></i>
+                                分类头沿用标准结构（两层全连接 + Dropout），宽度根据卷积通道自动匹配。
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- LSTM 分类器参数模板 -->
+    <div id="lstmClassifierTemplate" class="model-config-template">
+        <div class="alert alert-light border border-success p-3 rounded mb-4">
+            <div class="d-flex align-items-start">
+                <div class="me-3" style="font-size: 2rem;">📈</div>
+                <div class="flex-grow-1">
+                    <h6 class="alert-heading text-success mb-2">
+                        <i class="fas fa-info-circle"></i> 模型说明
+                    </h6>
+                    <ul class="small mb-0">
+                        <li><strong>类型:</strong> LSTM 分类器</li>
+                        <li><strong>适用场景:</strong> 适用于复杂时序数据的故障分类，通过LSTM捕捉长期依赖关系</li>
+                        <li><strong>优势:</strong> 强大的序列建模和时间模式学习能力，擅长处理长序列数据</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="param-section lstm-section">
+            <h6><i class="fas fa-network-wired"></i> LSTM网络参数</h6>
+            <div class="param-row">
+                <div class="param-item">
+                    <label class="form-label">
+                        隐藏单元数
+                    </label>
+                    <input type="number" class="form-control" id="lstmHiddenUnits" name="lstmHiddenUnits" value="128" min="32" max="512" step="16" aria-label="隐藏单元数" title="LSTM隐藏层的维度大小">
+                    <div class="form-text">LSTM隐藏层的维度大小，影响模型容量</div>
+                </div>
+                <div class="param-item">
+                    <label class="form-label">
+                        LSTM层数
+                    </label>
+                    <input type="number" class="form-control" id="lstmNumLayers" name="lstmNumLayers" value="2" min="1" max="5" aria-label="LSTM层数" title="LSTM层数">
+                    <div class="form-text">LSTM网络的层数，层数越多表达能力越强</div>
+                </div>
+            </div>
+            <div class="param-row">
+                <div class="param-item">
+                    <label class="form-label">
+                        Dropout率
+                    </label>
+                    <input type="number" class="form-control" id="lstmDropout" name="lstmDropout" value="0.3" step="0.05" min="0" max="0.5" aria-label="Dropout率" title="Dropout率">
+                    <div class="form-text">LSTM层间的dropout比例，防止过拟合</div>
+                </div>
+                <div class="param-item">
+                    <label class="form-label">
+                        激活函数
+                    </label>
+                    <select class="form-select" id="lstmActivation" name="lstmActivation" aria-label="激活函数" title="激活函数">
+                        <option value="tanh" selected>Tanh</option>
+                        <option value="relu">ReLU</option>
+                        <option value="sigmoid">Sigmoid</option>
+                        <option value="leakyrelu">LeakyReLU</option>
+                        <option value="gelu">GELU</option>
+                    </select>
+                    <div class="form-text">分类头使用的激活函数</div>
+                </div>
+            </div>
+            <div class="param-row">
+                <div class="param-item">
+                    <label class="form-label">
+                        双向LSTM
+                    </label>
+                    <select class="form-select" id="lstmBidirectional" name="lstmBidirectional" aria-label="双向LSTM" title="双向LSTM">
+                        <option value="false" selected>否</option>
+                        <option value="true">是</option>
+                    </select>
+                    <div class="form-text">双向LSTM可以捕捉正反向时序信息，提升性能但增加计算量</div>
+                </div>
+                <div class="param-item">
+                    <label class="form-label">
+                        注意力机制
+                    </label>
+                    <select class="form-select" id="lstmUseAttention" name="lstmUseAttention" aria-label="注意力机制" title="注意力机制">
+                        <option value="false" selected>否</option>
+                        <option value="true">是</option>
+                    </select>
+                    <div class="form-text">使用注意力机制聚合序列信息，提升分类性能</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ResNet 1D 分类器参数模板 -->
+    <div id="resnet1dClassifierTemplate" class="model-config-template">
+        <div class="alert alert-light border border-primary p-3 rounded mb-4">
+            <div class="d-flex align-items-start">
+                <div class="me-3" style="font-size: 2rem;">🔗</div>
+                <div class="flex-grow-1">
+                    <h6 class="alert-heading text-primary mb-2">
+                        <i class="fas fa-info-circle"></i> 模型说明
+                    </h6>
+                    <ul class="small mb-0">
+                        <li><strong>类型:</strong> 1D ResNet 分类器（残差网络）</li>
+                        <li><strong>适用场景:</strong> 适用于复杂时序数据的故障分类，通过残差连接解决深层网络退化问题</li>
+                        <li><strong>优势:</strong> 支持更深的网络结构，训练稳定，特征提取能力强，适合中等复杂度的时序模式</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="param-section resnet-section">
+            <h6><i class="fas fa-layer-group"></i> ResNet 1D 网络参数</h6>
+            <div class="param-row">
+                <div class="param-item">
+                    <label class="form-label">
+                        基础通道数
+                    </label>
+                    <input type="number" class="form-control" id="resnet1dBaseChannels" name="resnet1dBaseChannels" value="64" min="16" max="256" step="16" aria-label="基础通道数" title="残差块的基础通道数">
+                    <div class="form-text">残差块的基础通道数，后续层会自动翻倍</div>
+                </div>
+                <div class="param-item">
+                    <label class="form-label">
+                        网络配置
+                    </label>
+                    <select class="form-select" id="resnet1dBlockConfig" name="resnet1dBlockConfig" aria-label="网络配置" title="残差块配置">
+                        <option value="resnet_tiny">ResNet-Tiny [1,1] - 超轻量</option>
+                        <option value="resnet_small" selected>ResNet-Small [1,1,1,1] - 轻量</option>
+                        <option value="resnet18">ResNet-18 [2,2,2,2] - 标准</option>
+                        <option value="resnet34">ResNet-34 [3,4,6,3] - 深度</option>
+                    </select>
+                    <div class="form-text">残差块配置，数字表示每个阶段的残差块数量</div>
+                </div>
+            </div>
+            <div class="param-row">
+                <div class="param-item">
+                    <label class="form-label">
+                        卷积核大小
+                    </label>
+                    <input type="number" class="form-control" id="resnet1dKernelSize" name="resnet1dKernelSize" value="3" min="3" max="7" step="2" aria-label="卷积核大小" title="残差块中卷积核的大小">
+                    <div class="form-text">残差块中1D卷积核的大小，通常为奇数</div>
+                </div>
+                <div class="param-item">
+                    <label class="form-label">
+                        Dropout率
+                    </label>
+                    <input type="number" class="form-control" id="resnet1dDropout" name="resnet1dDropout" value="0.3" step="0.05" min="0" max="0.5" aria-label="Dropout率" title="Dropout率">
+                    <div class="form-text">防止过拟合的Dropout比例</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 模型类型配置数据
+const modelTypeConfigs = {
+    cnn_1d_classifier: {
+        title: "CNN 1D 分类器 - 模型说明",
+        icon: "🖼️",
+        templateId: "cnn1dClassifierTemplate",
+        description: {
+            type: "1D CNN 分类器",
+            usage: "适用于时序数据的故障分类，通过1D卷积提取时序特征",
+            strength: "强大的时序特征提取能力，计算效率高，适合实时推理"
+        }
+    },
+    lstm_classifier: {
+        title: "LSTM 分类器 - 模型说明",
+        icon: "📈",
+        templateId: "lstmClassifierTemplate",
+        description: {
+            type: "LSTM 分类器",
+            usage: "适用于复杂时序数据的故障分类，通过LSTM捕捉长期依赖关系",
+            strength: "强大的序列建模和时间模式学习能力，擅长处理长序列数据"
+        }
+    },
+    resnet_1d_classifier: {
+        title: "ResNet 1D 分类器 - 模型说明",
+        icon: "🔗",
+        templateId: "resnet1dClassifierTemplate",
+        description: {
+            type: "1D ResNet 分类器（残差网络）",
+            usage: "适用于复杂时序数据的故障分类，通过残差连接解决深层网络退化问题",
+            strength: "支持更深的网络结构，训练稳定，特征提取能力强"
+        }
+    }
+};
+
+function parseIntListInput(value, fallback = []) {
+    if (value === null || value === undefined) {
+        return [...fallback];
+    }
+
+    if (Array.isArray(value)) {
+        const parsed = value
+            .map((item) => parseInt(String(item).trim(), 10))
+            .filter((num) => !Number.isNaN(num));
+        return parsed.length ? parsed : [...fallback];
+    }
+
+    const normalized = String(value)
+        .split(/[,，]/)
+        .map((segment) => segment.trim())
+        .filter(Boolean)
+        .map((segment) => parseInt(segment, 10))
+        .filter((num) => !Number.isNaN(num));
+
+    return normalized.length ? normalized : [...fallback];
+}
+
+function normalizeDeviceTarget(value) {
+    const normalized = (value || 'CPU').toString().trim().toLowerCase();
+    if (normalized === 'gpu') {
+        return 'GPU';
+    }
+    if (normalized === 'ascend' || normalized === 'npu' || normalized === 'atlas') {
+        return 'Ascend';
+    }
+    return 'CPU';
+}
+
+// 切换模型类型
+function switchModelType(modelType) {
+    console.log('切换到模型类型:', modelType);
+    
+    const config = modelTypeConfigs[modelType];
+    if (!config) {
+        console.error('未知的模型类型:', modelType);
+        showError('无效的模型类型');
+        return;
+    }
+
+    try {
+        // 更新模型配置区域标题
+        updateModelConfigTitle(config);
+        
+        // 添加切换动画
+        const configContainer = document.getElementById('dynamicModelConfig');
+        configContainer.classList.add('fade-in');
+        
+        // 更新模型参数配置
+        updateModelConfig(config);
+        
+        // 清除所有错误状态
+        clearAllErrors();
+        
+        // 隐藏文件选择区域（切换模型后需要重新确认工况设置）
+        const fileSelectionArea = document.getElementById('fileSelectionArea');
+        if (fileSelectionArea) {
+            fileSelectionArea.style.display = 'none';
+        }
+        
+    } catch (error) {
+        console.error('切换模型类型时出错:', error);
+        showError('切换模型时发生错误，请刷新页面重试');
+    }
+}
+
+// 更新模型配置区域标题
+function updateModelConfigTitle(config) {
+    const titleElement = document.getElementById('modelConfigTitle');
+    if (titleElement) {
+        titleElement.textContent = `${config.icon} ${config.title}`;
+    }
+}
+
+// 更新模型参数配置
+function updateModelConfig(config) {
+    const container = document.getElementById('dynamicModelConfig');
+    const networkParamsContent = document.getElementById('networkParamsContent');
+    const template = document.getElementById(config.templateId);
+    
+    if (!container) {
+        console.error('找不到动态配置容器');
+        return;
+    }
+    
+    if (!networkParamsContent) {
+        console.error('找不到网络参数内容容器');
+        return;
+    }
+    
+    if (!template) {
+        console.error(`找不到模板: ${config.templateId}`);
+        return;
+    }
+    
+    // 清空容器
+    container.innerHTML = '';
+    networkParamsContent.innerHTML = '';
+    
+    // 复制模板内容
+    const templateContent = template.cloneNode(true);
+    templateContent.style.display = 'block';
+    templateContent.id = ''; // 移除ID避免冲突
+    
+    // 提取模型说明和网络参数部分
+    const modelInfo = templateContent.querySelector('.alert');
+    const networkParamsSection = templateContent.querySelector('.param-section');
+    
+    // 将模型说明添加到模型配置区域
+    if (modelInfo) {
+        container.appendChild(modelInfo.cloneNode(true));
+    }
+    
+    // 将网络参数添加到网络参数部分
+    if (networkParamsSection) {
+        // 移除标题（因为已经有统一的标题了）
+        const clonedSection = networkParamsSection.cloneNode(true);
+        const titleElement = clonedSection.querySelector('h6');
+        if (titleElement) {
+            titleElement.remove();
+        }
+
+        // 确保克隆元素中的ID唯一性
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substr(2, 9);
+
+        // 处理有ID的元素
+        const elementsWithId = clonedSection.querySelectorAll('[id]');
+        elementsWithId.forEach((element, index) => {
+            if (element.id) {
+                const oldId = element.id;
+                const newId = `${oldId}-dynamic-${timestamp}-${randomSuffix}-${index}`;
+                element.id = newId;
+
+                // 更新对应的label[for]属性
+                const relatedLabel = clonedSection.querySelector(`label[for="${oldId}"]`);
+                if (relatedLabel) {
+                    relatedLabel.setAttribute('for', newId);
+                }
+            }
+        });
+
+        // 只注入内部参数行，避免额外嵌套的 param-section
+        while (clonedSection.firstChild) {
+            networkParamsContent.appendChild(clonedSection.firstChild);
+        }
+    }
+    
+    // 更新任务/数据参数部分的序列长度和分类标签输入框
+    updateTaskDataParams(config);
+}
+
+// 更新任务/数据参数部分
+function updateTaskDataParams(config) {
+    const modelType = document.getElementById('modelType')?.value;
+    const sequenceLengthInput = document.getElementById('sequenceLength');
+    const numClassesInput = document.getElementById('numClasses');
+    
+    // 根据模型类型设置序列长度的默认值
+    const seqLenMap = {
+        'cnn_1d_classifier': 50,
+        'lstm_classifier': 50,
+        'resnet_1d_classifier': 50
+    };
+    
+    if (sequenceLengthInput && seqLenMap[modelType]) {
+        // 如果序列长度输入框为空，设置默认值
+        if (!sequenceLengthInput.value) {
+            sequenceLengthInput.value = seqLenMap[modelType];
+        }
+        
+        // 查找模型特定的序列长度输入框（在网络参数部分），并同步值
+        setTimeout(() => {
+            const modelSeqLenInput = document.querySelector(`input[id*="SeqLen"]`);
+            if (modelSeqLenInput) {
+                // 如果模型特定的输入框有值，同步到通用输入框
+                if (modelSeqLenInput.value) {
+                    sequenceLengthInput.value = modelSeqLenInput.value;
+                } else {
+                    // 否则，将通用输入框的值同步到模型特定的输入框
+                    modelSeqLenInput.value = sequenceLengthInput.value;
+                }
+                
+                // 建立双向同步
+                sequenceLengthInput.addEventListener('input', function syncSeqLen() {
+                    if (modelSeqLenInput) {
+                        modelSeqLenInput.value = this.value;
+                    }
+                });
+                
+                modelSeqLenInput.addEventListener('input', function syncSeqLen() {
+                    if (sequenceLengthInput) {
+                        sequenceLengthInput.value = this.value;
+                    }
+                });
+            }
+        }, 100);
+    }
+    
+    // 分类标签由updateLabelsFromSelectedFiles函数自动更新，这里不需要手动设置
+}
+
+// 显示错误信息
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger fade-in shadow';
+    errorDiv.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 90%; max-width: 600px;';
+    errorDiv.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>错误:</strong> ${message}
+        <button type="button" class="btn-close" aria-label="关闭" onclick="this.parentElement.remove()"></button>
+    `;
+    
+    document.body.appendChild(errorDiv);
+    
+    // 3秒后自动消失
+    setTimeout(() => {
+        if (errorDiv && errorDiv.parentElement) {
+            errorDiv.remove();
+        }
+    }, 3000);
+}
+
+// 清除所有错误状态
+function clearAllErrors() {
+    document.querySelectorAll('.is-invalid').forEach(el => {
+        el.classList.remove('is-invalid');
+    });
+    
+    document.querySelectorAll('.invalid-feedback').forEach(el => {
+        el.remove();
+    });
+}
+
+// 加载默认配置
+function loadDefaultConfiguration() {
+    try {
+        // 重新初始化当前选择的模型
+        const currentModelType = document.getElementById('modelType')?.value;
+        if (currentModelType) {
+            switchModelType(currentModelType);
+        }
+        
+        // 显示成功提示
+        const successDiv = document.createElement('div');
+        successDiv.className = 'alert alert-success fade-in';
+        successDiv.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 90%; max-width: 600px;';
+        successDiv.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            <strong>成功:</strong> 默认配置已加载
+            <button type="button" class="btn-close" aria-label="关闭" onclick="this.parentElement.remove()"></button>
+        `;
+        
+        document.body.appendChild(successDiv);
+        
+        // 自动消失
+        setTimeout(() => {
+            if (successDiv.parentNode) {
+                successDiv.remove();
+            }
+        }, 3000);
+        
+    } catch (error) {
+        console.error('加载默认配置失败:', error);
+        showError('加载默认配置失败');
+    }
+}
+
+// 页面初始化（已合并到下面的完整初始化函数中）
+
+// 为onchange替换后的元素添加事件监听器
+document.addEventListener('change', function(e) {
+    const action = e.target.getAttribute('data-action');
+    
+    if (action === 'switch-model-type') {
+        switchModelType(e.target.value);
+    }
+});
+
+// ==================== 数据集配置相关函数 ====================
+
+// 工况选择和文件筛选功能（类似异常检测，但不过滤标签）
+let selectedConditions = {}; // {key: [value1, value2, ...]}
+window.selectedConditions = selectedConditions; // 确保全局可访问
+let trainFiles = []; // 训练集文件列表
+let testFiles = []; // 测试集文件列表
+
+// 加载工况key列表
+async function loadConditionKeys() {
+    const area = document.getElementById('conditionSelectionArea');
+    if (!area) {
+        console.error('❌ 未找到conditionSelectionArea元素');
+        return;
+    }
+    
+    try {
+        area.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div><span class="ms-2 text-muted">加载工况选项...</span></div>';
+        
+        const response = await fetch('/fault_diagnosis/api/condition_keys');
+        const result = await response.json();
+        
+        if (result.success) {
+            if (result.keys && result.keys.length > 0) {
+                console.log(`✅ 找到 ${result.keys.length} 个工况key:`, result.keys);
+                renderConditionKeys(result.keys);
+                // 加载完工况key后，加载所有数据文件
+                setTimeout(() => {
+                    loadAllFiles();
+                }, 500);
+            } else {
+                console.warn('⚠️ 没有找到工况key，将显示所有数据文件');
+                area.innerHTML = '<div class="alert alert-info mb-0"><i class="fas fa-info-circle me-2"></i>未找到工况数据，将显示所有数据文件。如需使用工况筛选，请先进行数据标注。</div>';
+                setTimeout(() => {
+                    loadAllFiles();
+                }, 500);
+            }
+        } else {
+            throw new Error(result.error || '未知错误');
+        }
+    } catch (error) {
+        console.error('❌ 加载工况key失败:', error);
+        area.innerHTML = '<div class="alert alert-danger mb-0">加载工况选项失败: ' + error.message + '</div>';
+    }
+}
+
+// 渲染工况key选择区域
+function renderConditionKeys(keys) {
+    const area = document.getElementById('conditionSelectionArea');
+    if (!area) return;
+    
+    let html = '<div class="row g-3">';
+    
+    keys.forEach(key => {
+        const valuesId = `conditionValues_${key}`;
+        html += `
+            <div class="col-md-6">
+                <div class="card border">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-tag me-2 text-primary"></i>${key}
+                        </h6>
+                        <div id="${valuesId}" class="mt-2">
+                            <div class="text-center py-2">
+                                <button class="btn btn-sm btn-outline-primary" onclick="loadConditionValues('${key}')">
+                                    <i class="fas fa-chevron-down me-1"></i>展开选项
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    area.innerHTML = html;
+}
+
+// 加载指定key的value列表
+async function loadConditionValues(key) {
+    const container = document.getElementById(`conditionValues_${key}`);
+    if (!container) return;
+    
+    try {
+        container.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+        
+        const response = await fetch(`/fault_diagnosis/api/condition_values?key=${encodeURIComponent(key)}`);
+        const result = await response.json();
+        
+        if (result.success && result.values && result.values.length > 0) {
+            renderConditionValues(key, result.values);
+        } else {
+            container.innerHTML = '<div class="text-muted small">暂无选项</div>';
+        }
+    } catch (error) {
+        console.error(`加载工况value失败 (${key}):`, error);
+        container.innerHTML = '<div class="text-danger small">加载失败</div>';
+    }
+}
+
+// 渲染工况value选择区域
+function renderConditionValues(key, values) {
+    const container = document.getElementById(`conditionValues_${key}`);
+    if (!container) return;
+    
+    let html = '<div class="d-flex flex-wrap gap-2">';
+    
+    values.forEach(value => {
+        const isSelected = selectedConditions[key] && selectedConditions[key].includes(value);
+        const btnId = `conditionBtn_${key}_${value}`;
+        html += `
+            <button type="button" 
+                    class="btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline-primary'}" 
+                    onclick="toggleConditionValue('${key}', '${value}')"
+                    id="${btnId}">
+                ${value}
+                ${isSelected ? ' <i class="fas fa-check"></i>' : ''}
+            </button>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// 切换工况value选择
+function toggleConditionValue(key, value) {
+    if (!selectedConditions[key]) {
+        selectedConditions[key] = [];
+    }
+    
+    const index = selectedConditions[key].indexOf(value);
+    if (index > -1) {
+        selectedConditions[key].splice(index, 1);
+    } else {
+        selectedConditions[key].push(value);
+    }
+    
+    // 更新按钮样式
+    const btnId = `conditionBtn_${key}_${value}`;
+    const btn = document.getElementById(btnId);
+    if (btn) {
+        if (selectedConditions[key].includes(value)) {
+            btn.className = 'btn btn-sm btn-primary';
+            btn.innerHTML = `${value} <i class="fas fa-check"></i>`;
+        } else {
+            btn.className = 'btn btn-sm btn-outline-primary';
+            btn.innerHTML = value;
+        }
+    }
+    
+    // 如果该key没有选中任何value，从selectedConditions中移除
+    if (selectedConditions[key].length === 0) {
+        delete selectedConditions[key];
+    }
+    
+    // 重新筛选文件（如果有选择工况）或重新加载所有文件（如果没有选择工况）
+    const hasConditions = Object.keys(selectedConditions).length > 0 && 
+                          Object.values(selectedConditions).some(v => v.length > 0);
+    
+    if (hasConditions) {
+        filterFiles();
+    } else {
+        loadAllFiles();
+    }
+}
+
+// 加载所有数据文件（不筛选）
+async function loadAllFiles() {
+    const area = document.getElementById('trainFileSelectionArea');
+    const list = document.getElementById('trainFileList');
+    const countSpan = document.getElementById('trainFileCount');
+    const testArea = document.getElementById('testFileSelectionArea');
+    const testList = document.getElementById('testFileList');
+    
+    if (!area || !list) {
+        console.error('❌ 未找到文件选择区域元素');
+        return;
+    }
+    
+    try {
+        list.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+        if (testList) testList.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+        
+        // 如果没有选择工况，直接加载所有文件
+        const hasConditions = Object.keys(selectedConditions).length > 0 && 
+                              Object.values(selectedConditions).some(v => v.length > 0);
+        
+        if (!hasConditions) {
+            // 加载所有文件（不筛选）
+            const response = await fetch('/fault_diagnosis/api/processed_data');
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log(`✅ 成功加载 ${result.files.length} 个文件`);
+                
+                // 故障诊断：显示所有文件（不过滤标签）
+                trainFiles = result.files || [];
+                testFiles = result.files || [];
+                
+                console.log(`训练集文件: ${trainFiles.length} 个, 测试集文件: ${testFiles.length} 个`);
+                
+                if (trainFiles.length > 0) {
+                    renderFileList(list, trainFiles, 'train');
+                    area.style.display = 'block';
+                    if (countSpan) countSpan.textContent = trainFiles.length;
+                    // 自动更新标签显示
+                    setTimeout(() => updateLabelsFromSelectedFiles(), 100);
+                } else {
+                    list.innerHTML = '<div class="text-muted text-center py-3">没有可用的数据文件</div>';
+                    area.style.display = 'block';
+                    if (countSpan) countSpan.textContent = '0';
+                }
+                
+                // 显示测试集
+                if (testFiles.length > 0 && testList) {
+                    renderFileList(testList, testFiles, 'test');
+                    if (testArea) testArea.style.display = 'block';
+                } else if (testList) {
+                    testList.innerHTML = '<div class="text-muted text-center py-3">没有可用的数据文件</div>';
+                    if (testArea) testArea.style.display = 'block';
+                }
+            } else {
+                throw new Error(result.error || '加载失败');
+            }
+        } else {
+            // 有工况选择，进行筛选
+            await filterTrainFiles();
+            await filterTestFiles();
+        }
+    } catch (error) {
+        console.error('加载数据文件失败:', error);
+        list.innerHTML = '<div class="alert alert-danger mb-0">加载失败: ' + error.message + '</div>';
+    }
+}
+
+// 筛选文件
+async function filterFiles() {
+    // 筛选训练集文件
+    await filterTrainFiles();
+    
+    // 自动筛选测试集文件
+    await filterTestFiles();
+}
+
+// 筛选训练集文件
+async function filterTrainFiles() {
+    const area = document.getElementById('trainFileSelectionArea');
+    const list = document.getElementById('trainFileList');
+    const countSpan = document.getElementById('trainFileCount');
+    
+    if (!area || !list) return;
+    
+    try {
+        list.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+        
+        const response = await fetch('/fault_diagnosis/api/filter_files', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                conditions: selectedConditions,
+                file_type: 'train'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            trainFiles = result.files || [];
+            
+            if (trainFiles.length > 0) {
+                renderFileList(list, trainFiles, 'train');
+                area.style.display = 'block';
+                if (countSpan) countSpan.textContent = trainFiles.length;
+                // 自动更新标签显示
+                updateLabelsFromSelectedFiles();
+            } else {
+                list.innerHTML = '<div class="text-muted text-center py-3">没有符合条件的文件</div>';
+                area.style.display = 'block';
+                if (countSpan) countSpan.textContent = '0';
+            }
+        } else {
+            list.innerHTML = '<div class="alert alert-danger mb-0">筛选失败: ' + (result.error || '未知错误') + '</div>';
+        }
+    } catch (error) {
+        console.error('筛选训练集文件失败:', error);
+        list.innerHTML = '<div class="alert alert-danger mb-0">筛选失败: ' + error.message + '</div>';
+    }
+}
+
+// 筛选测试集文件
+async function filterTestFiles() {
+    const area = document.getElementById('testFileSelectionArea');
+    const list = document.getElementById('testFileList');
+    
+    if (!area || !list) return;
+    
+    try {
+        list.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+        
+        const response = await fetch('/fault_diagnosis/api/filter_files', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                conditions: selectedConditions,
+                file_type: 'test'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            testFiles = result.files || [];
+            
+            if (testFiles.length > 0) {
+                renderFileList(list, testFiles, 'test');
+                area.style.display = 'block';
+            } else {
+                list.innerHTML = '<div class="text-muted text-center py-3">没有符合条件的文件</div>';
+                area.style.display = 'block';
+            }
+        } else {
+            list.innerHTML = '<div class="alert alert-danger mb-0">筛选失败: ' + (result.error || '未知错误') + '</div>';
+        }
+    } catch (error) {
+        console.error('筛选测试集文件失败:', error);
+        list.innerHTML = '<div class="alert alert-danger mb-0">筛选失败: ' + error.message + '</div>';
+    }
+}
+
+// 渲染文件列表
+function renderFileList(container, files, type) {
+    if (!container) return;
+    
+    let html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0">';
+    html += '<thead class="table-light"><tr>';
+    html += '<th style="width: 40px;"><input type="checkbox" class="form-check-input" onchange="toggleAllFiles(this, \'' + type + '\')"></th>';
+    html += '<th>文件名</th>';
+    html += '<th>标签</th>';
+    
+    // 添加工况列
+    const allKeys = Object.keys(selectedConditions);
+    allKeys.forEach(key => {
+        html += `<th>${key}</th>`;
+    });
+    
+    html += '<th>大小</th>';
+    html += '</tr></thead><tbody>';
+    
+    files.forEach((file, index) => {
+        const conditions = file.conditions || {};
+        html += '<tr>';
+        html += `<td><input type="checkbox" class="form-check-input file-checkbox" data-filename="${file.filename}" data-type="${type}" onchange="updateLabelsFromSelectedFiles()"></td>`;
+        html += `<td><small>${file.display_name || file.filename}</small></td>`;
+        html += `<td><span class="badge bg-${file.label === '正常' ? 'success' : file.label === '异常' ? 'danger' : 'warning'}">${file.label || '未知'}</span></td>`;
+        
+        // 添加工况值
+        allKeys.forEach(key => {
+            const value = conditions[key] || '';
+            html += `<td><small>${value || '<span class="text-muted">-</span>'}</small></td>`;
+        });
+        
+        html += `<td><small>${formatFileSize(file.size || 0)}</small></td>`;
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+// 全选/取消全选文件
+function toggleAllFiles(checkbox, type) {
+    const checkboxes = document.querySelectorAll(`.file-checkbox[data-type="${type}"]`);
+    checkboxes.forEach(cb => cb.checked = checkbox.checked);
+    // 如果是训练集，更新标签显示
+    if (type === 'train') {
+        updateLabelsFromSelectedFiles();
+    }
+}
+
+// 从选中的训练集文件中提取标签并更新显示
+function updateLabelsFromSelectedFiles() {
+    const selectedTrainFiles = getSelectedFiles('train');
+    
+    // 从文件元数据中提取所有唯一的标签
+    const extractedLabels = new Set();
+    for (const filename of selectedTrainFiles) {
+        const fileInfo = trainFiles.find(f => f.filename === filename);
+        if (fileInfo && fileInfo.label) {
+            extractedLabels.add(fileInfo.label);
+        }
+    }
+    
+    // 转换为数组并排序
+    const labels = Array.from(extractedLabels).sort();
+    
+    // 更新所有模型类型的标签输入框（改为只读显示）
+    const labelInputs = document.querySelectorAll('input[id*="NumClasses"]');
+    labelInputs.forEach(input => {
+        if (labels.length > 0) {
+            input.value = labels.join(',');
+            input.readOnly = true;
+            input.style.backgroundColor = '#f8f9fa';
+            input.style.cursor = 'not-allowed';
+        } else {
+            input.value = '';
+            input.readOnly = false;
+            input.style.backgroundColor = '';
+            input.style.cursor = '';
+        }
+    });
+    
+    // 更新"任务/数据参数"部分的分类标签输入框
+    const numClassesInput = document.getElementById('numClasses');
+    if (numClassesInput) {
+        if (labels.length > 0) {
+            numClassesInput.value = labels.join(',');
+        } else {
+            numClassesInput.value = '';
+        }
+    }
+    
+    // 更新提示信息（从任务/数据参数部分的输入框获取）
+    if (numClassesInput) {
+        const formText = numClassesInput.parentElement.querySelector('.form-text');
+        if (formText) {
+            if (labels.length > 0) {
+                formText.innerHTML = `
+                    <i class="fas fa-info-circle text-success me-1"></i>
+                    已从选中的训练集文件中自动提取 <strong>${labels.length}</strong> 个标签: <code>${labels.join(', ')}</code>
+                `;
+            } else {
+                formText.innerHTML = `
+                    <i class="fas fa-info-circle text-info me-1"></i>
+                    请选择训练集文件，系统将自动从文件的元数据中提取标签
+                `;
+            }
+        }
+    }
+}
+
+// 获取选中的文件
+function getSelectedFiles(type) {
+    const checkboxes = document.querySelectorAll(`.file-checkbox[data-type="${type}"]:checked`);
+    return Array.from(checkboxes).map(cb => cb.getAttribute('data-filename'));
+}
+
+// 全选训练集文件
+function selectAllTrainFiles() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="train"]');
+    checkboxes.forEach(cb => cb.checked = true);
+}
+
+// 取消全选训练集文件
+function deselectAllTrainFiles() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="train"]');
+    checkboxes.forEach(cb => cb.checked = false);
+}
+
+// 全选测试集文件
+function selectAllTestFiles() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="test"]');
+    checkboxes.forEach(cb => cb.checked = true);
+}
+
+// 取消全选测试集文件
+function deselectAllTestFiles() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="test"]');
+    checkboxes.forEach(cb => cb.checked = false);
+}
+
+// 生成文件选择框（已废弃，保留以避免错误）
+function generateFileSelectionBoxes() {
+    console.warn('generateFileSelectionBoxes已废弃，请使用工况筛选和文件选择功能');
+}
+
+// 更新数据划分比例（已废弃，使用验证集比例设置）
+function updateDataSplitRatio() {
+    // 已废弃，不再使用
+}
+
+// 页面初始化（完整版，包含数据集配置）
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('页面加载完成，初始化模型配置');
+    
+    try {
+        // 初始化模型类型（默认选择CNN 1D分类器）
+        const defaultModelType = document.getElementById('modelType')?.value || 'cnn_1d_classifier';
+        switchModelType(defaultModelType);
+        
+        // 为模型类型选择添加变化监听
+        const modelTypeSelect = document.getElementById('modelType');
+        if (modelTypeSelect) {
+            modelTypeSelect.addEventListener('change', function() {
+                switchModelType(this.value);
+            });
+        }
+        
+        // 为加载默认配置按钮添加功能
+        document.getElementById('loadDefaultsBtn')?.addEventListener('click', function() {
+            loadDefaultConfiguration();
+        });
+        
+        // 加载工况选项（类似异常检测）
+        await loadConditionKeys();
+        
+        // 数据划分比例已由验证集比例设置处理，无需额外初始化
+        
+    } catch (error) {
+        console.error('页面初始化失败:', error);
+        showError('页面初始化失败，请刷新页面重试');
+    }
+});
+
+// 监听分类标签变化（自动更新文件选择表格）
+// 使用事件委托，因为输入框是动态生成的，ID会被修改
+document.addEventListener('input', function(e) {
+    const targetId = e.target.id || '';
+    const className = e.target.className || '';
+    
+    // 标签变化不再需要自动更新文件选择（已改为工况筛选模式）
+});
+
+// 表单提交处理
+document.getElementById('zeroCodeForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    try {
+        // 收集表单数据
+        const formData = new FormData(this);
+        const trainingData = {};
+        
+        // 获取模型类型
+        const modelType = document.getElementById('modelType')?.value;
+        trainingData.model_type = modelType;
+        
+        // 从选中的训练集文件中提取标签（从元数据中）
+        const selectedTrainFiles = getSelectedFiles('train');
+        if (!selectedTrainFiles || selectedTrainFiles.length === 0) {
+            showError('请至少选择一个训练集文件');
+            return;
+        }
+        
+        // 从文件元数据中提取所有唯一的标签
+        const extractedLabels = new Set();
+        for (const filename of selectedTrainFiles) {
+            const fileInfo = trainFiles.find(f => f.filename === filename);
+            if (fileInfo && fileInfo.label) {
+                extractedLabels.add(fileInfo.label);
+            }
+        }
+        
+        // 转换为数组并排序（确保顺序一致）
+        const labels = Array.from(extractedLabels).sort();
+        
+        if (labels.length < 2) {
+            showError(`从选中的文件中只提取到 ${labels.length} 个标签，至少需要2个不同的标签。请确保选择了包含不同标签的文件。`);
+            return;
+        }
+        
+        console.log(`从文件中提取的标签: ${labels.join(', ')}`);
+        trainingData.labels = labels;
+        trainingData.num_classes = labels.length;  // 分类数量等于标签数量
+        
+        // 获取工况设置（从selectedConditions构建conditionsConfig）
+        // selectedConditions格式: {key: [value1, value2, ...]}
+        const conditionsConfig = [];
+        Object.keys(selectedConditions).forEach(key => {
+            const values = selectedConditions[key].map(v => {
+                // 尝试转换为数字，如果失败则保持字符串
+                const num = parseFloat(v);
+                return isNaN(num) ? v : num;
+            });
+            if (values.length > 0) {
+                conditionsConfig.push({ name: key, values: values });
+            }
+        });
+        
+        // 工况是可选的，可以为空
+        trainingData.conditions = conditionsConfig;
+        trainingData.num_conditions = conditionsConfig.length;
+        
+        // 构建file_selections：需要从文件元数据中获取标签和工况信息
+        const fileSelections = [];
+        
+        // 为每个选中的训练集文件构建file_selection
+        for (const filename of selectedTrainFiles) {
+            // 从trainFiles中找到对应的文件信息
+            const fileInfo = trainFiles.find(f => f.filename === filename);
+            if (!fileInfo) {
+                console.warn(`未找到文件信息: ${filename}`);
+                continue;
+            }
+            
+            // 从文件信息中获取标签
+            const fileLabel = fileInfo.label || '';
+            if (!fileLabel) {
+                console.warn(`文件 ${filename} 没有标签信息`);
+                continue;
+            }
+            
+            // 查找标签在labels列表中的索引（从1开始）
+            const labelIndex = labels.indexOf(fileLabel) + 1;
+            if (labelIndex === 0) {
+                console.warn(`文件 ${filename} 的标签 "${fileLabel}" 不在标签列表中`);
+                continue;
+            }
+            
+            // 从文件信息中获取工况组合
+            const conditionCombo = fileInfo.conditions || {};
+            
+            // 构建file_selection
+            fileSelections.push({
+                filename: filename,
+                condition_combo: conditionCombo,
+                label_index: labelIndex,
+                label_name: fileLabel,
+                combo_index: 0  // 暂时设为0，后续可以根据需要调整
+            });
+        }
+        
+        if (fileSelections.length === 0) {
+            showError('请至少选择一个有效的训练集文件（文件必须包含标签信息）');
+            return;
+        }
+        
+        trainingData.file_selections = fileSelections;
+        
+        // 收集测试集文件（可选）
+        const selectedTestFiles = getSelectedFiles('test');
+        if (selectedTestFiles && selectedTestFiles.length > 0) {
+            // 为测试集文件也构建file_selections（如果需要单独处理测试集）
+            // 目前测试集文件会在数据划分时处理，这里暂时不单独处理
+            trainingData.test_files = selectedTestFiles;
+        }
+        
+        // 获取序列长度（从任务/数据参数部分）
+        const seqLenInput = document.getElementById('sequenceLength');
+        trainingData.sequence_length = parseInt(seqLenInput?.value || '50');
+        
+        // 获取步长
+        trainingData.stride = parseInt(formData.get('stride') || '1');
+        
+        // 获取验证集比例（类似异常检测）
+        trainingData.validation_split = parseFloat(formData.get('faultDiagnosisValSplit') || '0.2');
+        trainingData.random_seed = parseInt(formData.get('randomSeed') || '42');
+        trainingData.dataset_mode = 'condition_filtered'; // 使用工况筛选模式
+        
+        // 获取训练参数
+        trainingData.epochs = parseInt(formData.get('numEpochs') || '50');
+        trainingData.batch_size = parseInt(formData.get('batchSize') || '32');
+        trainingData.learning_rate = parseFloat(formData.get('learningRate') || '0.001');
+        trainingData.weight_decay = parseFloat(formData.get('weightDecay') || '0.0001');
+        trainingData.clip_grad_norm = parseFloat(formData.get('clipGradNorm') || '5.0');
+        trainingData.patience = parseInt(formData.get('patience') || '10');
+        trainingData.random_seed = parseInt(formData.get('randomSeed') || '42');
+        const normalizedDevice = normalizeDeviceTarget(formData.get('device') || 'GPU');
+        trainingData.device_target = normalizedDevice;
+        trainingData.device = normalizedDevice;
+        
+        // 获取模型特定参数
+        if (modelType === 'cnn_1d_classifier') {
+            const convChannels = parseIntListInput(formData.get('convChannels'), [64, 128, 256]);
+            const kernelSizes = parseIntListInput(formData.get('kernelSizes'), [7, 5, 3]);
+            const dropoutValue = parseFloat(formData.get('dropout') || '0.3');
+            const activationValue = formData.get('activation') || 'relu';
+            const useBatchNormValue = (formData.get('useBatchNorm') ?? 'true').toString().toLowerCase();
+
+            trainingData.conv_channels = convChannels;
+            trainingData.kernel_sizes = kernelSizes;
+            trainingData.num_conv_layers = convChannels.length || 3;
+            trainingData.num_filters = convChannels[convChannels.length - 1] || convChannels[0] || 64;
+            trainingData.kernel_size = kernelSizes[0] || 3;
+            trainingData.dropout = Number.isFinite(dropoutValue) ? dropoutValue : 0.3;
+            trainingData.activation = activationValue;
+            trainingData.use_batch_norm = useBatchNormValue;
+        } else if (modelType === 'lstm_classifier') {
+            trainingData.hidden_units = parseInt(document.querySelector('input[id*="HiddenUnits"]')?.value || '128');
+            trainingData.num_layers = parseInt(document.querySelector('input[id*="NumLayers"]')?.value || '2');
+            trainingData.dropout = parseFloat(document.querySelector('input[id*="Dropout"]')?.value || '0.3');
+            trainingData.activation = document.querySelector('select[id*="Activation"]')?.value || 'tanh';
+            trainingData.bidirectional = document.querySelector('select[id*="Bidirectional"]')?.value || 'false';
+            trainingData.use_attention = document.querySelector('select[id*="UseAttention"]')?.value || 'false';
+        } else if (modelType === 'resnet_1d_classifier') {
+            trainingData.base_channels = parseInt(document.querySelector('input[id*="BaseChannels"]')?.value || '64');
+            trainingData.block_config = document.querySelector('select[id*="BlockConfig"]')?.value || 'resnet_small';
+            trainingData.kernel_size = parseInt(document.querySelector('input[id*="KernelSize"]')?.value || '3');
+            trainingData.dropout = parseFloat(document.querySelector('input[id*="Dropout"]')?.value || '0.3');
+        }
+        
+        console.log('提交训练数据:', trainingData);
+        
+        // 显示提交状态
+        const statusDiv = document.getElementById('trainingStatus');
+        statusDiv.style.display = 'block';
+        statusDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>正在提交训练任务...</div>';
+        
+        // 发送训练请求
+        const response = await fetch('/fault_diagnosis/api/train', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(trainingData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            statusDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <h5><i class="fas fa-check-circle me-2"></i>训练任务已提交</h5>
+                    <p>任务ID: ${result.task_id}</p>
+                    <p>${result.message}</p>
+                </div>
+            `;
+            
+            // 可选：跳转到训练进度页面
+            setTimeout(() => {
+                window.location.href = `/fault_diagnosis/training_progress?task_id=${result.task_id}`;
+            }, 2000);
+        } else {
+            statusDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <h5><i class="fas fa-exclamation-triangle me-2"></i>训练任务提交失败</h5>
+                    <p>${result.message}</p>
+                </div>
+            `;
+        }
+        
+    } catch (error) {
+        console.error('提交训练任务失败:', error);
+        const statusDiv = document.getElementById('trainingStatus');
+        statusDiv.style.display = 'block';
+        statusDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <h5><i class="fas fa-exclamation-triangle me-2"></i>提交失败</h5>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+});
+</script>
+
+<div class="text-center mt-5">
+    <a href="/fault_diagnosis" class="btn btn-outline-primary btn-lg px-5 py-3">
+        <i class="fas fa-arrow-left me-2"></i>
+        返回故障诊断主页
+    </a>
+</div>
+{% endblock %}
+

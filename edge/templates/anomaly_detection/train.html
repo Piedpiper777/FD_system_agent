@@ -1,0 +1,3299 @@
+{% extends "base.html" %}
+
+{% block title %}训练 - 异常检测{% endblock %}
+
+{% block content %}
+
+<style>
+:root {
+    --anomaly-primary: #F2994A;
+    --anomaly-secondary: #FFBF86;
+    --anomaly-dark: #D97706;
+}
+/* 页面整体样式 */
+.train-page {
+    background: transparent;
+    min-height: 100vh;
+    padding: 2rem 0 3rem;
+}
+
+/* 页面标题区域 */
+.page-header {
+    background: transparent;
+    color: #495057;
+    padding: 0;
+    margin-bottom: 2.5rem;
+    border: none;
+    text-align: center;
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.page-header h2 {
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--anomaly-primary);
+    text-align: center;
+}
+
+.page-header p {
+    opacity: 0.8;
+    margin-bottom: 0;
+    color: #6c757d;
+    text-align: center;
+}
+
+.model-params {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.model-params h5 {
+    color: #495057;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--anomaly-primary);
+    padding-bottom: 0.5rem;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-label i {
+    color: var(--anomaly-primary);
+    font-size: 0.9em;
+}
+
+.btn-outline-secondary {
+    border-color: #6c757d;
+    color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+.btn-primary {
+    background-color: var(--anomaly-primary);
+    border-color: var(--anomaly-primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--anomaly-dark);
+    border-color: var(--anomaly-dark);
+}
+
+/* 美化卡片样式 */
+.param-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    margin-bottom: 2rem;
+    overflow: hidden;
+    width: 100%;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+    transition: all 0.3s ease;
+}
+
+.param-card:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+.param-card-header {
+    background: #f8f9fa;
+    color: #495057;
+    padding: 1.5rem 2rem;
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.param-card-header i {
+    font-size: 1.2rem;
+    color: var(--anomaly-primary);
+}
+
+.param-card-body {
+    padding: 2rem;
+}
+
+.param-section {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.75rem;
+    padding: 1.75rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.param-section:hover {
+    background: #f8f9fa;
+    border-color: var(--anomaly-primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    transform: translateY(-1px);
+}
+
+.param-subsection {
+    border: 1px dashed rgba(242, 153, 74, 0.2);
+    border-radius: 0.65rem;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    background: #ffffff;
+    transition: background 0.2s ease;
+}
+
+.param-subsection:last-child {
+    margin-bottom: 0;
+}
+
+.param-subsection-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--anomaly-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.85rem;
+}
+
+.param-subsection-title i {
+    color: inherit;
+}
+
+.param-section h6 {
+    color: #495057;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    font-size: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.param-section h6 i {
+    color: var(--anomaly-primary);
+    margin-right: 0.5rem;
+    font-size: 1em;
+}
+
+.param-section.lstm-section h6 i {
+    color: var(--anomaly-primary);
+}
+
+.param-section.training-section h6 i {
+    color: var(--anomaly-primary);
+}
+
+.param-section.dataset-section h6 i {
+    color: var(--anomaly-primary);
+}
+
+/* 参数行样式 */
+.param-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    align-items: start;
+}
+
+.param-row:last-child {
+    margin-bottom: 0;
+}
+
+.param-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.param-item.full-width {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 768px) {
+    .param-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
+/* 表单控件美化 */
+.form-control, .form-select {
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.9375rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    background-color: white;
+}
+
+.form-control:hover, .form-select:hover {
+    border-color: var(--anomaly-primary);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--anomaly-primary);
+    box-shadow: 0 0 0 0.2rem rgba(242, 153, 74, 0.15);
+    outline: none;
+}
+
+.form-select-lg {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+}
+
+/* 标签样式 */
+.form-label {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.form-label.align-left {
+    justify-content: flex-start;
+}
+
+/* 异常检测模块自定义badge样式，与模块主色调保持一致 */
+.badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+}
+
+.badge.bg-primary {
+    background-color: #F2994A !important;
+    color: white;
+}
+
+.badge.bg-success {
+    background-color: #27AE60 !important;
+    color: white;
+}
+
+.badge.bg-warning {
+    background-color: #F2994A !important;
+    color: white;
+}
+
+.badge.bg-danger {
+    background-color: #EB5757 !important;
+    color: white;
+}
+
+.form-text {
+    font-size: 0.8125rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* 开关样式 */
+.form-check-input:checked {
+    background-color: var(--anomaly-primary);
+    border-color: var(--anomaly-primary);
+}
+
+/* 帮助文本 */
+.form-text {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .param-card {
+        width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .param-row {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .param-card-body {
+        padding: 1rem;
+    }
+
+    .param-section {
+        padding: 1rem;
+    }
+
+    .sidebar-toggle {
+        z-index: 1002; /* 确保在移动端时按钮在最上层 */
+    }
+}
+
+@media (max-width: 1200px) {
+    .param-card {
+        width: 100%;
+        max-width: none;
+    }
+}
+
+/* 动态内容切换动画 */
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 数据集模式切换动画 */
+.dataset-section {
+    transition: all 0.3s ease;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.dataset-section.hiding {
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+}
+
+.dataset-section.showing {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 选中的数据集模式样式 */
+.form-check-input:checked + .form-check-label {
+    color: var(--anomaly-primary);
+    font-weight: 700;
+}
+
+/* 错误状态样式 */
+.is-invalid {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.invalid-feedback {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: #dc3545;
+}
+
+/* 模式说明卡片悬停效果 */
+.alert {
+    transition: all 0.2s ease;
+}
+
+.alert:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+</style>
+
+<div class="train-page">
+<div class="container-fluid">
+<div class="page-header">
+    <h2>
+        <i class="fas fa-wave-square me-2"></i>
+        异常检测模型训练
+    </h2>
+    <p class="lead mb-0">配置并训练面向异常识别的检测模型，体验与RUL模块一致的流程</p>
+</div>
+<div id="zeroCodeDiv">
+    <form id="zeroCodeForm" novalidate>
+        <div class="param-card mb-4">
+            <div class="param-card-header">
+                <i class="fas fa-robot"></i>
+                <span>模型选择</span>
+            </div>
+            <div class="param-card-body">
+            <div class="row align-items-end g-3">
+                <div class="col-md-8">
+                        <label for="modelType" class="form-label align-left">
+                            <i class="fas fa-cog"></i>
+                        选择模型类型
+                    </label>
+                        <select class="form-select form-select-lg" id="modelType" data-action="switch-model-type">
+                        <option value="lstm_predictor" selected>🎯 LSTM预测器</option>
+                            <option value="cnn_1d_autoencoder">🖼️ 1D-CNN自编码器</option>
+                        <option value="lstm_autoencoder">📈 LSTM自编码器</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button type="button" id="loadDefaultsBtn" class="btn btn-primary w-100 py-3">
+                        <i class="fas fa-magic me-2"></i>
+                        加载默认配置
+                    </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模型说明区域 -->
+        <div id="modelConfig" class="mb-4">
+            <div class="param-card">
+                <div class="param-card-header">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="modelConfigTitle">模型说明</span>
+                </div>
+                <div class="param-card-body">
+                    <!-- 动态模型配置内容区域（仅显示模型说明） -->
+                    <div id="dynamicModelConfig" class="fade-in">
+                        <!-- 模型说明将在这里动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 参数配置区域 -->
+        <div id="paramConfig" class="mb-4">
+            <div class="param-card">
+                <div class="param-card-header">
+                    <i class="fas fa-cog"></i>
+                    <span>参数配置</span>
+                </div>
+                <div class="param-card-body">
+                    <!-- 网络参数 -->
+                    <div class="param-section" id="networkParamsSection">
+                        <h6><i class="fas fa-network-wired"></i> 网络参数</h6>
+                        <div id="networkParamsContent">
+                            <div class="alert alert-info mb-3">
+                                <small><i class="fas fa-info-circle me-2"></i>请先选择模型类型，网络参数将根据模型类型自动显示</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 任务/数据参数 -->
+                    <div class="param-section">
+                        <h6><i class="fas fa-database"></i> 任务/数据参数</h6>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label align-left" id="sequenceLengthLabel">
+                                    <i class="fas fa-ruler-horizontal"></i>
+                                    <span>序列长度</span>
+                                </label>
+                                <input type="number" class="form-control" id="sequenceLength" name="sequenceLength" value="10" min="1" max="200" aria-label="序列长度" title="输入序列的时间步长度" data-template-id="lstmSeqLen">
+                                <div class="form-text">输入序列的时间步长度，影响模型对时序模式的捕捉能力</div>
+                            </div>
+                            <div class="param-item">
+                                <label class="form-label align-left" for="stride">
+                                    <i class="fas fa-arrows-alt-h"></i>
+                                    <span>数据步长</span>
+                                </label>
+                                <input type="number" class="form-control" id="stride" name="stride" value="1" min="1" max="10" aria-label="数据步长" title="滑动窗口步长" data-template-id="lstmPredStride">
+                                <div class="form-text">创建训练序列时的滑动窗口步长，影响训练数据量</div>
+                            </div>
+                        </div>
+                        <!-- 预测长度和输入维度均由系统自动管理，无需额外输入 -->
+                    </div>
+
+                    <!-- 优化器设置 -->
+                    <div class="param-section">
+                        <h6><i class="fas fa-tachometer-alt"></i> 优化器设置</h6>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label">
+                                    学习率
+                                </label>
+                                <input type="number" class="form-control" id="learningRate" name="learningRate" value="0.001" step="0.0001" min="0.00001" max="0.1" aria-label="学习率" title="学习率">
+                                <div class="form-text">Adam优化器的学习率，通常在0.0001-0.01之间</div>
+                            </div>
+                            <div class="param-item">
+                                <label class="form-label">
+                                    权重衰减 (L2正则化)
+                                </label>
+                                <input type="number" class="form-control" id="weightDecay" name="weightDecay" value="0.0001" step="0.00001" min="0" max="0.01" aria-label="权重衰减" title="权重衰减">
+                                <div class="form-text">L2正则化系数，防止过拟合</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 训练控制 -->
+                    <div class="param-section">
+                        <h6><i class="fas fa-cogs"></i> 训练控制</h6>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label">
+                                    训练轮数
+                                </label>
+                                <input type="number" class="form-control" id="numEpochs" name="numEpochs" value="50" min="1" max="500" aria-label="训练轮次" title="训练轮次">
+                                <div class="form-text">最大训练轮数</div>
+                            </div>
+                            <div class="param-item">
+                                <label class="form-label">
+                                    批次大小
+                                </label>
+                                <input type="number" class="form-control" id="batchSize" name="batchSize" value="32" min="1" max="512" step="8" aria-label="批次大小" title="批次大小">
+                                <div class="form-text">训练批次大小，影响内存使用和训练速度</div>
+                            </div>
+                        </div>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label">
+                                    早停耐心值
+                                </label>
+                                <input type="number" class="form-control" id="patience" name="patience" value="10" min="1" max="50" aria-label="早停耐心" title="早停耐心">
+                                <div class="form-text">验证损失多少轮不下降则早停，0表示不启用早停</div>
+                            </div>
+                            <div class="param-item">
+                                <label class="form-label">
+                                    梯度裁剪范数
+                                </label>
+                                <input type="number" class="form-control" id="clipGradNorm" name="clipGradNorm" value="5.0" step="0.1" min="0" max="20" aria-label="梯度裁剪范数" title="梯度裁剪范数">
+                                <div class="form-text">梯度裁剪的最大范数，防止梯度爆炸</div>
+                            </div>
+                        </div>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label">
+                                    随机种子
+                                </label>
+                                <input type="number" class="form-control" id="randomSeed" name="randomSeed" value="42" min="0" max="999999" aria-label="随机种子" title="随机种子">
+                                <div class="form-text">随机种子，确保实验可重现</div>
+                            </div>
+                            <div class="param-item">
+                                <label class="form-label">
+                                    计算设备
+                                </label>
+                                <select class="form-select" id="device" name="device" aria-label="计算设备" title="计算设备">
+                                    <option value="CPU">CPU</option>
+                                    <option value="GPU" selected>GPU</option>
+                                    <option value="Ascend">昇腾 (Ascend)</option>
+                                </select>
+                                <div class="form-text">训练使用的计算设备，可选择CPU / GPU / 昇腾</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 阈值计算配置（仅异常检测） -->
+                    <div class="param-section">
+                        <h6><i class="fas fa-chart-line"></i> 阈值计算配置</h6>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> 训练完成后将使用验证集自动计算异常检测阈值
+                        </div>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label">
+                                    阈值计算方法
+                                </label>
+                                <select class="form-select" id="thresholdMethod" name="thresholdMethod">
+                                    <option value="percentile" selected>百分位数 (Percentile)</option>
+                                    <option value="3sigma">3倍标准差 (3-Sigma)</option>
+                                    <option value="contamination">污染率 (Contamination)</option>
+                                </select>
+                                <div class="form-text">选择计算异常阈值的方法</div>
+                            </div>
+                            <div class="param-item" id="thresholdPercentileConfig">
+                                <label class="form-label">
+                                    百分位数值
+                                </label>
+                                <input type="number" class="form-control" id="thresholdPercentile" name="thresholdPercentile" value="95" min="90" max="99.9" step="0.1">
+                                <div class="form-text">异常分数的百分位数阈值，值越大越严格（90-99.9）</div>
+                            </div>
+                        </div>
+                        <div class="param-row" id="thresholdContaminationConfig" style="display: none;">
+                            <div class="param-item">
+                                <label class="form-label">
+                                    污染率
+                                </label>
+                                <input type="number" class="form-control" id="thresholdContamination" name="thresholdContamination" value="0.01" min="0.001" max="0.1" step="0.001">
+                                <div class="form-text">预期异常样本的比例（0.001-0.1）</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 隐藏的模板区域 -->
+        <div style="display: none;">
+            <!-- LSTM Predictor 参数模板 -->
+            <div id="lstmPredictorTemplate" class="model-config-template">
+                <!-- 1. 网络参数（LSTM结构相关） -->
+                <div class="param-section lstm-section">
+                    <h6><i class="fas fa-network-wired"></i> 网络参数</h6>
+                    <div class="param-row">
+                        <div class="param-item">
+                            <label class="form-label">
+                                隐藏维度
+                            </label>
+                            <input type="number" class="form-control" id="lstmPredHiddenDim" name="lstmPredHiddenDim" value="64" min="16" max="512" step="16" aria-label="LSTM隐藏维度" title="LSTM隐藏维度">
+                            <div class="form-text">LSTM隐藏层的维度大小，影响模型容量</div>
+                        </div>
+                        <div class="param-item">
+                            <label class="form-label">
+                                LSTM层数
+                            </label>
+                            <input type="number" class="form-control" id="lstmPredNumLayers" name="lstmPredNumLayers" value="2" min="1" max="5" aria-label="LSTM层数" title="LSTM层数">
+                            <div class="form-text">LSTM网络的层数，层数越多表达能力越强</div>
+                        </div>
+                    </div>
+                    <div class="param-row">
+                        <div class="param-item">
+                            <label class="form-label">
+                                LSTM Dropout
+                            </label>
+                            <input type="number" class="form-control" id="lstmPredDropout" name="lstmPredDropout" value="0.1" step="0.1" min="0" max="0.9" aria-label="LSTM Dropout率" title="LSTM Dropout率">
+                            <div class="form-text">LSTM层间的dropout比例，防止过拟合</div>
+                        </div>
+                        <div class="param-item">
+                            <label class="form-label">
+                                LSTM激活函数
+                            </label>
+                            <select class="form-select" id="lstmPredActivation" name="lstmPredActivation" aria-label="LSTM激活函数" title="LSTM激活函数">
+                                <option value="tanh" selected>Tanh</option>
+                                <option value="relu">ReLU</option>
+                                <option value="sigmoid">Sigmoid</option>
+                            </select>
+                            <div class="form-text">LSTM内部使用的激活函数</div>
+                        </div>
+                    </div>
+                    <div class="param-row">
+                        <div class="param-item">
+                            <label class="form-label">
+                                双向LSTM
+                            </label>
+                            <select class="form-select" id="lstmPredBidirectional" name="lstmPredBidirectional" aria-label="双向LSTM" title="双向LSTM">
+                                <option value="false" selected>否</option>
+                                <option value="true">是</option>
+                            </select>
+                            <div class="form-text">双向LSTM可以捕捉正反向时序信息，提升性能但增加计算量</div>
+                        </div>
+                        <div class="param-item">
+                            <label class="form-label">
+                                层归一化 (Layer Normalization)
+                            </label>
+                            <select class="form-select" id="lstmPredLayerNorm" name="lstmPredLayerNorm" aria-label="层归一化" title="层归一化">
+                                <option value="false" selected>否</option>
+                                <option value="true">是</option>
+                            </select>
+                            <div class="form-text">在LSTM层后应用层归一化，可以稳定训练并提升性能</div>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <!-- 1D CNN Autoencoder 参数模板 -->
+            <div id="cnn1dAutoencoderTemplate" class="model-config-template">
+                <div class="param-section">
+                    <h6><i class="fas fa-wave-square"></i> 卷积自编码器参数</h6>
+
+                    <div class="param-subsection">
+                        <div class="param-subsection-title">
+                            <i class="fas fa-layer-group"></i>
+                            卷积堆栈
+                        </div>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label">
+                                    卷积通道配置
+                                </label>
+                                <input type="text" class="form-control" id="convChannels" name="convChannels" value="64,128,256" placeholder="64,128,256" aria-label="卷积通道配置">
+                                <div class="form-text">逗号分隔整数，条目数即卷积层数；自编码器的编码/解码部分会自动镜像该配置</div>
+                            </div>
+                            <div class="param-item">
+                                <label class="form-label">
+                                    卷积核大小
+                                </label>
+                                <input type="text" class="form-control" id="kernelSizes" name="kernelSizes" value="7,5,3" placeholder="7,5,3" aria-label="卷积核大小">
+                                <div class="form-text">与卷积层一一对应，建议逐层减小以捕捉多尺度模式</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="param-subsection">
+                        <div class="param-subsection-title">
+                            <i class="fas fa-compress-alt"></i>
+                            潜在空间/重构
+                        </div>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label">
+                                    瓶颈层维度
+                                </label>
+                                <input type="number" class="form-control" id="cnnBottleneckDim" name="cnnBottleneckDim" value="64" min="16" max="256" step="8" aria-label="瓶颈层维度">
+                                <div class="form-text">决定潜在空间压缩程度，越小重构越难但对异常更敏感</div>
+                            </div>
+                            <div class="param-item">
+                                <div class="form-text text-muted" style="margin-top: 2.6rem;">
+                                    卷积层数和通道将在解码器中自动翻转，无需额外配置
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="param-subsection">
+                        <div class="param-subsection-title">
+                            <i class="fas fa-shield-alt"></i>
+                            正则化与激活
+                        </div>
+                        <div class="param-row">
+                            <div class="param-item">
+                                <label class="form-label">
+                                    Dropout率
+                                </label>
+                                <input type="number" class="form-control" id="dropout" name="dropout" value="0.1" step="0.05" min="0" max="0.5" aria-label="Dropout率">
+                                <div class="form-text">卷积块与解码器共享的Dropout，建议保持较低以保护重构能力</div>
+                            </div>
+                            <div class="param-item">
+                                <label class="form-label">
+                                    激活函数
+                                </label>
+                                <select class="form-select" id="activation" name="activation" aria-label="激活函数">
+                                    <option value="relu" selected>ReLU</option>
+                                    <option value="leakyrelu">LeakyReLU</option>
+                                    <option value="gelu">GELU</option>
+                                    <option value="tanh">Tanh</option>
+                                    <option value="sigmoid">Sigmoid</option>
+                                </select>
+                                <div class="form-text">编码器与解码器复用同一激活函数，方便与RUL CNN保持一致体验</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LSTM Autoencoder 参数模板 -->
+            <div id="lstmAutoencoderTemplate" class="model-config-template">
+                <div class="param-section lstm-ae-section">
+                    <h6><i class="fas fa-code-branch"></i> 编码器-解码器网络参数</h6>
+                    <div class="param-row">
+                        <div class="param-item">
+                            <label class="form-label">
+                                隐藏层维度
+                            </label>
+                            <input type="number" class="form-control" id="lstmAeHiddenSize" name="lstmAeHiddenSize" value="128" min="32" max="512" step="16" aria-label="LSTM隐藏层维度" title="LSTM隐藏层维度">
+                            <div class="form-text">编码器和解码器LSTM的隐藏层维度，影响模型表达能力</div>
+                        </div>
+                        <div class="param-item">
+                            <label class="form-label">
+                                瓶颈层维度
+                            </label>
+                            <input type="number" class="form-control" id="lstmAeBottleneckDim" name="lstmAeBottleneckDim" value="64" min="16" max="256" step="8" aria-label="瓶颈层维度" title="瓶颈层维度">
+                            <div class="form-text">瓶颈层维度，控制信息压缩程度，影响重构质量</div>
+                        </div>
+                    </div>
+                    <div class="param-row">
+                        <div class="param-item">
+                            <label class="form-label">
+                                LSTM层数
+                            </label>
+                            <input type="number" class="form-control" id="lstmAeNumLayers" name="lstmAeNumLayers" value="2" min="1" max="4" aria-label="LSTM层数" title="LSTM层数">
+                            <div class="form-text">编码器和解码器的LSTM层数，层数越多表达能力越强</div>
+                        </div>
+                        <div class="param-item">
+                            <label class="form-label">
+                                Dropout率
+                            </label>
+                            <input type="number" class="form-control" id="lstmAeDropout" name="lstmAeDropout" value="0.1" step="0.05" min="0" max="0.5" aria-label="Dropout率" title="Dropout率">
+                            <div class="form-text">防止过拟合的Dropout比例，建议保持较低值</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- 数据集配置区域 -->
+        <div id="datasetConfig" class="mb-4">
+            <div class="param-card">
+                <div class="param-card-header">
+                    <i class="fas fa-database"></i>
+                    <span>数据集配置</span>
+                </div>
+                <div class="param-card-body">
+                    <!-- LSTM预测模型专用数据集配置 -->
+                    <div id="lstmPredictorDatasetConfig" style="display: none;">
+                        <div class="alert alert-info mb-4">
+                            <h6><i class="fas fa-info-circle"></i> LSTM预测模型数据集说明</h6>
+                            <p class="mb-2">LSTM预测模型基于预测误差进行异常检测，采用无监督学习，只需要无标签的训练数据。</p>
+                            <p class="mb-0">系统将从训练数据中自动划分验证集，无需手动上传多个文件。</p>
+                            <p class="mb-0 mt-2">
+                                <small class="text-muted">
+                                    需要对原始数据做清洗、对齐或归一化？请先前往
+                                    <a href="{{ url_for('data_management.index') }}" class="text-decoration-none fw-bold">数据管理模块</a>
+                                    完成操作，再返回训练页面选择预处理后的文件。
+                                </small>
+                            </p>
+                        </div>
+
+                        <!-- 工况选择区域 -->
+                        <div class="param-section dataset-section">
+                            <h6><i class="fas fa-filter"></i> 工况筛选</h6>
+                            <div class="alert alert-info mb-3">
+                                <small>
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    选择工况条件来筛选数据文件。训练集将自动筛选标签为"正常"的文件。
+                                </small>
+                                    </div>
+                            <div id="conditionSelectionAreaPredictor">
+                                <div class="text-center py-3">
+                                    <div class="spinner-border spinner-border-sm text-primary"></div>
+                                    <span class="ms-2 text-muted">加载工况选项...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 训练集文件选择区域 -->
+                        <div class="param-section dataset-section mt-4" id="trainFileSelectionAreaPredictor" style="display: none;">
+                            <h6><i class="fas fa-folder-open"></i> 训练集文件选择</h6>
+                            <div class="alert alert-success mb-3">
+                                <small>
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    已筛选出 <span id="trainFileCountPredictor">0</span> 个符合条件的文件（标签=正常）
+                                </small>
+                            </div>
+                            <div id="trainFileListPredictor" style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 1rem;">
+                                <div class="text-muted text-center py-3">请先选择工况条件</div>
+                            </div>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllTrainFilesPredictor()">
+                                    <i class="fas fa-check-square me-1"></i>全选
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="deselectAllTrainFilesPredictor()">
+                                    <i class="fas fa-square me-1"></i>取消全选
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="param-section dataset-section mt-4">
+                            <h6><i class="fas fa-chart-pie"></i> 数据划分设置</h6>
+                            <div class="param-row">
+                                <div class="param-item">
+                                    <label class="form-label" for="predictorValSplit">
+                                        <i class="fas fa-percentage"></i>
+                                        <span>验证集比例</span>
+                                    </label>
+                                    <input type="number"
+                                           class="form-control"
+                                           id="predictorValSplit"
+                                           name="predictorValSplit"
+                                           value="0.2"
+                                           min="0.1"
+                                           max="0.5"
+                                           step="0.05"
+                                           aria-label="验证集比例">
+                                    <div class="form-text">从训练数据中划分的验证集比例</div>
+                                </div>
+                            </div>
+                            <div class="alert alert-light border">
+                                <small>
+                                    <i class="fas fa-lightbulb text-warning me-2"></i>
+                                    无监督学习模式：训练集用于学习预测模式，验证集用于调参和早停
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- 测试集文件选择区域 -->
+                        <div class="param-section dataset-section mt-4" id="testFileSelectionAreaPredictor" style="display: none;">
+                            <h6><i class="fas fa-flask"></i> 测试集配置（可选）</h6>
+                            <div class="alert alert-warning mb-3">
+                                <small>
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    测试集将筛选标签为"正常"或"异常"的文件
+                                </small>
+                            </div>
+                            <div id="testFileListPredictor" style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 1rem;">
+                                <div class="text-muted text-center py-3">请先选择工况条件</div>
+                            </div>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllTestFilesPredictor()">
+                                    <i class="fas fa-check-square me-1"></i>全选
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="deselectAllTestFilesPredictor()">
+                                    <i class="fas fa-square me-1"></i>取消全选
+                                </button>
+                            </div>
+                            <div class="alert alert-info border mt-3">
+                                <small>
+                                    <i class="fas fa-info-circle text-info me-2"></i>
+                                    <strong>评估说明：</strong>如果提供测试集，训练完成后将自动评估模型性能，并计算异常检测指标（重构误差分布、异常分数统计等）
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LSTM Autoencoder专用数据集配置 -->
+                    <div id="lstmAutoencoderDatasetConfig" style="display: none;">
+                        <div class="alert alert-info mb-4">
+                            <h6><i class="fas fa-info-circle"></i> LSTM Autoencoder数据集说明</h6>
+                            <p class="mb-2">LSTM Autoencoder基于重构误差进行异常检测，采用无监督学习，只需要无标签的训练数据。</p>
+                            <p class="mb-0">系统将从训练数据中自动划分验证集，无需手动上传多个文件。</p>
+                            <p class="mb-0 mt-2">
+                                <small class="text-muted">
+                                    需要对原始数据做清洗、对齐或归一化？请先前往
+                                    <a href="{{ url_for('data_management.index') }}" class="text-decoration-none fw-bold">数据管理模块</a>
+                                    完成操作，再返回训练页面选择预处理后的文件。
+                                </small>
+                            </p>
+                        </div>
+
+                        <!-- 工况选择区域 -->
+                        <div class="param-section dataset-section">
+                            <h6><i class="fas fa-filter"></i> 工况筛选</h6>
+                            <div class="alert alert-info mb-3">
+                                <small>
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    选择工况条件来筛选数据文件。训练集将自动筛选标签为"正常"的文件。
+                                </small>
+                                    </div>
+                            <div id="conditionSelectionArea">
+                                <div class="text-center py-3">
+                                    <div class="spinner-border spinner-border-sm text-primary"></div>
+                                    <span class="ms-2 text-muted">加载工况选项...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 训练集文件选择区域 -->
+                        <div class="param-section dataset-section mt-4" id="trainFileSelectionArea" style="display: none;">
+                            <h6><i class="fas fa-folder-open"></i> 训练集文件选择</h6>
+                            <div class="alert alert-success mb-3">
+                                <small>
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    已筛选出 <span id="trainFileCount">0</span> 个符合条件的文件（标签=正常）
+                                </small>
+                            </div>
+                            <div id="trainFileList" style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 1rem;">
+                                <div class="text-muted text-center py-3">请先选择工况条件</div>
+                            </div>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllTrainFiles()">
+                                    <i class="fas fa-check-square me-1"></i>全选
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="deselectAllTrainFiles()">
+                                    <i class="fas fa-square me-1"></i>取消全选
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="param-section dataset-section mt-4">
+                            <h6><i class="fas fa-chart-pie"></i> 数据划分设置</h6>
+                            <div class="param-row">
+                                <div class="param-item">
+                                    <label class="form-label" for="autoencoderValSplit">
+                                        <i class="fas fa-percentage"></i>
+                                        <span>验证集比例</span>
+                                    </label>
+                                    <input type="number"
+                                           class="form-control"
+                                           id="autoencoderValSplit"
+                                           name="autoencoderValSplit"
+                                           value="0.2"
+                                           min="0.1"
+                                           max="0.5"
+                                           step="0.05"
+                                           aria-label="验证集比例">
+                                    <div class="form-text">从训练数据中划分的验证集比例</div>
+                                </div>
+                            </div>
+                            <div class="alert alert-light border">
+                                <small>
+                                    <i class="fas fa-lightbulb text-warning me-2"></i>
+                                    无监督学习模式：训练集用于学习正常模式，验证集用于调参和早停
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- 测试集文件选择区域 -->
+                        <div class="param-section dataset-section mt-4" id="testFileSelectionArea" style="display: none;">
+                            <h6><i class="fas fa-flask"></i> 测试集配置（可选）</h6>
+                            <div class="alert alert-warning mb-3">
+                                <small>
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    测试集将筛选标签为"正常"或"异常"的文件
+                                </small>
+                            </div>
+                            <div id="testFileList" style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 1rem;">
+                                <div class="text-muted text-center py-3">请先选择工况条件</div>
+                            </div>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllTestFiles()">
+                                    <i class="fas fa-check-square me-1"></i>全选
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="deselectAllTestFiles()">
+                                    <i class="fas fa-square me-1"></i>取消全选
+                                </button>
+                            </div>
+                            <div class="alert alert-info border mt-3">
+                                <small>
+                                    <i class="fas fa-info-circle text-info me-2"></i>
+                                    <strong>评估说明：</strong>如果提供测试集，训练完成后将自动评估模型性能，并计算异常检测指标（重构误差分布、异常分数统计等）
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CNN 1D Autoencoder专用数据集配置 -->
+                    <div id="cnn1dAutoencoderDatasetConfig" style="display: none;">
+                        <div class="alert alert-info mb-4">
+                            <h6><i class="fas fa-info-circle"></i> 1D CNN Autoencoder数据集说明</h6>
+                            <p class="mb-2">1D CNN Autoencoder基于重构误差进行异常检测，采用无监督学习，只需要无标签的训练数据。</p>
+                            <p class="mb-0">系统将从训练数据中自动划分验证集，无需手动上传多个文件。</p>
+                            <p class="mb-0 mt-2">
+                                <small class="text-muted">
+                                    需要对原始数据做清洗、对齐或归一化？请先前往
+                                    <a href="{{ url_for('data_management.index') }}" class="text-decoration-none fw-bold">数据管理模块</a>
+                                    完成操作，再返回训练页面选择预处理后的文件。
+                                </small>
+                            </p>
+                        </div>
+
+                        <!-- 工况选择区域 -->
+                        <div class="param-section dataset-section">
+                            <h6><i class="fas fa-filter"></i> 工况筛选</h6>
+                            <div class="alert alert-info mb-3">
+                                <small>
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    选择工况条件来筛选数据文件。训练集将自动筛选标签为"正常"的文件。
+                                </small>
+                            </div>
+                            <div id="conditionSelectionAreaCnn1d">
+                                <div class="text-center py-3">
+                                    <div class="spinner-border spinner-border-sm text-primary"></div>
+                                    <span class="ms-2 text-muted">加载工况选项...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 训练集文件选择区域 -->
+                        <div class="param-section dataset-section mt-4" id="trainFileSelectionAreaCnn1d" style="display: none;">
+                            <h6><i class="fas fa-folder-open"></i> 训练集文件选择</h6>
+                            <div class="alert alert-success mb-3">
+                                <small>
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    已筛选出 <span id="trainFileCountCnn1d">0</span> 个符合条件的文件（标签=正常）
+                                </small>
+                            </div>
+                            <div id="trainFileListCnn1d" style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 1rem;">
+                                <div class="text-muted text-center py-3">请先选择工况条件</div>
+                            </div>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllTrainFilesCnn1d()">
+                                    <i class="fas fa-check-square me-1"></i>全选
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="deselectAllTrainFilesCnn1d()">
+                                    <i class="fas fa-square me-1"></i>取消全选
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="param-section dataset-section mt-4">
+                            <h6><i class="fas fa-chart-pie"></i> 数据划分设置</h6>
+                            <div class="param-row">
+                                <div class="param-item">
+                                    <label class="form-label" for="cnn1dValSplit">
+                                        <i class="fas fa-percentage"></i>
+                                        <span>验证集比例</span>
+                                    </label>
+                                    <input type="number"
+                                           class="form-control"
+                                           id="cnn1dValSplit"
+                                           name="cnn1dValSplit"
+                                           value="0.2"
+                                           min="0.1"
+                                           max="0.5"
+                                           step="0.05"
+                                           aria-label="验证集比例">
+                                    <div class="form-text">从训练数据中划分的验证集比例</div>
+                                </div>
+                            </div>
+                            <div class="alert alert-light border">
+                                <small>
+                                    <i class="fas fa-lightbulb text-warning me-2"></i>
+                                    无监督学习模式：训练集用于学习正常模式，验证集用于调参和早停
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- 测试集文件选择区域 -->
+                        <div class="param-section dataset-section mt-4" id="testFileSelectionAreaCnn1d" style="display: none;">
+                            <h6><i class="fas fa-flask"></i> 测试集配置（可选）</h6>
+                            <div class="alert alert-warning mb-3">
+                                <small>
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    测试集将筛选标签为"正常"或"异常"的文件
+                                </small>
+                            </div>
+                            <div id="testFileListCnn1d" style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 1rem;">
+                                <div class="text-muted text-center py-3">请先选择工况条件</div>
+                            </div>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllTestFilesCnn1d()">
+                                    <i class="fas fa-check-square me-1"></i>全选
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="deselectAllTestFilesCnn1d()">
+                                    <i class="fas fa-square me-1"></i>取消全选
+                                </button>
+                            </div>
+                            <div class="alert alert-info border mt-3">
+                                <small>
+                                    <i class="fas fa-info-circle text-info me-2"></i>
+                                    <strong>评估说明：</strong>如果提供测试集，训练完成后将自动评估模型性能，并计算重构误差分布、异常分数统计等指标
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 通用三种数据上传模式 (其他模型使用) -->
+                    <!-- 通用数据集配置已移除：异常检测模型都使用processed_file模式 -->
+                </div>
+            </div>
+        </div>
+        <div class="text-center mt-5 mb-5">
+            <div class="row justify-content-center g-3">
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-success btn-lg w-100 py-3 shadow-sm">
+                        <i class="fas fa-play me-2"></i>
+                        <strong>开始训练</strong>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- 训练状态显示区域 -->
+    <div id="trainingStatus" class="mt-4" style="display: none;">
+    </div>
+</div>
+
+
+<script>
+// 模型类型配置数据
+const modelTypeConfigs = {
+    cnn_1d_autoencoder: {
+        title: "1D CNN Autoencoder 参数配置",
+        icon: "🖼️",
+        templateId: "cnn1dAutoencoderTemplate",
+        description: {
+            type: "1D卷积自编码器",
+            usage: "适用于时序数据的异常检测，通过1D卷积提取时序特征并重构序列",
+            strength: "强大的时序特征提取能力和重构性能，计算效率高"
+        }
+    },
+    lstm_autoencoder: {
+        title: "LSTM Autoencoder 参数配置",
+        icon: "📈",
+        templateId: "lstmAutoencoderTemplate",
+        description: {
+            type: "LSTM自编码器",
+            usage: "适用于复杂时序数据的异常检测，通过重构误差识别异常模式",
+            strength: "强大的序列建模和时间模式学习能力，擅长检测复杂的时序异常"
+        }
+    },
+    lstm_predictor: {
+        title: "LSTM Predictor 参数配置",
+        icon: "🎯",
+        templateId: "lstmPredictorTemplate",
+        description: {
+            type: "LSTM预测器",
+            usage: "基于预测误差进行异常检测，适合单变量时序",
+            strength: "精确的未来值预测和异常分数计算"
+        }
+    }
+};
+
+function parseIntListInput(value, fallback = []) {
+    if (value === null || value === undefined) {
+        return [...fallback];
+    }
+
+    if (Array.isArray(value)) {
+        const parsed = value
+            .map((item) => parseInt(String(item).trim(), 10))
+            .filter((num) => !Number.isNaN(num));
+        return parsed.length ? parsed : [...fallback];
+    }
+
+    const result = String(value)
+        .split(/[,，]/)
+        .map((segment) => segment.trim())
+        .filter(Boolean)
+        .map((segment) => parseInt(segment, 10))
+        .filter((num) => !Number.isNaN(num));
+
+    return result.length ? result : [...fallback];
+}
+
+function normalizeDeviceTarget(value) {
+    const normalized = (value || 'CPU').toString().trim().toLowerCase();
+    if (normalized === 'gpu') {
+        return 'GPU';
+    }
+    if (normalized === 'ascend' || normalized === 'npu' || normalized === 'atlas') {
+        return 'Ascend';
+    }
+    return 'CPU';
+}
+
+// 切换模型类型
+function switchModelType(modelType) {
+    console.log('切换到模型类型:', modelType);
+    
+    const config = modelTypeConfigs[modelType];
+    if (!config) {
+        console.error('未知的模型类型:', modelType);
+        showError('无效的模型类型');
+        return;
+    }
+
+    try {
+        // 更新模型配置区域标题
+        updateModelConfigTitle(config);
+        
+        // 切换数据集配置显示
+        switchDatasetConfigDisplay(modelType);
+        
+        // 添加切换动画
+        const configContainer = document.getElementById('dynamicModelConfig');
+        configContainer.classList.add('hiding');
+        
+        // 延迟更新内容，配合动画效果
+        setTimeout(() => {
+            // 更新模型参数配置
+            updateModelConfig(config);
+            
+            // 显示新内容
+            configContainer.classList.remove('hiding');
+            configContainer.classList.add('showing');
+            
+            // 清除显示类
+            setTimeout(() => {
+                configContainer.classList.remove('showing');
+            }, 300);
+        }, 150);
+        
+        // 清除所有错误状态
+        clearAllErrors();
+        
+    } catch (error) {
+        console.error('切换模型类型时出错:', error);
+        showError('切换模型时发生错误，请刷新页面重试');
+    }
+}
+
+// 切换数据集配置显示
+function switchDatasetConfigDisplay(modelType) {
+    console.log(`🔄 [switchDatasetConfigDisplay] 切换到模型类型: ${modelType}`);
+    
+    // 隐藏所有数据集配置及其文件选择区域
+    const configs = [
+        { id: 'lstmPredictorDatasetConfig', trainArea: 'trainFileSelectionAreaPredictor', testArea: 'testFileSelectionAreaPredictor' },
+        { id: 'lstmAutoencoderDatasetConfig', trainArea: 'trainFileSelectionArea', testArea: 'testFileSelectionArea' },
+        { id: 'cnn1dAutoencoderDatasetConfig', trainArea: 'trainFileSelectionAreaCnn1d', testArea: 'testFileSelectionAreaCnn1d' }
+    ];
+    
+    configs.forEach(config => {
+        const element = document.getElementById(config.id);
+        if (element) {
+            element.style.display = 'none';
+            console.log(`✅ 已隐藏配置: ${config.id}`);
+        }
+        // 同时隐藏文件选择区域
+        const trainArea = document.getElementById(config.trainArea);
+        const testArea = document.getElementById(config.testArea);
+        if (trainArea) trainArea.style.display = 'none';
+        if (testArea) testArea.style.display = 'none';
+    });
+    
+    // 显示对应的数据集配置（异常检测模型都使用工况筛选模式）
+    if (modelType === 'lstm_predictor') {
+        const predictorConfig = document.getElementById('lstmPredictorDatasetConfig');
+        if (predictorConfig) {
+            predictorConfig.style.display = 'block';
+            console.log('✅ 已显示LSTM Predictor数据集配置');
+            // 先显示文件选择区域
+            const trainArea = document.getElementById('trainFileSelectionAreaPredictor');
+            const testArea = document.getElementById('testFileSelectionAreaPredictor');
+            if (trainArea) trainArea.style.display = 'block';
+            if (testArea) testArea.style.display = 'block';
+            // 加载工况选项
+            setTimeout(() => loadConditionKeys('Predictor'), 100);
+        }
+    } else if (modelType === 'lstm_autoencoder') {
+        const autoencoderConfig = document.getElementById('lstmAutoencoderDatasetConfig');
+        if (autoencoderConfig) {
+            autoencoderConfig.style.display = 'block';
+            console.log('✅ 已显示LSTM Autoencoder数据集配置');
+            // 先显示文件选择区域
+            const trainArea = document.getElementById('trainFileSelectionArea');
+            const testArea = document.getElementById('testFileSelectionArea');
+            if (trainArea) trainArea.style.display = 'block';
+            if (testArea) testArea.style.display = 'block';
+            // 确保工况选择区域存在
+            const conditionArea = document.getElementById('conditionSelectionArea');
+            if (!conditionArea) {
+                console.error('❌ 未找到conditionSelectionArea元素');
+            } else {
+                console.log('✅ 找到conditionSelectionArea元素，准备加载工况选项');
+            }
+            // 加载工况选项（LSTM Autoencoder使用无后缀的元素ID）
+            setTimeout(() => {
+                console.log('⏰ 开始为LSTM Autoencoder加载工况选项...');
+                loadConditionKeys(''); // 使用空字符串，因为元素ID是conditionSelectionArea（无后缀）
+            }, 200);
+        } else {
+            console.error('❌ 未找到lstmAutoencoderDatasetConfig元素');
+        }
+    } else if (modelType === 'cnn_1d_autoencoder') {
+        const cnn1dConfig = document.getElementById('cnn1dAutoencoderDatasetConfig');
+        if (cnn1dConfig) {
+            cnn1dConfig.style.display = 'block';
+            console.log('✅ 已显示CNN 1D Autoencoder数据集配置');
+            // 先显示文件选择区域
+            const trainArea = document.getElementById('trainFileSelectionAreaCnn1d');
+            const testArea = document.getElementById('testFileSelectionAreaCnn1d');
+            if (trainArea) trainArea.style.display = 'block';
+            if (testArea) testArea.style.display = 'block';
+            // 确保工况选择区域存在
+            const conditionArea = document.getElementById('conditionSelectionAreaCnn1d');
+            if (!conditionArea) {
+                console.error('❌ 未找到conditionSelectionAreaCnn1d元素');
+            } else {
+                console.log('✅ 找到conditionSelectionAreaCnn1d元素，准备加载工况选项');
+            }
+            // 加载工况选项（增加延迟确保DOM已更新）
+            setTimeout(() => {
+                console.log('⏰ 开始为CNN 1D Autoencoder加载工况选项...');
+                loadConditionKeys('Cnn1d');
+            }, 200);
+        } else {
+            console.error('❌ 未找到cnn1dAutoencoderDatasetConfig元素');
+        }
+    } else {
+        console.warn(`⚠️ 未知的模型类型: ${modelType}`);
+    }
+}
+
+// 确保数据文件列表已加载（防重复加载）
+let dataFilesLoaded = false;
+function ensureDataFilesLoaded() {
+    if (!dataFilesLoaded) {
+        console.log('首次加载数据文件列表');
+        loadProcessedFiles();
+        dataFilesLoaded = true;
+    } else {
+        console.log('数据文件列表已加载，跳过重复加载');
+    }
+}
+
+// 更新模型配置区域标题
+function updateModelConfigTitle(config) {
+    const titleElement = document.getElementById('modelConfigTitle');
+    if (titleElement) {
+        titleElement.textContent = `${config.icon} ${config.description.type} - 模型说明`;
+    }
+}
+
+// 更新模型参数配置
+function updateModelConfig(config) {
+    const container = document.getElementById('dynamicModelConfig');
+    const template = document.getElementById(config.templateId);
+    
+    if (!container) {
+        console.error('找不到动态配置容器');
+        return;
+    }
+    
+    if (!template) {
+        console.error(`找不到模板: ${config.templateId}`);
+        return;
+    }
+    
+    // 清空容器
+    container.innerHTML = '';
+    
+    // 复制模板内容
+    const templateContent = template.cloneNode(true);
+    templateContent.style.display = 'block';
+    templateContent.id = ''; // 移除ID避免冲突
+    
+    // 添加模型说明
+    const descriptionHtml = `
+        <div class="alert alert-light border border-info p-3 rounded mb-4">
+            <div class="d-flex align-items-start">
+                <div class="me-3" style="font-size: 2rem;">${config.icon}</div>
+                <div class="flex-grow-1">
+                    <h6 class="alert-heading text-info mb-2">
+                        <i class="fas fa-info-circle"></i> 模型说明
+                    </h6>
+                    <ul class="small mb-0">
+                        <li><strong>类型:</strong> ${config.description.type}</li>
+                        <li><strong>适用场景:</strong> ${config.description.usage}</li>
+                        <li><strong>优势:</strong> ${config.description.strength}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 将模型说明添加到模型配置区域
+    container.innerHTML = descriptionHtml;
+    
+    // 提取网络参数部分并添加到网络参数区域
+    const networkParamsContent = document.getElementById('networkParamsContent');
+    if (networkParamsContent) {
+        networkParamsContent.innerHTML = '';
+        
+        // 查找模板中的网络参数部分（param-section）
+        const networkParamsSection = templateContent.querySelector('.param-section');
+        if (networkParamsSection) {
+            // 移除标题（因为已经有统一的标题了）
+            const clonedSection = networkParamsSection.cloneNode(true);
+            const titleElement = clonedSection.querySelector('h6');
+            if (titleElement) {
+                titleElement.remove();
+            }
+
+            // 确保克隆元素中的ID唯一性
+            const timestamp = Date.now();
+            const randomSuffix = Math.random().toString(36).substr(2, 9);
+
+            // 处理有ID的元素
+            const elementsWithId = clonedSection.querySelectorAll('[id]');
+            elementsWithId.forEach((element, index) => {
+                if (element.id) {
+                    const oldId = element.id;
+                    const newId = `${oldId}-dynamic-${timestamp}-${randomSuffix}-${index}`;
+                    element.id = newId;
+
+                    // 更新对应的label[for]属性
+                    const relatedLabel = clonedSection.querySelector(`label[for="${oldId}"]`);
+                    if (relatedLabel) {
+                        relatedLabel.setAttribute('for', newId);
+                    }
+                }
+            });
+
+            // 只注入内部内容，避免重复容器
+            while (clonedSection.firstChild) {
+                networkParamsContent.appendChild(clonedSection.firstChild);
+            }
+        }
+    }
+    
+    // 更新任务/数据参数部分
+    updateTaskDataParams(config);
+    
+    // 在动态内容插入后，调用无障碍功能增强
+    if (window.enhanceFormAccessibility) {
+        window.enhanceFormAccessibility(templateContent);
+    }
+}
+
+// 更新任务/数据参数部分
+function updateTaskDataParams(config) {
+    const modelType = document.getElementById('modelType')?.value;
+    const sequenceLengthInput = document.getElementById('sequenceLength');
+    const strideInput = document.getElementById('stride');
+    
+    // 根据模型类型设置序列长度的默认值
+    const seqLenMap = {
+        'lstm_predictor': 10,
+        'lstm_autoencoder': 30,
+        'cnn_1d_autoencoder': 50
+    };
+    
+    if (sequenceLengthInput && seqLenMap[modelType]) {
+        // 查找模型特定的序列长度输入框（在网络参数部分）
+        setTimeout(() => {
+            const modelSeqLenInput = document.querySelector(`input[id*="SeqLen"]`);
+            if (modelSeqLenInput && modelSeqLenInput.value) {
+                sequenceLengthInput.value = modelSeqLenInput.value;
+            } else {
+                sequenceLengthInput.value = seqLenMap[modelType];
+            }
+            
+            // 建立双向同步
+            if (modelSeqLenInput) {
+                sequenceLengthInput.addEventListener('input', function syncSeqLen() {
+                    if (modelSeqLenInput) {
+                        modelSeqLenInput.value = this.value;
+                    }
+                });
+                
+                modelSeqLenInput.addEventListener('input', function syncSeqLen() {
+                    if (sequenceLengthInput) {
+                        sequenceLengthInput.value = this.value;
+                    }
+                });
+            }
+        }, 100);
+    }
+    
+    // 同步数据步长
+    if (strideInput) {
+        setTimeout(() => {
+            const modelStrideInput = document.querySelector(`input[id*="Stride"]`);
+            if (modelStrideInput) {
+                if (modelStrideInput.value) {
+                    strideInput.value = modelStrideInput.value;
+                } else {
+                    modelStrideInput.value = strideInput.value;
+                }
+                
+                // 建立双向同步
+                strideInput.addEventListener('input', function syncStride() {
+                    if (modelStrideInput) {
+                        modelStrideInput.value = this.value;
+                    }
+                });
+                
+                modelStrideInput.addEventListener('input', function syncStride() {
+                    if (strideInput) {
+                        strideInput.value = this.value;
+                    }
+                });
+            }
+        }, 100);
+    }
+    
+    // 注意：数据集配置的显示/隐藏已由switchDatasetConfigDisplay函数在switchModelType中处理
+    // 这里不再需要调用updateDatasetConfigForModel
+    
+    // 验证ID唯一性（开发调试用）
+    if (console && console.log) {
+        const allIds = Array.from(document.querySelectorAll('[id]')).map(el => el.id);
+        const duplicates = allIds.filter((id, index) => allIds.indexOf(id) !== index);
+        if (duplicates.length > 0) {
+            console.warn('检测到重复ID:', [...new Set(duplicates)]);
+        }
+    }
+}
+
+// 根据模型类型切换数据集配置显示（已废弃，使用switchDatasetConfigDisplay代替）
+// 此函数保留是为了向后兼容，但实际功能已由switchDatasetConfigDisplay处理
+function updateDatasetConfigForModel(modelType) {
+    console.warn('⚠️ updateDatasetConfigForModel已被废弃，请使用switchDatasetConfigDisplay');
+    // 不再执行任何操作，因为switchDatasetConfigDisplay已经在switchModelType中被调用
+    // 这个函数保留是为了避免调用它的代码报错
+}
+
+
+// 更新模式说明
+function updateModeDescription(descConfig) {
+    const container = document.getElementById('modeDescriptionSection');
+
+    const contentHtml = descConfig.content.map(item =>
+        `<li><strong>${item.text}:</strong> ${item.value}</li>`
+    ).join('');
+
+    container.innerHTML = `
+        <div class="alert alert-light border border-${descConfig.color} p-3 rounded mb-4 fade-in">
+            <div class="d-flex align-items-start">
+                <div class="flex-grow-1">
+                    <h6 class="alert-heading text-${descConfig.color} mb-2">
+                        <i class="${descConfig.icon}"></i> ${descConfig.title}
+                    </h6>
+                    <ul class="small mb-0">
+                        ${contentHtml}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// 更新数据划分配置
+function updateDataSplitConfig(splitConfig) {
+    const container = document.getElementById('dataSplitSection');
+
+    if (!splitConfig) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const fieldsHtml = splitConfig.fields.map(field => `
+        <div class="param-item">
+            <label class="form-label" for="${field.id}">
+                ${field.label}
+                ${field.badge ? `<span class="badge bg-${field.disabled ? 'warning' : 'primary'}">${field.badge}</span>` : ''}
+            </label>
+            <input type="number"
+                   class="form-control datasetModeConfig"
+                   id="${field.id}"
+                   name="${field.id}"
+                   value="${field.default || ''}"
+                   aria-label="${field.label}"
+                   title="${field.label}${field.help ? ': ' + field.help : ''}"
+                   ${field.min !== undefined ? `min="${field.min}"` : ''}
+                   ${field.max !== undefined ? `max="${field.max}"` : ''}
+                   ${field.step !== undefined ? `step="${field.step}"` : ''}
+                   ${field.disabled ? 'disabled' : ''}>
+            ${field.help ? `<div class="form-text">${field.help}</div>` : ''}
+        </div>
+    `).join('');
+
+    container.innerHTML = `
+        <div class="param-section fade-in">
+            <h6>${splitConfig.title}</h6>
+            <div class="param-row">
+                ${fieldsHtml}
+            </div>
+        </div>
+    `;
+}
+
+// 更新文件配置
+function updateFileConfig(fileConfig) {
+    const container = document.getElementById('dataFileSection');
+
+    const filesHtml = fileConfig.files.map(file => `
+        <div class="param-row">
+            <div class="param-item full-width">
+                <label class="form-label" for="${file.id}">
+                    ${file.label}
+                    <span class="badge bg-${file.required ? 'success' : 'secondary'}">${file.badge}</span>
+                </label>
+                <input type="file"
+                       class="form-control datasetModeConfig"
+                       id="${file.id}"
+                       name="${file.id}"
+                       accept="${file.accept}"
+                       aria-label="${file.label}"
+                       title="${file.label}${file.help ? ': ' + file.help : ''}"
+                       ${file.required ? 'required' : ''}>
+                <div class="form-text">${file.help}</div>
+            </div>
+        </div>
+    `).join('');
+
+    container.innerHTML = `
+        <div class="param-section fade-in">
+            <h6>${fileConfig.title}</h6>
+            ${filesHtml}
+        </div>
+    `;
+}
+
+// 绑定动态事件
+function bindDynamicEvents(mode) {
+    if (mode === 'one') {
+        // 绑定比例变化事件
+        const trainRatioInput = document.getElementById('trainRatio');
+        const valRatioInput = document.getElementById('valRatio');
+
+        if (trainRatioInput) {
+            trainRatioInput.addEventListener('input', updateTestRatio);
+            trainRatioInput.addEventListener('change', updateTestRatio);
+        }
+        if (valRatioInput) {
+            valRatioInput.addEventListener('input', updateTestRatio);
+            valRatioInput.addEventListener('change', updateTestRatio);
+        }
+
+        // 初始化测试集比例
+        updateTestRatio();
+    }
+}
+
+// 更新测试集比例（自动计算）
+function updateTestRatio() {
+    const trainRatioInput = document.getElementById('trainRatio');
+    const valRatioInput = document.getElementById('valRatio');
+    const testRatioInput = document.getElementById('testRatio');
+
+    if (!trainRatioInput || !valRatioInput || !testRatioInput) {
+        return;
+    }
+
+    const trainRatio = parseFloat(trainRatioInput.value) || 0;
+    const valRatio = parseFloat(valRatioInput.value) || 0;
+    const testRatio = Math.max(0, parseFloat((1 - trainRatio - valRatio).toFixed(3)));
+
+    testRatioInput.value = testRatio;
+
+    // 清除之前的错误状态
+    trainRatioInput.classList.remove('is-invalid');
+    valRatioInput.classList.remove('is-invalid');
+    
+    // 移除之前的错误信息
+    const errorElements = document.querySelectorAll('.ratio-error');
+    errorElements.forEach(el => el.remove());
+
+    // 验证比例
+    const total = trainRatio + valRatio;
+    if (total > 1.0) {
+        trainRatioInput.classList.add('is-invalid');
+        valRatioInput.classList.add('is-invalid');
+        
+        // 添加错误提示
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'invalid-feedback ratio-error';
+        errorMsg.textContent = `训练集和验证集比例之和不能超过1.0 (当前: ${total.toFixed(3)})`;
+        valRatioInput.parentNode.appendChild(errorMsg);
+    } else if (testRatio < 0.05) {
+        trainRatioInput.classList.add('is-invalid');
+        valRatioInput.classList.add('is-invalid');
+        
+        // 添加警告提示
+        const warningMsg = document.createElement('div');
+        warningMsg.className = 'invalid-feedback ratio-error';
+        warningMsg.textContent = `测试集比例过小 (${testRatio.toFixed(3)})，建议至少保留5%作为测试集`;
+        valRatioInput.parentNode.appendChild(warningMsg);
+    }
+
+    // 更新测试集比例的背景色
+    if (testRatio < 0.05) {
+        testRatioInput.style.backgroundColor = '#fff3cd';
+    } else if (testRatio === 0) {
+        testRatioInput.style.backgroundColor = '#f8d7da';
+    } else {
+        testRatioInput.style.backgroundColor = '#d1edff';
+    }
+}
+
+// 显示错误信息
+function showError(message) {
+    // 移除之前的错误提示
+    const existingError = document.querySelector('.global-error');
+    if (existingError) {
+        existingError.remove();
+    }
+
+    // 优先尝试使用通知系统
+    if (window.notificationSystem) {
+        window.notificationSystem.showNotification(message, 'error', 8000);
+        return;
+    }
+
+    // 备用方案：在页面顶部显示错误信息，避免影响滚动
+    let errorContainer = document.getElementById('globalErrorContainer');
+    if (!errorContainer) {
+        errorContainer = document.createElement('div');
+        errorContainer.id = 'globalErrorContainer';
+        errorContainer.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 90%; max-width: 600px;';
+        document.body.appendChild(errorContainer);
+    }
+
+    // 创建错误提示
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger global-error fade-in shadow';
+    errorDiv.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>错误:</strong> ${message}
+        <button type="button" class="btn-close alert-close-btn" aria-label="关闭"></button>
+    `;
+    
+    errorContainer.appendChild(errorDiv);
+    
+    // 3秒后自动消失
+    setTimeout(() => {
+        if (errorDiv && errorDiv.parentElement) {
+            errorDiv.remove();
+        }
+    }, 3000);
+
+    // 自动消失
+    setTimeout(() => {
+        if (errorDiv.parentNode) {
+            errorDiv.remove();
+        }
+    }, 5000);
+}
+
+// 清除所有错误状态
+function clearAllErrors() {
+    // 移除is-invalid类
+    document.querySelectorAll('.is-invalid').forEach(el => {
+        el.classList.remove('is-invalid');
+    });
+    
+    // 移除错误信息
+    document.querySelectorAll('.invalid-feedback, .ratio-error').forEach(el => {
+        el.remove();
+    });
+    
+    // 移除全局错误
+    document.querySelectorAll('.global-error').forEach(el => {
+        el.remove();
+    });
+
+    // 重置input背景色
+    document.querySelectorAll('input[type="number"]').forEach(input => {
+        input.style.backgroundColor = '';
+    });
+}
+
+// 验证当前模式的表单数据
+function validateCurrentMode() {
+    const currentModelType = document.getElementById('modelType')?.value;
+    const errors = [];
+
+    console.log('🔍 开始验证表单数据，当前模型类型:', currentModelType);
+
+    if (currentModelType === 'lstm_predictor') {
+        console.log('✅ 进入LSTM预测模型验证分支');
+        // LSTM预测模型：验证数据集文件选择
+        const datasetFileSelect = document.getElementById('predictorDataFile');
+        if (!datasetFileSelect) {
+            console.error('❌ 未找到predictorDataFile元素');
+            errors.push('数据文件选择控件未找到，请刷新页面重试');
+        } else {
+            const selectedValue = datasetFileSelect.value;
+            const selectedText = datasetFileSelect.options[datasetFileSelect.selectedIndex]?.text || '';
+            
+            console.log('验证LSTM预测模型数据文件:', {
+                selectedValue,
+                selectedText,
+                optionsCount: datasetFileSelect.options.length
+            });
+            
+            if (!selectedValue || selectedValue === '') {
+                console.warn('⚠️ 未选择预处理数据文件');
+                errors.push('请选择预处理数据文件');
+            } else if (selectedText.includes('加载中') || selectedText.includes('加载失败')) {
+                console.warn('⚠️ 数据文件列表加载状态异常:', selectedText);
+                errors.push('数据文件列表尚未加载完成，请稍后再试');
+            } else {
+                console.log('✅ LSTM预测模型数据文件验证通过');
+            }
+        }
+    } else if (currentModelType === 'lstm_autoencoder') {
+        console.log('✅ 进入LSTM自编码器验证分支');
+        // LSTM Autoencoder：验证训练集文件选择（工况筛选模式）
+        const selectedTrainFiles = getSelectedFiles('train');
+        if (!selectedTrainFiles || selectedTrainFiles.length === 0) {
+            console.warn('⚠️ 未选择训练集文件');
+            errors.push('请至少选择一个训练集文件');
+        } else {
+            console.log(`✅ LSTM自编码器训练集文件验证通过，已选择 ${selectedTrainFiles.length} 个文件`);
+        }
+    } else if (currentModelType === 'cnn_1d_autoencoder') {
+        console.log('✅ 进入1D CNN自编码器验证分支');
+        // CNN 1D Autoencoder：验证训练集文件选择（工况筛选模式）
+        const selectedTrainFiles = getSelectedFiles('trainCnn1d');
+        if (!selectedTrainFiles || selectedTrainFiles.length === 0) {
+            console.warn('⚠️ 未选择训练集文件');
+            errors.push('请至少选择一个训练集文件');
+        } else {
+            console.log(`✅ 1D CNN自编码器训练集文件验证通过，已选择 ${selectedTrainFiles.length} 个文件`);
+        }
+    } else {
+        console.log('⚠️ 进入通用模式验证分支，模型类型:', currentModelType);
+        // 其他模型：使用原有的验证逻辑
+        const selectedMode = document.querySelector('input[name="datasetMode"]:checked')?.value;
+        console.log('当前选中的数据集模式:', selectedMode);
+        
+        console.log('🔍 [通用验证] 检查各种模式元素状态:');
+        console.log('   - modeOne存在:', !!document.getElementById('modeOne'));
+        console.log('   - modeTwo存在:', !!document.getElementById('modeTwo'));
+        console.log('   - modeThree存在:', !!document.getElementById('modeThree'));
+        console.log('   - 选中状态检查:');
+        const radios = document.querySelectorAll('input[name="datasetMode"]');
+        radios.forEach((radio, index) => {
+            console.log(`     Radio ${index + 1} (${radio.value}): checked=${radio.checked}, disabled=${radio.disabled}, visible=${radio.parentElement.style.display !== 'none'}`);
+        });
+
+        if (selectedMode === 'one') {
+            // 验证模式1
+            console.log('🔍 [通用验证] 进入模式1验证');
+            const trainRatio = parseFloat(document.getElementById('trainRatio')?.value) || 0;
+            const valRatio = parseFloat(document.getElementById('valRatio')?.value) || 0;
+            const datasetFileInput = document.getElementById('datasetFileMode1');
+            const datasetFile = datasetFileInput?.files.length;
+            
+            console.log('🔍 [通用验证] 模式1检查结果:', {
+                trainRatio,
+                valRatio,
+                datasetFileInput_exists: !!datasetFileInput,
+                files_length: datasetFile,
+                total_ratio: trainRatio + valRatio
+            });
+            
+            if (trainRatio + valRatio >= 1.0) {
+                console.warn('⚠️ [通用验证] 训练集和验证集比例之和超过1.0');
+                errors.push('训练集和验证集比例之和必须小于1.0');
+            }
+            if (!datasetFile) {
+                console.warn('⚠️ [通用验证] 未选择数据集文件 - 这里产生了错误消息!');
+                errors.push('请选择数据集文件');
+            }
+        } else if (selectedMode === 'two') {
+            // 验证模式2
+            const trainFile = document.getElementById('trainFileMode2')?.files.length;
+            const testFile = document.getElementById('testFileMode2')?.files.length;
+            
+            if (!trainFile) errors.push('请选择训练集文件');
+            if (!testFile) errors.push('请选择测试集文件');
+        } else if (selectedMode === 'three') {
+            // 验证模式3
+            const trainFile = document.getElementById('trainFileMode3')?.files.length;
+            const valFile = document.getElementById('valFileMode3')?.files.length;
+            const testFile = document.getElementById('testFileMode3')?.files.length;
+            
+            if (!trainFile) errors.push('请选择训练集文件');
+            if (!valFile) errors.push('请选择验证集文件');
+            if (!testFile) errors.push('请选择测试集文件');
+        }
+    }
+
+    console.log('🔍 验证完成，错误数量:', errors.length, '错误信息:', errors);
+    return errors;
+}
+
+// 页面初始化
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('页面加载完成，初始化模型和数据集配置');
+    
+    try {
+        // 初始化模型类型（默认选择LSTM Predictor）
+        const defaultModelType = document.getElementById('modelType')?.value || 'lstm_predictor';
+        switchModelType(defaultModelType);
+        
+        // LSTM预测模型不需要初始化数据集模式，因为它使用专用配置
+        // 其他模型会在updateDatasetConfigForModel中初始化通用配置
+        
+        // 为模型类型选择添加变化监听
+        const modelTypeSelect = document.getElementById('modelType');
+        if (modelTypeSelect) {
+            modelTypeSelect.addEventListener('change', function() {
+                switchModelType(this.value);
+            });
+        }
+        
+        // 为加载默认配置按钮添加功能
+        document.getElementById('loadDefaultsBtn')?.addEventListener('click', function() {
+            loadDefaultConfiguration();
+        });
+        
+        // 训练相关事件已由TrainingExecutor模块处理
+        
+    } catch (error) {
+        console.error('页面初始化失败:', error);
+        showError('页面初始化失败，请刷新页面重试');
+    }
+});
+
+// 加载默认配置
+function loadDefaultConfiguration() {
+    try {
+        // 重新初始化当前选择的模型
+        const currentModelType = document.getElementById('modelType')?.value;
+        if (currentModelType) {
+            switchModelType(currentModelType);
+        }
+        
+        // 显示成功提示
+        const successDiv = document.createElement('div');
+        successDiv.className = 'alert alert-success fade-in';
+        successDiv.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            <strong>成功:</strong> 默认配置已加载
+            <button type="button" class="btn-close alert-close-btn" aria-label="关闭"></button>
+        `;
+        
+        const datasetConfig = document.getElementById('datasetConfig');
+        datasetConfig.insertBefore(successDiv, datasetConfig.firstChild);
+        
+        // 自动消失
+        setTimeout(() => {
+            if (successDiv.parentNode) {
+                successDiv.remove();
+            }
+        }, 3000);
+        
+    } catch (error) {
+        console.error('加载默认配置失败:', error);
+        showError('加载默认配置失败');
+    }
+}
+
+// 页面初始化时清理可能的重复事件监听器
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('zeroCodeForm');
+    if (!form) {
+        return;
+    }
+
+    // 添加全局表单提交拦截器进行调试
+    const originalAddEventListener = form.addEventListener;
+    form.addEventListener = function(type, listener, options) {
+        if (type === 'submit') {
+            console.log('🎯 [全局拦截器] 检测到表单提交监听器被注册:', listener.name || '匿名函数');
+        }
+        return originalAddEventListener.call(this, type, listener, options);
+    };
+
+    // 拦截原生表单提交
+    form.addEventListener('submit', function(e) {
+        console.log('🚨 [全局拦截器] 表单提交事件触发 - 事件阶段:', e.eventPhase);
+        console.log('🚨 [全局拦截器] 事件目标:', e.target);
+        console.log('🚨 [全局拦截器] 当前模型类型:', document.getElementById('modelType')?.value);
+        console.log('🚨 [全局拦截器] 调用堆栈:');
+        console.trace();
+    }, true); // 使用捕获阶段确保最先执行
+
+    const modernExecutorAvailable = window.trainingExecutor && typeof window.trainingExecutor.handleTrainingSubmit === 'function';
+    if (modernExecutorAvailable) {
+        console.debug('🔧 [LegacyFormHandler] 检测到 TrainingExecutor，跳过旧版提交处理逻辑');
+        return;
+    }
+
+    // 强制禁用HTML5验证
+    form.noValidate = true;
+
+    // 移除可能的重复事件监听器
+    form.removeEventListener('submit', handleFormSubmit);
+
+    // 确保只有一个提交事件处理器
+    form.addEventListener('submit', handleFormSubmit);
+
+    // 添加调试监听器来捕获意外的滚动
+    let isSubmitting = false;
+    const originalSubmit = form.submit;
+    form.submit = function() {
+        console.log('[DEBUG] 拦截form.submit调用');
+        return false; // 阻止直接调用submit
+    };
+
+    // 监听训练按钮的点击
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) {
+        submitButton.addEventListener('click', function(e) {
+            console.log('[DEBUG] 训练按钮点击事件');
+            isSubmitting = true;
+
+            // 保存滚动位置但不锁定页面
+            window.lastScrollY = window.scrollY;
+            console.log('[DEBUG] 保存滚动位置:', window.lastScrollY);
+
+            // 短暂延迟后恢复状态
+            setTimeout(() => {
+                isSubmitting = false;
+            }, 1000);
+        });
+    }
+});
+
+// 统一的表单提交处理函数
+function handleFormSubmit(e) {
+    console.log('📝 [handleFormSubmit] 表单提交事件被触发');
+    
+    const modernExecutorAvailable = window.trainingExecutor && typeof window.trainingExecutor.handleTrainingSubmit === 'function';
+    console.log('🔍 [handleFormSubmit] 现代执行器可用:', modernExecutorAvailable);
+    
+    // 检查当前模型类型
+    const currentModelType = document.getElementById('modelType')?.value;
+    console.log('📋 [handleFormSubmit] 当前模型类型:', currentModelType);
+    
+    // 对于LSTM和CNN模型，强制使用我们的验证逻辑
+    if (currentModelType === 'lstm_predictor' || currentModelType === 'lstm_autoencoder' || currentModelType === 'cnn_1d_autoencoder') {
+        console.log('⚠️ [handleFormSubmit] LSTM模型检测到，强制使用内建验证逻辑');
+        
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        // 强制禁用表单验证
+        const form = e.target;
+        if (form) {
+            form.noValidate = true;
+        }
+        
+        // 验证表单数据
+        const errors = validateCurrentMode();
+        if (errors.length > 0) {
+            showError('表单验证失败:<br>' + errors.join('<br>'));
+            return;
+        }
+        
+        console.log('✅ [handleFormSubmit] LSTM模型验证通过，继续提交');
+        // 如果验证通过，继续处理提交
+        // 这里可以调用现代执行器或我们自己的提交逻辑
+        if (modernExecutorAvailable) {
+            // 调用现代执行器处理提交，但跳过它的验证
+            return window.trainingExecutor.handleTrainingSubmit(e, true); // 传递true表示跳过验证
+        } else {
+            // 使用我们自己的提交逻辑
+            return handleLSTMTrainingSubmit(e, form);
+        }
+    }
+    
+    if (modernExecutorAvailable) {
+        console.log('🚀 [handleFormSubmit] 使用现代训练执行器');
+        // 现代训练执行器会接管提交流程
+        return;
+    }
+
+    console.log('📜 [handleFormSubmit] 使用传统提交处理逻辑');
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    
+    // 强制禁用表单验证
+    const form = e.target;
+    if (form) {
+        form.noValidate = true;
+    }
+    
+    // 验证表单数据
+    const errors = validateCurrentMode();
+    if (errors.length > 0) {
+        showError('表单验证失败:<br>' + errors.join('<br>'));
+        return;
+    }
+    
+    // 收集表单数据
+    const formData = new FormData(form);
+    const trainingData = {};
+    
+    // 获取当前模型类型
+    const currentModelTypeForData = document.getElementById('modelType')?.value;
+    
+    // 处理基本参数
+    if (currentModelTypeForData === 'lstm_predictor') {
+        // LSTM预测模型：使用工况筛选和文件选择
+        const selectedTrainFiles = getSelectedFiles('trainPredictor');
+        if (!selectedTrainFiles || selectedTrainFiles.length === 0) {
+            alert('请至少选择一个训练集文件');
+            e.preventDefault();
+            return;
+        }
+        
+        trainingData.train_files = selectedTrainFiles;
+        trainingData.validation_split = parseFloat(formData.get('predictorValSplit') || '0.2');
+        trainingData.random_seed = parseInt(formData.get('randomSeed') || '42');
+        trainingData.dataset_mode = 'condition_filtered'; // 新的数据模式：工况筛选模式
+        trainingData.conditions = selectedConditions; // 传递工况条件
+        
+        // 测试集文件（可选）
+        const selectedTestFiles = getSelectedFiles('testPredictor');
+        if (selectedTestFiles && selectedTestFiles.length > 0) {
+            trainingData.test_files = selectedTestFiles;
+        }
+    } else if (currentModelTypeForData === 'lstm_autoencoder') {
+        // LSTM Autoencoder：使用工况筛选和文件选择
+        // 获取选中的训练集文件
+        const selectedTrainFiles = getSelectedFiles('train');
+        if (!selectedTrainFiles || selectedTrainFiles.length === 0) {
+            alert('请至少选择一个训练集文件');
+            e.preventDefault();
+            return;
+        }
+        
+        trainingData.train_files = selectedTrainFiles;
+        trainingData.validation_split = parseFloat(formData.get('autoencoderValSplit') || '0.2');
+        trainingData.random_seed = parseInt(formData.get('randomSeed') || '42');
+        trainingData.dataset_mode = 'condition_filtered'; // 新的数据模式：工况筛选模式
+        trainingData.conditions = selectedConditions; // 传递工况条件
+        
+        // 测试集文件（可选）
+        const selectedTestFiles = getSelectedFiles('test');
+        if (selectedTestFiles && selectedTestFiles.length > 0) {
+            trainingData.test_files = selectedTestFiles;
+        }
+    } else if (currentModelTypeForData === 'cnn_1d_autoencoder') {
+        // CNN 1D Autoencoder：使用工况筛选和文件选择
+        // 获取选中的训练集文件
+        const selectedTrainFiles = getSelectedFiles('trainCnn1d');
+        if (!selectedTrainFiles || selectedTrainFiles.length === 0) {
+            alert('请至少选择一个训练集文件');
+            e.preventDefault();
+            return;
+        }
+        
+        trainingData.train_files = selectedTrainFiles;
+        trainingData.validation_split = parseFloat(formData.get('cnn1dValSplit') || '0.2');
+        trainingData.random_seed = parseInt(formData.get('randomSeed') || '42');
+        trainingData.dataset_mode = 'condition_filtered'; // 新的数据模式：工况筛选模式
+        trainingData.conditions = selectedConditions; // 传递工况条件
+        
+        // 测试集文件（可选）
+        const selectedTestFiles = getSelectedFiles('testCnn1d');
+        if (selectedTestFiles && selectedTestFiles.length > 0) {
+            trainingData.test_files = selectedTestFiles;
+        }
+    } else {
+        // 其他模型：使用通用配置
+        trainingData.data_path = formData.get('datasetFileMode1') || formData.get('trainFileMode2') || formData.get('trainFileMode3');
+        trainingData.dataset_mode = formData.get('datasetMode');
+        
+        if (trainingData.dataset_mode === 'one') {
+            trainingData.train_ratio = parseFloat(formData.get('trainRatio') || '0.7');
+            trainingData.val_ratio = parseFloat(formData.get('valRatio') || '0.2');
+        } else if (trainingData.dataset_mode === 'two') {
+            trainingData.test_file = formData.get('testFileMode2');
+        } else if (trainingData.dataset_mode === 'three') {
+            trainingData.val_file = formData.get('valFileMode3');
+            trainingData.test_file = formData.get('testFileMode3');
+        }
+    }
+    
+    // 设置模型类型
+    trainingData.model_type = currentModelTypeForData;
+    
+    // 从任务/数据参数部分获取序列长度和数据步长（统一输入框）
+    trainingData.sequence_length = parseInt(document.getElementById('sequenceLength')?.value || formData.get('sequenceLength') || '10');
+    trainingData.stride = parseInt(document.getElementById('stride')?.value || formData.get('stride') || '1');
+    
+    // 处理LSTM相关参数
+    if (currentModelTypeForData === 'lstm_predictor') {
+        trainingData.hidden_units = parseInt(document.querySelector('input[id*="PredHiddenDim"]')?.value || formData.get('lstmPredHiddenDim') || '64');
+        trainingData.num_layers = parseInt(document.querySelector('input[id*="PredNumLayers"]')?.value || formData.get('lstmPredNumLayers') || '2');
+        trainingData.dropout = parseFloat(document.querySelector('input[id*="PredDropout"]')?.value || formData.get('lstmPredDropout') || '0.1');
+        trainingData.activation = document.querySelector('select[id*="PredActivation"]')?.value || formData.get('lstmPredActivation') || 'tanh';
+        trainingData.bidirectional = (document.querySelector('select[id*="PredBidirectional"]')?.value || formData.get('lstmPredBidirectional')) === 'true';
+        trainingData.layer_norm = (document.querySelector('select[id*="PredLayerNorm"]')?.value || formData.get('lstmPredLayerNorm')) === 'true';
+        trainingData.prediction_horizon = 1; // LSTM预测器前端固定为单步预测
+    } else if (currentModelTypeForData === 'lstm_autoencoder') {
+        trainingData.hidden_units = parseInt(document.querySelector('input[id*="AeHiddenSize"]')?.value || formData.get('lstmAeHiddenSize') || '128');
+        trainingData.num_layers = parseInt(document.querySelector('input[id*="AeNumLayers"]')?.value || formData.get('lstmAeNumLayers') || '2');
+        trainingData.bottleneck_size = parseInt(document.querySelector('input[id*="AeBottleneckDim"]')?.value || formData.get('lstmAeBottleneckDim') || '64');
+        trainingData.bottleneck_dim = trainingData.bottleneck_size;
+        trainingData.dropout = parseFloat(document.querySelector('input[id*="AeDropout"]')?.value || formData.get('lstmAeDropout') || '0.1');
+    } else if (currentModelTypeForData === 'cnn_1d_autoencoder') {
+        const convChannelInput = document.querySelector('input[id*="convChannels"]')?.value || formData.get('convChannels');
+        const kernelSizeInput = document.querySelector('input[id*="kernelSizes"]')?.value || formData.get('kernelSizes');
+        const convChannels = parseIntListInput(convChannelInput, [64, 64, 64]);
+        const kernelSizes = parseIntListInput(kernelSizeInput, [3, 3, 3]);
+
+        trainingData.conv_channels = convChannels;
+        trainingData.kernel_sizes = kernelSizes;
+        trainingData.num_conv_layers = convChannels.length || 3;
+        trainingData.num_filters = convChannels[convChannels.length - 1] || convChannels[0] || 64;
+        trainingData.kernel_size = kernelSizes[0] || 3;
+        trainingData.bottleneck_size = parseInt(document.querySelector('input[id*="cnnBottleneckDim"]')?.value || formData.get('cnnBottleneckDim') || '64');
+        trainingData.bottleneck_dim = trainingData.bottleneck_size;
+        const dropoutValue = document.querySelector('[name="dropout"]')?.value || formData.get('dropout') || formData.get('cnnDropout');
+        const activationValue = document.querySelector('[name="activation"]')?.value || formData.get('activation') || formData.get('cnnActivation');
+        trainingData.dropout = parseFloat(dropoutValue || '0.1');
+        trainingData.activation = activationValue || 'relu';
+    }
+    
+    // 处理通用训练参数
+    trainingData.epochs = parseInt(formData.get('numEpochs') || '50');
+    trainingData.batch_size = parseInt(formData.get('batchSize') || '32');
+    trainingData.learning_rate = parseFloat(formData.get('learningRate') || '0.001');
+    trainingData.device_target = normalizeDeviceTarget(formData.get('device'));
+    
+    // 处理阈值计算配置
+    trainingData.threshold_method = formData.get('thresholdMethod') || 'percentile';
+    if (trainingData.threshold_method === 'percentile') {
+        trainingData.threshold_percentile = parseFloat(formData.get('thresholdPercentile') || '95');
+    } else if (trainingData.threshold_method === 'contamination') {
+        trainingData.threshold_contamination = parseFloat(formData.get('thresholdContamination') || '0.01');
+    }
+    
+    console.log('Training data:', trainingData);
+    
+    // 发送训练请求到云端API
+    startTraining(trainingData);
+}
+
+// 开始训练
+async function startTraining(trainingData) {
+    try {
+        // 显示训练状态
+        showTrainingStatus('正在连接云端服务...', 'info');
+        
+        const response = await fetch('/anomaly_detection/api/train', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(trainingData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showTrainingStatus('训练任务已提交到云端，正在后台执行...', 'success');
+            console.log('Training started:', result);
+            
+            // 获取task_id并跳转到监控页面
+            const taskId = result.task_id || result.cloud_task_id || 'unknown';
+            console.log('Task ID:', taskId);
+            
+            // 显示跳转提示
+            setTimeout(() => {
+                showTrainingStatus(`训练已开始 (任务ID: ${taskId})，即将跳转到监控页面...`, 'success');
+            }, 1000);
+            
+            // 2秒后自动跳转到监控页面
+            setTimeout(() => {
+                window.location.href = `/anomaly_detection/training_progress?task_id=${taskId}`;
+            }, 2000);
+        } else {
+            throw new Error(result.error || '训练启动失败');
+        }
+        
+    } catch (error) {
+        console.error('Training error:', error);
+        showTrainingStatus('训练启动失败: ' + error.message, 'error');
+    }
+}
+
+// 监控训练状态
+function monitorTrainingStatus() {
+    // 这里可以实现轮询或WebSocket来监控训练进度
+    // 暂时显示静态消息
+    setTimeout(() => {
+        showTrainingStatus('训练正在云端执行，请稍后查看模型列表...', 'info');
+    }, 3000);
+}
+
+// LSTM模型专用的训练提交处理函数
+function handleLSTMTrainingSubmit(e, form) {
+    console.log('📈 [handleLSTMTrainingSubmit] 开始处理LSTM模型训练提交');
+    
+    // 收集表单数据
+    const formData = new FormData(form);
+    const trainingData = {};
+    
+    // 获取当前模型类型
+    const currentModelType = document.getElementById('modelType')?.value;
+    
+    // 处理基本参数
+    if (currentModelType === 'lstm_predictor') {
+        // LSTM预测模型：使用工况筛选和文件选择
+        const selectedTrainFiles = getSelectedFiles('trainPredictor');
+        if (!selectedTrainFiles || selectedTrainFiles.length === 0) {
+            alert('请至少选择一个训练集文件');
+            e.preventDefault();
+            return;
+        }
+        
+        trainingData.train_files = selectedTrainFiles;
+        trainingData.validation_split = parseFloat(formData.get('predictorValSplit') || '0.2');
+        trainingData.random_seed = parseInt(formData.get('randomSeed') || '42');
+        trainingData.dataset_mode = 'condition_filtered'; // 新的数据模式：工况筛选模式
+        trainingData.conditions = selectedConditions; // 传递工况条件
+        
+        // 测试集文件（可选）
+        const selectedTestFiles = getSelectedFiles('testPredictor');
+        if (selectedTestFiles && selectedTestFiles.length > 0) {
+            trainingData.test_files = selectedTestFiles;
+        }
+    } else if (currentModelType === 'lstm_autoencoder') {
+        // LSTM Autoencoder：使用工况筛选和文件选择
+        const selectedTrainFiles = getSelectedFiles('train');
+        if (!selectedTrainFiles || selectedTrainFiles.length === 0) {
+            alert('请至少选择一个训练集文件');
+            e.preventDefault();
+            return;
+        }
+        
+        trainingData.train_files = selectedTrainFiles;
+        trainingData.validation_split = parseFloat(formData.get('autoencoderValSplit') || '0.2');
+        trainingData.random_seed = parseInt(formData.get('randomSeed') || '42');
+        trainingData.dataset_mode = 'condition_filtered'; // 新的数据模式：工况筛选模式
+        trainingData.conditions = selectedConditions; // 传递工况条件
+        
+        // 测试集文件（可选）
+        const selectedTestFiles = getSelectedFiles('test');
+        if (selectedTestFiles && selectedTestFiles.length > 0) {
+            trainingData.test_files = selectedTestFiles;
+        }
+    } else if (currentModelType === 'cnn_1d_autoencoder') {
+        // CNN 1D Autoencoder：使用工况筛选和文件选择
+        const selectedTrainFiles = getSelectedFiles('trainCnn1d');
+        if (!selectedTrainFiles || selectedTrainFiles.length === 0) {
+            alert('请至少选择一个训练集文件');
+            e.preventDefault();
+            return;
+        }
+        
+        trainingData.train_files = selectedTrainFiles;
+        trainingData.validation_split = parseFloat(formData.get('cnn1dValSplit') || '0.2');
+        trainingData.random_seed = parseInt(formData.get('randomSeed') || '42');
+        trainingData.dataset_mode = 'condition_filtered'; // 新的数据模式：工况筛选模式
+        trainingData.conditions = selectedConditions; // 传递工况条件
+        
+        // 测试集文件（可选）
+        const selectedTestFiles = getSelectedFiles('testCnn1d');
+        if (selectedTestFiles && selectedTestFiles.length > 0) {
+            trainingData.test_files = selectedTestFiles;
+        }
+    }
+    
+    // 设置模型类型
+    trainingData.model_type = currentModelType;
+    
+    // 处理LSTM相关参数
+    if (currentModelType === 'lstm_predictor') {
+        trainingData.sequence_length = parseInt(formData.get('lstmSeqLen') || '10');
+        trainingData.hidden_units = parseInt(formData.get('lstmPredHiddenDim') || '64');
+        trainingData.num_layers = parseInt(formData.get('lstmPredNumLayers') || '2');
+        trainingData.dropout = parseFloat(formData.get('lstmPredDropout') || '0.1');
+        trainingData.activation = formData.get('lstmPredActivation') || 'tanh';
+        trainingData.bidirectional = formData.get('lstmPredBidirectional') === 'true';
+        trainingData.layer_norm = formData.get('lstmPredLayerNorm') === 'true';
+        trainingData.prediction_horizon = 1; // 前端固定单步预测
+        trainingData.stride = parseInt(formData.get('lstmPredStride') || '1');
+    } else if (currentModelType === 'lstm_autoencoder') {
+        trainingData.sequence_length = parseInt(formData.get('lstmAeSeqLen') || '30');
+        trainingData.hidden_units = parseInt(formData.get('lstmAeHiddenSize') || '128');
+        trainingData.num_layers = parseInt(formData.get('lstmAeNumLayers') || '2');
+        trainingData.bottleneck_size = parseInt(formData.get('lstmAeBottleneckDim') || '64');
+        trainingData.bottleneck_dim = trainingData.bottleneck_size;
+        trainingData.dropout = parseFloat(formData.get('lstmAeDropout') || '0.1');
+        trainingData.stride = parseInt(formData.get('lstmAeStride') || '1');
+    } else if (currentModelType === 'cnn_1d_autoencoder') {
+        const convChannels = parseIntListInput(formData.get('convChannels'), [64, 64, 64]);
+        const kernelSizes = parseIntListInput(formData.get('kernelSizes'), [3, 3, 3]);
+
+        trainingData.sequence_length = parseInt(formData.get('sequenceLength') || '50');
+        trainingData.conv_channels = convChannels;
+        trainingData.kernel_sizes = kernelSizes;
+        trainingData.num_conv_layers = convChannels.length || 3;
+        trainingData.num_filters = convChannels[convChannels.length - 1] || convChannels[0] || 64;
+        trainingData.kernel_size = kernelSizes[0] || 3;
+        trainingData.bottleneck_size = parseInt(formData.get('cnnBottleneckDim') || '64');
+        trainingData.bottleneck_dim = trainingData.bottleneck_size;
+        trainingData.dropout = parseFloat(formData.get('dropout') || formData.get('cnnDropout') || '0.1');
+        trainingData.activation = formData.get('activation') || formData.get('cnnActivation') || 'relu';
+        trainingData.stride = parseInt(formData.get('stride') || '1');
+    }
+    
+    // 处理通用训练参数
+    trainingData.epochs = parseInt(formData.get('numEpochs') || '50');
+    trainingData.batch_size = parseInt(formData.get('batchSize') || '32');
+    trainingData.learning_rate = parseFloat(formData.get('learningRate') || '0.001');
+    trainingData.device_target = normalizeDeviceTarget(formData.get('device'));
+    
+    console.log('📊 [handleLSTMTrainingSubmit] 训练数据:', trainingData);
+    
+    // 发送训练请求到云端API
+    startTraining(trainingData);
+}
+
+// 显示训练状态
+function showTrainingStatus(message, type = 'info') {
+    const statusDiv = document.getElementById('trainingStatus');
+    if (!statusDiv) return;
+    
+    statusDiv.style.display = 'block';
+    statusDiv.innerHTML = `
+        <div class="alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'}">
+            <h5><i class="fas fa-${type === 'error' ? 'exclamation-triangle' : type === 'success' ? 'check-circle' : 'info-circle'}"></i> 训练状态</h5>
+            <p class="mb-0">${message}</p>
+        </div>
+    `;
+}
+
+// 为动态生成的关闭按钮添加事件监听器
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('alert-close-btn')) {
+        e.target.parentElement.remove();
+    }
+});
+
+// 为onchange替换后的元素添加事件监听器
+document.addEventListener('change', function(e) {
+    const action = e.target.getAttribute('data-action');
+    
+    if (action === 'switch-model-type') {
+        switchModelType(e.target.value);
+    }
+});
+
+// 加载预处理数据文件列表
+async function loadProcessedFiles() {
+    // 训练数据选择器
+    const trainSelects = [
+        document.getElementById('predictorDataFile'),
+        document.getElementById('autoencoderDataFile')
+    ].filter(select => select !== null);
+    
+    // 测试数据选择器
+    const testSelects = [
+        document.getElementById('predictorTestFile'),
+        document.getElementById('autoencoderTestFile')
+    ].filter(select => select !== null);
+    
+    const allSelects = [...trainSelects, ...testSelects];
+    
+    console.log('开始加载预处理数据文件，训练选择器:', trainSelects.length, '测试选择器:', testSelects.length);
+    
+    if (allSelects.length === 0) {
+        console.warn('没有找到有效的select元素');
+        return;
+    }
+    
+    try {
+        // 为训练数据选择器设置加载状态
+        trainSelects.forEach(select => {
+            select.innerHTML = '<option value="">加载中...</option>';
+        });
+        // 为测试数据选择器设置加载状态
+        testSelects.forEach(select => {
+            select.innerHTML = '<option value="">加载中...</option>';
+        });
+        
+        console.log('正在调用API: /anomaly_detection/api/processed_data');
+        const response = await fetch('/anomaly_detection/api/processed_data');
+        const result = await response.json();
+        
+        console.log('API响应:', result);
+        
+        if (result.success) {
+            // 为训练数据选择器设置默认选项
+            trainSelects.forEach(select => {
+                select.innerHTML = '<option value="">请选择数据文件...</option>';
+            });
+            // 为测试数据选择器设置默认选项（不使用测试集）
+            testSelects.forEach(select => {
+                select.innerHTML = '<option value="">不使用测试集</option>';
+            });
+            
+            if (result.files.length === 0) {
+                console.warn('API返回的文件列表为空');
+                trainSelects.forEach(select => {
+                    select.innerHTML += '<option value="" disabled>暂无可用的预处理数据文件</option>';
+                });
+                return;
+            }
+            
+            console.log(`成功加载 ${result.files.length} 个文件`);
+            
+            // 为所有select添加文件选项
+            result.files.forEach(file => {
+                const option = document.createElement('option');
+                option.value = file.filename;
+                option.textContent = `${file.display_name} (${(file.size/1024/1024).toFixed(2)}MB)`;
+                option.title = `文件: ${file.filename}\n大小: ${(file.size/1024/1024).toFixed(2)}MB\n修改时间: ${file.modified_time}\n描述: ${file.description}`;
+                
+                // 添加到训练数据选择器
+                trainSelects.forEach(select => {
+                    select.appendChild(option.cloneNode(true));
+                });
+                // 添加到测试数据选择器
+                testSelects.forEach(select => {
+                    select.appendChild(option.cloneNode(true));
+                });
+            });
+            
+            // 自动选择第一个文件（仅对训练数据选择器）
+            if (result.files.length > 0) {
+                const firstFile = result.files[0];
+                trainSelects.forEach(select => {
+                    if (select.options.length > 1) {
+                        select.value = firstFile.filename;
+                        console.log(`🎯 自动选择训练数据文件: ${firstFile.filename} 用于 ${select.id}`);
+                    }
+                });
+                // 测试数据选择器保持"不使用测试集"
+            }
+            
+            console.log(`✅ 已加载 ${result.files.length} 个预处理数据文件`);
+        } else {
+            throw new Error(result.error || '加载失败');
+        }
+    } catch (error) {
+        console.error('加载预处理数据文件失败:', error);
+        allSelects.forEach(select => {
+            select.innerHTML = '<option value="" disabled>加载失败，请刷新重试</option>';
+        });
+        
+        // 显示用户友好的错误提示
+        showError('数据文件列表加载失败，请检查网络连接或刷新页面重试');
+    }
+}
+
+// 刷新预处理文件列表
+async function refreshProcessedFiles() {
+    console.log('刷新预处理文件列表...');
+    dataFilesLoaded = false; // 重置加载标志
+    await loadProcessedFiles();
+    dataFilesLoaded = true; // 重新标记为已加载
+}
+
+// ==================== 工况选择和文件筛选功能 ====================
+let selectedConditions = {}; // {key: [value1, value2, ...]}
+window.selectedConditions = selectedConditions; // 确保全局可访问
+let trainFiles = []; // 训练集文件列表
+let testFiles = []; // 测试集文件列表
+
+// 加载工况key列表
+async function loadConditionKeys(suffix = '') {
+    const areaId = suffix ? `conditionSelectionArea${suffix}` : 'conditionSelectionArea';
+    console.log(`🔍 [loadConditionKeys] 查找元素: ${areaId}, suffix="${suffix}"`);
+    const area = document.getElementById(areaId);
+    if (!area) {
+        console.error(`❌ 未找到元素: ${areaId}`);
+        console.error(`❌ 当前页面中所有conditionSelectionArea相关元素:`, 
+            Array.from(document.querySelectorAll('[id*="conditionSelectionArea"]')).map(el => el.id));
+        return;
+    }
+    console.log(`✅ 找到元素: ${areaId}`, area);
+    
+    try {
+        area.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div><span class="ms-2 text-muted">加载工况选项...</span></div>';
+        
+        console.log(`🔍 [loadConditionKeys] 开始加载工况keys, suffix="${suffix}"...`);
+        const response = await fetch('/anomaly_detection/api/condition_keys');
+        console.log('📡 API响应状态:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('📦 API返回结果:', result);
+        
+        if (result.success) {
+            if (result.keys && result.keys.length > 0) {
+                console.log(`✅ 找到 ${result.keys.length} 个工况key:`, result.keys);
+                renderConditionKeys(result.keys, suffix);
+                // 加载完工况key后，加载所有数据文件
+                // 延迟一下确保DOM元素已准备好
+                setTimeout(() => {
+                    console.log(`🔍 [loadConditionKeys] 准备调用loadAllFiles（有工况key）, suffix="${suffix}"`);
+                    if (suffix === 'Predictor') {
+                        console.log('🔍 准备加载Predictor数据文件（有工况key）...');
+                        loadAllFiles('Predictor');
+                    } else if (suffix === 'Cnn1d') {
+                        console.log('🔍 准备加载CNN 1D Autoencoder数据文件（有工况key）...');
+                        loadAllFiles('Cnn1d');
+                    } else {
+                        // LSTM Autoencoder使用无后缀的元素ID
+                        console.log('🔍 准备加载LSTM Autoencoder数据文件（有工况key）...');
+                        loadAllFiles(''); // 使用空字符串，因为元素ID是trainFileSelectionArea（无后缀）
+                    }
+                }, 500);
+            } else {
+                console.warn('⚠️ 没有找到工况key，将显示所有数据文件');
+                area.innerHTML = '<div class="alert alert-info mb-0"><i class="fas fa-info-circle me-2"></i>未找到工况数据，将显示所有数据文件。如需使用工况筛选，请先进行数据标注。</div>';
+                // 即使没有工况key，也加载所有数据文件
+                // 延迟一下确保DOM元素已准备好
+                setTimeout(() => {
+                    console.log(`🔍 [loadConditionKeys] 准备调用loadAllFiles, suffix="${suffix}"`);
+                    if (suffix === 'Predictor') {
+                        console.log('🔍 准备加载Predictor数据文件...');
+                        loadAllFiles('Predictor');
+                    } else if (suffix === 'Cnn1d') {
+                        console.log('🔍 准备加载CNN 1D Autoencoder数据文件...');
+                        loadAllFiles('Cnn1d');
+                    } else {
+                        // LSTM Autoencoder使用无后缀的元素ID
+                        console.log('🔍 准备加载LSTM Autoencoder数据文件...');
+                        loadAllFiles(''); // 使用空字符串，因为元素ID是trainFileSelectionArea（无后缀）
+                    }
+                }, 500);
+            }
+        } else {
+            throw new Error(result.error || '未知错误');
+        }
+    } catch (error) {
+        console.error('❌ 加载工况key失败:', error);
+        area.innerHTML = '<div class="alert alert-danger mb-0">加载工况选项失败: ' + error.message + '</div>';
+    }
+}
+
+// 渲染工况key选择区域
+function renderConditionKeys(keys, suffix = '') {
+    const areaId = suffix ? `conditionSelectionArea${suffix}` : 'conditionSelectionArea';
+    const area = document.getElementById(areaId);
+    if (!area) return;
+    
+    let html = '<div class="row g-3">';
+    
+    keys.forEach(key => {
+        const valuesId = suffix ? `conditionValues_${key}_${suffix}` : `conditionValues_${key}`;
+        html += `
+            <div class="col-md-6">
+                <div class="card border">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-tag me-2 text-primary"></i>${key}
+                        </h6>
+                        <div id="${valuesId}" class="mt-2">
+                            <div class="text-center py-2">
+                                <button class="btn btn-sm btn-outline-primary" onclick="loadConditionValues('${key}', '${suffix}')">
+                                    <i class="fas fa-chevron-down me-1"></i>展开选项
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    area.innerHTML = html;
+}
+
+// 加载指定key的value列表
+async function loadConditionValues(key, suffix = '') {
+    const containerId = suffix ? `conditionValues_${key}_${suffix}` : `conditionValues_${key}`;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    try {
+        container.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+        
+        const response = await fetch(`/anomaly_detection/api/condition_values?key=${encodeURIComponent(key)}`);
+        const result = await response.json();
+        
+        if (result.success && result.values && result.values.length > 0) {
+            renderConditionValues(key, result.values, suffix);
+        } else {
+            container.innerHTML = '<div class="text-muted small">暂无选项</div>';
+        }
+    } catch (error) {
+        console.error(`加载工况value失败 (${key}):`, error);
+        container.innerHTML = '<div class="text-danger small">加载失败</div>';
+    }
+}
+
+// 渲染工况value选择区域
+function renderConditionValues(key, values, suffix = '') {
+    const containerId = suffix ? `conditionValues_${key}_${suffix}` : `conditionValues_${key}`;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    let html = '<div class="d-flex flex-wrap gap-2">';
+    
+    values.forEach(value => {
+        const isSelected = selectedConditions[key] && selectedConditions[key].includes(value);
+        const btnId = suffix ? `conditionBtn_${key}_${value}_${suffix}` : `conditionBtn_${key}_${value}`;
+        html += `
+            <button type="button" 
+                    class="btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline-primary'}" 
+                    onclick="toggleConditionValue('${key}', '${value}', '${suffix}')"
+                    id="${btnId}">
+                ${value}
+                ${isSelected ? ' <i class="fas fa-check"></i>' : ''}
+            </button>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// 切换工况value选择
+function toggleConditionValue(key, value, suffix = '') {
+    if (!selectedConditions[key]) {
+        selectedConditions[key] = [];
+    }
+    
+    const index = selectedConditions[key].indexOf(value);
+    if (index > -1) {
+        selectedConditions[key].splice(index, 1);
+    } else {
+        selectedConditions[key].push(value);
+    }
+    
+    // 更新按钮样式
+    const btnId = suffix ? `conditionBtn_${key}_${value}_${suffix}` : `conditionBtn_${key}_${value}`;
+    const btn = document.getElementById(btnId);
+    if (btn) {
+        if (selectedConditions[key].includes(value)) {
+            btn.className = 'btn btn-sm btn-primary';
+            btn.innerHTML = `${value} <i class="fas fa-check"></i>`;
+        } else {
+            btn.className = 'btn btn-sm btn-outline-primary';
+            btn.innerHTML = value;
+        }
+    }
+    
+    // 如果该key没有选中任何value，从selectedConditions中移除
+    if (selectedConditions[key].length === 0) {
+        delete selectedConditions[key];
+    }
+    
+    // 重新筛选文件（如果有选择工况）或重新加载所有文件（如果没有选择工况）
+    const hasConditions = Object.keys(selectedConditions).length > 0 && 
+                          Object.values(selectedConditions).some(v => v.length > 0);
+    
+    if (hasConditions) {
+        if (suffix === 'Predictor') {
+            filterFilesPredictor();
+        } else if (suffix === 'Cnn1d') {
+            filterFilesCnn1d();
+        } else {
+            filterFiles();
+        }
+    } else {
+        // 没有选择工况，重新加载所有文件
+        if (suffix === 'Predictor') {
+            loadAllFiles('Predictor');
+        } else if (suffix === 'Cnn1d') {
+            loadAllFiles('Cnn1d');
+        } else {
+            loadAllFiles();
+        }
+    }
+}
+
+// 筛选文件
+async function filterFiles() {
+    // 筛选训练集文件
+    await filterTrainFiles();
+    
+    // 自动筛选测试集文件（与训练集类似）
+    await filterTestFiles();
+}
+
+// LSTM预测模型的筛选函数
+async function filterFilesPredictor() {
+    await filterTrainFilesPredictor();
+    // 自动筛选测试集文件（与训练集类似）
+    await filterTestFilesPredictor();
+}
+
+// CNN 1D Autoencoder的筛选函数
+async function filterFilesCnn1d() {
+    await filterTrainFilesCnn1d();
+    // 自动筛选测试集文件（与训练集类似）
+    await filterTestFilesCnn1d();
+}
+
+// 加载所有数据文件（不筛选）
+async function loadAllFiles(suffix = '') {
+    const areaId = suffix ? `trainFileSelectionArea${suffix}` : 'trainFileSelectionArea';
+    const listId = suffix ? `trainFileList${suffix}` : 'trainFileList';
+    const countId = suffix ? `trainFileCount${suffix}` : 'trainFileCount';
+    const testAreaId = suffix ? `testFileSelectionArea${suffix}` : 'testFileSelectionArea';
+    const testListId = suffix ? `testFileList${suffix}` : 'testFileList';
+    
+    const area = document.getElementById(areaId);
+    const list = document.getElementById(listId);
+    const countSpan = document.getElementById(countId);
+    const testArea = document.getElementById(testAreaId);
+    const testList = document.getElementById(testListId);
+    
+    console.log(`🔍 loadAllFiles 被调用, suffix=${suffix}`);
+    console.log(`🔍 查找元素: areaId=${areaId}, listId=${listId}`);
+    console.log(`🔍 area元素:`, area, `list元素:`, list);
+    
+    if (!area || !list) {
+        console.error(`❌ 未找到元素: areaId=${areaId}, listId=${listId}`);
+        console.error(`❌ area存在:`, !!area, `list存在:`, !!list);
+        // 尝试查找所有可能的元素
+        console.error(`❌ 尝试查找所有trainFileSelectionArea相关元素:`, 
+            Array.from(document.querySelectorAll('[id*="trainFileSelectionArea"]')).map(el => el.id));
+        console.error(`❌ 尝试查找所有trainFileList相关元素:`, 
+            Array.from(document.querySelectorAll('[id*="trainFileList"]')).map(el => el.id));
+        return;
+    }
+    
+    console.log(`✅ 找到元素，开始加载数据文件...`);
+    
+    // 确保文件选择区域可见
+    area.style.display = 'block';
+    if (testArea) testArea.style.display = 'block';
+    
+    try {
+        list.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+        if (testList) testList.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+        
+        // 如果没有选择工况，直接加载所有文件
+        const hasConditions = Object.keys(selectedConditions).length > 0 && 
+                              Object.values(selectedConditions).some(v => v.length > 0);
+        
+        if (!hasConditions) {
+            // 加载所有文件（不筛选）
+            const response = await fetch('/anomaly_detection/api/processed_data');
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log(`✅ 成功加载 ${result.files.length} 个文件`);
+                
+                // 筛选出训练集文件（标签为"正常"）
+                trainFiles = (result.files || []).filter(f => f.label === '正常');
+                // 测试集文件：包含所有标签为"正常"或"异常"的文件
+                testFiles = (result.files || []).filter(f => f.label === '正常' || f.label === '异常');
+                
+                console.log(`训练集文件: ${trainFiles.length} 个, 测试集文件: ${testFiles.length} 个`);
+                
+                if (trainFiles.length > 0) {
+                    let fileType = 'train';
+                    if (suffix === 'Predictor') {
+                        fileType = 'trainPredictor';
+                    } else if (suffix === 'Cnn1d') {
+                        fileType = 'trainCnn1d';
+                    }
+                    renderFileList(list, trainFiles, fileType);
+                    area.style.display = 'block';
+                    if (countSpan) countSpan.textContent = trainFiles.length;
+                    console.log(`✅ 已显示 ${trainFiles.length} 个训练文件`);
+                } else {
+                    list.innerHTML = '<div class="text-muted text-center py-3">没有可用的训练文件（需要标签为"正常"的文件）</div>';
+                    area.style.display = 'block';
+                    if (countSpan) countSpan.textContent = '0';
+                    console.warn('⚠️ 没有找到标签为"正常"的训练文件');
+                }
+                
+                if (testFiles.length > 0 && testList) {
+                    let testFileType = 'test';
+                    if (suffix === 'Predictor') {
+                        testFileType = 'testPredictor';
+                    } else if (suffix === 'Cnn1d') {
+                        testFileType = 'testCnn1d';
+                    }
+                    renderFileList(testList, testFiles, testFileType);
+                    if (testArea) testArea.style.display = 'block';
+                    console.log(`✅ 已显示 ${testFiles.length} 个测试文件`);
+                } else if (testList) {
+                    testList.innerHTML = '<div class="text-muted text-center py-3">没有可用的测试文件</div>';
+                    if (testArea) testArea.style.display = 'block';
+                    console.warn('⚠️ 没有找到测试文件');
+                }
+            } else {
+                throw new Error(result.error || '加载失败');
+            }
+        } else {
+            // 有工况选择，进行筛选
+            await filterTrainFiles(suffix);
+            await filterTestFiles(suffix);
+        }
+    } catch (error) {
+        console.error('加载数据文件失败:', error);
+        list.innerHTML = '<div class="alert alert-danger mb-0">加载失败: ' + error.message + '</div>';
+    }
+}
+
+// 筛选训练集文件
+async function filterTrainFiles(suffix = '') {
+    const areaId = suffix ? `trainFileSelectionArea${suffix}` : 'trainFileSelectionArea';
+    const listId = suffix ? `trainFileList${suffix}` : 'trainFileList';
+    const countId = suffix ? `trainFileCount${suffix}` : 'trainFileCount';
+    
+    const area = document.getElementById(areaId);
+    const list = document.getElementById(listId);
+    const countSpan = document.getElementById(countId);
+    
+    if (!area || !list) return;
+    
+    try {
+        list.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+        
+        const response = await fetch('/anomaly_detection/api/filter_files', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                conditions: selectedConditions,
+                file_type: 'train'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            trainFiles = result.files || [];
+            
+            if (trainFiles.length > 0) {
+                let fileType = 'train';
+                if (suffix === 'Predictor') {
+                    fileType = 'trainPredictor';
+                } else if (suffix === 'Cnn1d') {
+                    fileType = 'trainCnn1d';
+                }
+                renderFileList(list, trainFiles, fileType);
+                area.style.display = 'block';
+                if (countSpan) countSpan.textContent = trainFiles.length;
+            } else {
+                list.innerHTML = '<div class="text-muted text-center py-3">没有符合条件的文件</div>';
+                area.style.display = 'block';
+                if (countSpan) countSpan.textContent = '0';
+            }
+        } else {
+            list.innerHTML = '<div class="alert alert-danger mb-0">筛选失败: ' + (result.error || '未知错误') + '</div>';
+        }
+    } catch (error) {
+        console.error('筛选训练集文件失败:', error);
+        list.innerHTML = '<div class="alert alert-danger mb-0">筛选失败: ' + error.message + '</div>';
+    }
+}
+
+// 筛选测试集文件
+async function filterTestFiles(suffix = '') {
+    const areaId = suffix ? `testFileSelectionArea${suffix}` : 'testFileSelectionArea';
+    const listId = suffix ? `testFileList${suffix}` : 'testFileList';
+    
+    const area = document.getElementById(areaId);
+    const list = document.getElementById(listId);
+    
+    if (!area || !list) return;
+    
+    try {
+        list.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+        
+        const response = await fetch('/anomaly_detection/api/filter_files', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                conditions: selectedConditions,
+                file_type: 'test'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const files = result.files || [];
+            
+            if (files.length > 0) {
+                let fileType = 'test';
+                if (suffix === 'Predictor') {
+                    fileType = 'testPredictor';
+                } else if (suffix === 'Cnn1d') {
+                    fileType = 'testCnn1d';
+                }
+                renderFileList(list, files, fileType);
+                area.style.display = 'block';
+            } else {
+                list.innerHTML = '<div class="text-muted text-center py-3">没有符合条件的文件</div>';
+                area.style.display = 'block';
+            }
+        } else {
+            list.innerHTML = '<div class="alert alert-danger mb-0">筛选失败: ' + (result.error || '未知错误') + '</div>';
+            area.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('筛选测试集文件失败:', error);
+        list.innerHTML = '<div class="alert alert-danger mb-0">筛选失败: ' + error.message + '</div>';
+        area.style.display = 'block';
+    }
+}
+
+// 渲染文件列表
+function renderFileList(container, files, type) {
+    if (!container) return;
+    
+    let html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0">';
+    html += '<thead class="table-light"><tr>';
+    html += '<th style="width: 40px;"><input type="checkbox" class="form-check-input" onchange="toggleAllFiles(this, \'' + type + '\')"></th>';
+    html += '<th>文件名</th>';
+    html += '<th>标签</th>';
+    
+    // 添加工况列
+    const allKeys = Object.keys(selectedConditions);
+    allKeys.forEach(key => {
+        html += `<th>${key}</th>`;
+    });
+    
+    html += '<th>大小</th>';
+    html += '</tr></thead><tbody>';
+    
+    files.forEach((file, index) => {
+        const conditions = file.conditions || {};
+        html += '<tr>';
+        html += `<td><input type="checkbox" class="form-check-input file-checkbox" data-filename="${file.filename}" data-type="${type}"></td>`;
+        html += `<td><small>${file.display_name || file.filename}</small></td>`;
+        html += `<td><span class="badge bg-${file.label === '正常' ? 'success' : 'danger'}">${file.label}</span></td>`;
+        
+        // 添加工况值
+        allKeys.forEach(key => {
+            const value = conditions[key] || '';
+            html += `<td><small>${value || '<span class="text-muted">-</span>'}</small></td>`;
+        });
+        
+        html += `<td><small>${formatFileSize(file.size)}</small></td>`;
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+// 全选/取消全选
+function toggleAllFiles(checkbox, type) {
+    const checkboxes = document.querySelectorAll(`.file-checkbox[data-type="${type}"]`);
+    checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+}
+
+function selectAllTrainFiles() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="train"]');
+    checkboxes.forEach(cb => cb.checked = true);
+}
+
+function deselectAllTrainFiles() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="train"]');
+    checkboxes.forEach(cb => cb.checked = false);
+}
+
+function selectAllTrainFilesPredictor() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="trainPredictor"]');
+    checkboxes.forEach(cb => cb.checked = true);
+}
+
+function deselectAllTrainFilesPredictor() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="trainPredictor"]');
+    checkboxes.forEach(cb => cb.checked = false);
+}
+
+function selectAllTestFiles() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="test"]');
+    checkboxes.forEach(cb => cb.checked = true);
+}
+
+function deselectAllTestFiles() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="test"]');
+    checkboxes.forEach(cb => cb.checked = false);
+}
+
+function selectAllTestFilesPredictor() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="testPredictor"]');
+    checkboxes.forEach(cb => cb.checked = true);
+}
+
+function deselectAllTestFilesPredictor() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="testPredictor"]');
+    checkboxes.forEach(cb => cb.checked = false);
+}
+
+function selectAllTrainFilesCnn1d() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="trainCnn1d"]');
+    checkboxes.forEach(cb => cb.checked = true);
+}
+
+function deselectAllTrainFilesCnn1d() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="trainCnn1d"]');
+    checkboxes.forEach(cb => cb.checked = false);
+}
+
+function selectAllTestFilesCnn1d() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="testCnn1d"]');
+    checkboxes.forEach(cb => cb.checked = true);
+}
+
+function deselectAllTestFilesCnn1d() {
+    const checkboxes = document.querySelectorAll('.file-checkbox[data-type="testCnn1d"]');
+    checkboxes.forEach(cb => cb.checked = false);
+}
+
+// 切换测试集选择（已废弃，测试集现在自动显示）
+function toggleTestSetSelection() {
+    // 已废弃，测试集现在自动显示
+}
+
+function toggleTestSetSelectionPredictor() {
+    // 已废弃，测试集现在自动显示
+}
+
+// 获取选中的文件列表
+function getSelectedFiles(type) {
+    const checkboxes = document.querySelectorAll(`.file-checkbox[data-type="${type}"]:checked`);
+    return Array.from(checkboxes).map(cb => cb.getAttribute('data-filename'));
+}
+
+// LSTM预测模型的辅助函数
+async function filterTrainFilesPredictor() {
+    return filterTrainFiles('Predictor');
+}
+
+async function filterTestFilesPredictor() {
+    return filterTestFiles('Predictor');
+}
+
+// CNN 1D Autoencoder的辅助函数
+async function filterTrainFilesCnn1d() {
+    return filterTrainFiles('Cnn1d');
+}
+
+async function filterTestFilesCnn1d() {
+    return filterTestFiles('Cnn1d');
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 页面加载完成，开始初始化...');
+    
+    // 初始化默认的数据集配置显示
+    const modelTypeSelect = document.getElementById('modelType');
+    const defaultModelType = modelTypeSelect?.value || 'lstm_predictor';
+    
+    console.log('📋 当前选择的模型类型:', defaultModelType);
+    
+    // 直接调用配置显示函数，它会处理所有显示/隐藏逻辑
+    switchDatasetConfigDisplay(defaultModelType);
+    
+    // 延迟加载工况选项，确保DOM元素已存在
+    setTimeout(() => {
+        console.log('⏰ 开始加载工况选项...');
+        if (defaultModelType === 'lstm_predictor') {
+            loadConditionKeys('Predictor');
+        } else if (defaultModelType === 'lstm_autoencoder') {
+            loadConditionKeys(''); // LSTM Autoencoder使用无后缀的元素ID
+        } else if (defaultModelType === 'cnn_1d_autoencoder') {
+            loadConditionKeys('Cnn1d');
+        }
+    }, 500);
+    
+    // 绑定阈值计算方法切换事件
+    const thresholdMethodSelect = document.getElementById('thresholdMethod');
+    if (thresholdMethodSelect) {
+        thresholdMethodSelect.addEventListener('change', onThresholdMethodChange);
+    }
+});
+
+// 阈值计算方法切换处理
+function onThresholdMethodChange() {
+    const method = document.getElementById('thresholdMethod')?.value;
+    const percentileConfig = document.getElementById('thresholdPercentileConfig');
+    const contaminationConfig = document.getElementById('thresholdContaminationConfig');
+    
+    if (method === 'percentile') {
+        if (percentileConfig) percentileConfig.style.display = 'block';
+        if (contaminationConfig) contaminationConfig.style.display = 'none';
+    } else if (method === 'contamination') {
+        if (percentileConfig) percentileConfig.style.display = 'none';
+        if (contaminationConfig) contaminationConfig.style.display = 'flex';
+    } else {
+        // 3sigma方法不需要额外配置
+        if (percentileConfig) percentileConfig.style.display = 'none';
+        if (contaminationConfig) contaminationConfig.style.display = 'none';
+    }
+}
+</script>
+
+<div class="text-center mt-5">
+    <a href="/anomaly_detection" class="btn btn-outline-primary btn-lg px-5 py-3">
+        <i class="fas fa-arrow-left me-2"></i>
+        返回异常检测主页
+    </a>
+</div>
+{% endblock %}

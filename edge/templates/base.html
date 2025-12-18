@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}运筹与优化团队工业设备智能健康管理平台{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* 侧边栏变量 - 现代清爽风格 */
+            --sidebar-width: 260px;
+            --sidebar-collapsed-width: 72px;
+            --sidebar-bg-start: #FFFFFF;
+            --sidebar-bg-end: #FFFFFF;
+            --sidebar-text: #A3AED0;
+            --sidebar-text-active: #2B3674;
+            --sidebar-hover-bg: #F4F7FE;
+            --sidebar-active-bg: #F4F7FE;
+            --sidebar-active-border: #2F80ED; /* 与首页品牌色一致 */
+            --sidebar-border-right: #E0E5F2;
+            
+            /* 全局变量 */
+            --main-bg: #F4F7FE;
+            --header-height: 0px;
+            --transition-speed: 0.3s;
+        }
+
+        /* 全局重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background-color: var(--main-bg);
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* 侧边栏样式 */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: var(--sidebar-width);
+            background: var(--sidebar-bg-start);
+            color: var(--sidebar-text);
+            z-index: 1000;
+            transition: width var(--transition-speed) ease;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.02); /* 更柔和的阴影 */
+            border-right: 1px solid var(--sidebar-border-right); /* 添加右侧边框 */
+            overflow: hidden;
+        }
+
+        .sidebar.collapsed {
+            width: var(--sidebar-collapsed-width);
+        }
+
+        /* 侧边栏头部 */
+        .sidebar-header {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 24px;
+            border-bottom: 1px solid var(--sidebar-border-right);
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .sidebar.collapsed .sidebar-header {
+            justify-content: center;
+            padding: 0;
+        }
+
+        .logo-icon {
+            font-size: 24px;
+            color: #2F80ED; /* 品牌蓝 */
+            min-width: 24px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .team-logo-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .logo-text {
+            margin-left: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--sidebar-text-active);
+            opacity: 1;
+            transition: opacity var(--transition-speed);
+            letter-spacing: 0.3px;
+            line-height: 1.3;
+        }
+
+        .sidebar.collapsed .logo-text {
+            opacity: 0;
+            width: 0;
+            display: none;
+        }
+
+        /* 导航菜单 */
+        .sidebar-nav {
+            flex: 1;
+            padding: 20px 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        /* 自定义滚动条 */
+        .sidebar-nav::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sidebar-nav::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+
+        .nav-item {
+            position: relative;
+            margin-bottom: 4px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            height: 50px;
+            padding: 0 24px;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            position: relative;
+            white-space: nowrap;
+        }
+
+        .sidebar.collapsed .nav-link {
+            padding: 0;
+            justify-content: center;
+        }
+
+        .nav-link:hover {
+            color: var(--sidebar-text-active);
+            background-color: var(--sidebar-hover-bg);
+        }
+
+        .nav-link.active {
+            color: var(--sidebar-text-active);
+            background-color: var(--sidebar-active-bg);
+        }
+
+        /* 激活状态的左侧指示条 */
+        .nav-link.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background-color: var(--sidebar-active-border);
+            border-radius: 0 4px 4px 0;
+        }
+
+        .nav-icon {
+            font-size: 18px;
+            min-width: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+
+        .nav-link:hover .nav-icon {
+            transform: scale(1.1);
+        }
+
+        .nav-text {
+            margin-left: 12px;
+            font-size: 15px;
+            font-weight: 500;
+            opacity: 1;
+            transition: opacity 0.2s;
+        }
+
+        .sidebar.collapsed .nav-text {
+            opacity: 0;
+            width: 0;
+            display: none;
+        }
+
+        /* Tooltip for collapsed state */
+        .nav-link[data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: #1B2559; /* 深色背景 */
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 1001;
+            margin-left: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .sidebar.collapsed .nav-link:hover::after {
+            opacity: 1;
+        }
+
+        /* 侧边栏底部 */
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid var(--sidebar-border-right);
+        }
+
+        .sidebar.collapsed .sidebar-footer {
+            padding: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* 切换按钮 */
+        .toggle-btn {
+            width: 100%;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid var(--sidebar-border-right);
+            background: transparent;
+            color: var(--sidebar-text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn:hover {
+            background: var(--sidebar-hover-bg);
+            color: var(--sidebar-text-active);
+        }
+
+        .sidebar.collapsed .toggle-btn {
+            width: 40px;
+        }
+
+        /* 主内容区域 */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 30px;
+            transition: margin-left var(--transition-speed) ease;
+            min-height: 100vh;
+        }
+
+        .main-content.expanded {
+            margin-left: var(--sidebar-collapsed-width);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: var(--sidebar-width);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+                padding: 15px;
+            }
+
+            /* 移动端遮罩层 */
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 999;
+            }
+
+            .sidebar-overlay.show {
+                display: block;
+            }
+            
+            /* 移动端切换按钮 */
+            .mobile-toggle {
+                display: block;
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                width: 50px;
+                height: 50px;
+                border-radius: 50%;
+                background: #4318FF;
+                color: white;
+                border: none;
+                box-shadow: 0 4px 15px rgba(67, 24, 255, 0.4);
+                z-index: 1002;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .mobile-toggle {
+                display: none;
+                visibility: hidden;
+            }
+            .sidebar-overlay {
+                display: none !important;
+            }
+        }
+
+        /* 悬浮对话窗 */
+        .chat-widget {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            width: 360px;
+            max-width: 92vw;
+            z-index: 1200;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+        }
+        .chat-widget.collapsed .chat-panel {
+            display: none;
+        }
+        .chat-toggle-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #4318FF, #9F7AEA);
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(67, 24, 255, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .chat-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 32px rgba(67, 24, 255, 0.4);
+        }
+        .chat-panel {
+            margin-top: 10px;
+            background: #fff;
+            border: 1px solid #E0E5F2;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+        .chat-header {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #f7f7fb, #eef2ff);
+            border-bottom: 1px solid #E0E5F2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            cursor: move;
+        }
+        .chat-title {
+            font-weight: 700;
+            font-size: 15px;
+            color: #1B2559;
+        }
+        .chat-subtitle {
+            font-size: 12px;
+            color: #718096;
+        }
+        .chat-close-btn {
+            border: none;
+            background: transparent;
+            color: #718096;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .chat-body {
+            padding: 12px 14px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .chat-section-label {
+            font-size: 13px;
+            color: #4A5568;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .chat-output-box {
+            width: 100%;
+            min-height: 120px;
+            max-height: 200px;
+            background: #0F172A;
+            color: #E2E8F0;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+            font-size: 13px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border: 1px solid #1E293B;
+        }
+        .chat-input-area {
+            width: 100%;
+            min-height: 90px;
+            resize: vertical;
+            border-radius: 10px;
+            border: 1px solid #E0E5F2;
+            padding: 10px 12px;
+            font-size: 14px;
+            background: #F8FAFD;
+        }
+        .chat-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .chat-status {
+            font-size: 12px;
+            color: #718096;
+            min-height: 16px;
+        }
+        .chat-last-updated {
+            font-size: 12px;
+            color: #4A5568;
+        }
+
+        @media (max-width: 576px) {
+            .chat-widget {
+                right: 12px;
+                bottom: 12px;
+                width: 320px;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <!-- 移动端遮罩 -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- 侧边栏 -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-icon">
+                <img src="{{ url_for('static', filename='127166686.png') }}" alt="团队Logo" class="team-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <i class="fas fa-cube" style="display: none;"></i>
+            </div>
+            <span class="logo-text">运筹与优化团队</span>
+        </div>
+
+        <div class="sidebar-nav">
+            <div class="nav-item">
+                <a href="/" class="nav-link" id="nav-home" data-tooltip="首页">
+                    <div class="nav-icon"><i class="fas fa-home"></i></div>
+                    <span class="nav-text">首页</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/device_monitoring" class="nav-link" id="nav-device" data-tooltip="设备监测">
+                    <div class="nav-icon"><i class="fas fa-tachometer-alt"></i></div>
+                    <span class="nav-text">设备监测</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/data_management" class="nav-link" id="nav-data" data-tooltip="数据管理">
+                    <div class="nav-icon"><i class="fas fa-database"></i></div>
+                    <span class="nav-text">数据管理</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/model_management" class="nav-link" id="nav-model" data-tooltip="模型管理">
+                    <div class="nav-icon"><i class="fas fa-cogs"></i></div>
+                    <span class="nav-text">模型管理</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/anomaly_detection" class="nav-link" id="nav-anomaly" data-tooltip="异常检测">
+                    <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
+                    <span class="nav-text">异常检测</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/fault_diagnosis" class="nav-link" id="nav-fault" data-tooltip="故障诊断">
+                    <div class="nav-icon"><i class="fas fa-tools"></i></div>
+                    <span class="nav-text">故障诊断</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/rul_prediction" class="nav-link" id="nav-rul" data-tooltip="RUL预测">
+                    <div class="nav-icon"><i class="fas fa-clock"></i></div>
+                    <span class="nav-text">RUL预测</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <button class="toggle-btn" id="sidebarToggle" title="切换侧边栏">
+                <i class="fas fa-chevron-left" id="toggleIcon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- 移动端浮动菜单按钮 -->
+    <button class="mobile-toggle" id="mobileToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- 主内容 -->
+    <main class="main-content" id="mainContent">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- 悬浮对话窗（统一 UI，占位输入/输出文件） -->
+    <div class="chat-widget collapsed" id="floatingChatWidget">
+        <button class="chat-toggle-btn" id="chatToggleBtn" title="团队对话窗">
+            <i class="fas fa-comments"></i>
+        </button>
+        <div class="chat-panel">
+            <div class="chat-header">
+                <div>
+                    <div class="chat-title">团队统一对话窗</div>
+                    <div class="chat-subtitle">输入写入 input.txt · 输出读取 output.txt</div>
+                </div>
+                <button class="chat-close-btn" id="chatCloseBtn" aria-label="关闭对话窗">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="chat-body">
+                <div>
+                    <div class="chat-section-label">输出（output.txt）</div>
+                    <pre id="chatOutputBox" class="chat-output-box"></pre>
+                    <div class="chat-actions">
+                        <button class="btn btn-light btn-sm" id="chatRefreshBtn">刷新输出</button>
+                        <span class="chat-last-updated" id="chatOutputStatus"></span>
+                    </div>
+                </div>
+                <div>
+                    <div class="chat-section-label">输入（写入 input.txt）</div>
+                    <textarea id="chatInputBox" class="chat-input-area" placeholder="在此输入，点击发送写入 input.txt"></textarea>
+                    <div class="chat-actions">
+                        <input id="chatSessionInput" class="form-control form-control-sm" placeholder="session_id（可选）">
+                        <button class="btn btn-primary btn-sm" id="chatSendBtn">发送</button>
+                    </div>
+                    <div class="chat-status" id="chatStatusText"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const toggleIcon = document.getElementById('toggleIcon');
+            const mobileToggle = document.getElementById('mobileToggle');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            
+            // 从本地存储恢复状态
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed && window.innerWidth > 768) {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('expanded');
+                toggleIcon.classList.replace('fa-chevron-left', 'fa-chevron-right');
+            }
+
+            // 桌面端切换
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+                
+                const collapsed = sidebar.classList.contains('collapsed');
+                localStorage.setItem('sidebarCollapsed', collapsed);
+                
+                if (collapsed) {
+                    toggleIcon.classList.replace('fa-chevron-left', 'fa-chevron-right');
+                } else {
+                    toggleIcon.classList.replace('fa-chevron-right', 'fa-chevron-left');
+                }
+            });
+
+            // 移动端切换
+            mobileToggle.addEventListener('click', function() {
+                sidebar.classList.add('show');
+                sidebarOverlay.classList.add('show');
+            });
+
+            sidebarOverlay.addEventListener('click', function() {
+                sidebar.classList.remove('show');
+                sidebarOverlay.classList.remove('show');
+            });
+
+            // 自动高亮当前页面导航
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+            
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+            
+            // 模块高亮逻辑
+            if (currentPath.startsWith('/device_monitoring')) document.getElementById('nav-device')?.classList.add('active');
+            if (currentPath.startsWith('/data_management')) document.getElementById('nav-data')?.classList.add('active');
+            if (currentPath.startsWith('/model_management')) document.getElementById('nav-model')?.classList.add('active');
+            if (currentPath.startsWith('/anomaly_detection')) document.getElementById('nav-anomaly')?.classList.add('active');
+            if (currentPath.startsWith('/fault_diagnosis')) document.getElementById('nav-fault')?.classList.add('active');
+            if (currentPath.startsWith('/rul_prediction')) document.getElementById('nav-rul')?.classList.add('active');
+
+            // 悬浮对话窗逻辑（输入写入 input.txt，输出读取 output.txt）
+            const chatWidget = document.getElementById('floatingChatWidget');
+            const chatToggleBtn = document.getElementById('chatToggleBtn');
+            const chatCloseBtn = document.getElementById('chatCloseBtn');
+            const chatOutputBox = document.getElementById('chatOutputBox');
+            const chatRefreshBtn = document.getElementById('chatRefreshBtn');
+            const chatStatusText = document.getElementById('chatStatusText');
+            const chatInputBox = document.getElementById('chatInputBox');
+            const chatSendBtn = document.getElementById('chatSendBtn');
+            const chatSessionInput = document.getElementById('chatSessionInput');
+            const chatOutputStatus = document.getElementById('chatOutputStatus');
+
+            const ensureLocalId = (key) => {
+                const existing = localStorage.getItem(key);
+                if (existing) return existing;
+                const generated = (window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2, 10));
+                localStorage.setItem(key, generated);
+                return generated;
+            };
+
+            if (chatSessionInput && !chatSessionInput.value) {
+                chatSessionInput.value = ensureLocalId('floating_chat_session');
+            }
+
+            const toggleChat = (forceOpen = undefined) => {
+                if (!chatWidget) return;
+                const isCollapsed = chatWidget.classList.contains('collapsed');
+                const shouldOpen = forceOpen === undefined ? isCollapsed : forceOpen;
+                if (shouldOpen) {
+                    chatWidget.classList.remove('collapsed');
+                } else {
+                    chatWidget.classList.add('collapsed');
+                }
+            };
+
+            chatToggleBtn?.addEventListener('click', () => toggleChat(true));
+            chatCloseBtn?.addEventListener('click', () => toggleChat(false));
+
+            const setStatus = (msg, isError = false) => {
+                if (!chatStatusText) return;
+                chatStatusText.textContent = msg || '';
+                chatStatusText.style.color = isError ? '#E53E3E' : '#718096';
+            };
+
+            const loadOutput = async () => {
+                if (!chatOutputBox) return;
+                try {
+                    const res = await fetch('/api/chat/output');
+                    const data = await res.json();
+                    if (!res.ok || data.status !== 'ok') {
+                        throw new Error(data.message || '获取失败');
+                    }
+                    chatOutputBox.textContent = data.content || '';
+                    if (chatOutputStatus) {
+                        const now = new Date();
+                        chatOutputStatus.textContent = `已更新 ${now.toLocaleTimeString()}`;
+                    }
+                } catch (err) {
+                    if (chatOutputStatus) {
+                        chatOutputStatus.textContent = `读取失败：${err.message}`;
+                    }
+                }
+            };
+
+            const sendInput = async () => {
+                if (!chatInputBox || !chatSendBtn) return;
+                const text = (chatInputBox.value || '').trim();
+                if (!text) {
+                    setStatus('请输入内容后发送', true);
+                    return;
+                }
+                const sessionId = (chatSessionInput?.value || '').trim() || ensureLocalId('floating_chat_session');
+                const traceId = ensureLocalId('floating_chat_trace');
+
+                chatSendBtn.disabled = true;
+                setStatus('发送中...');
+                try {
+                    const res = await fetch('/api/chat/input', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            text,
+                            session_id: sessionId,
+                            trace_id: traceId
+                        })
+                    });
+                    const data = await res.json();
+                    if (!res.ok || data.status !== 'ok') {
+                        throw new Error(data.message || '写入失败');
+                    }
+                    chatInputBox.value = '';
+                    setStatus('已写入 input.txt');
+                    loadOutput();
+                } catch (err) {
+                    setStatus(`发送失败：${err.message}`, true);
+                } finally {
+                    chatSendBtn.disabled = false;
+                }
+            };
+
+            chatSendBtn?.addEventListener('click', sendInput);
+            chatInputBox?.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                    event.preventDefault();
+                    sendInput();
+                }
+            });
+            chatRefreshBtn?.addEventListener('click', loadOutput);
+
+            loadOutput();
+            setInterval(loadOutput, 5000);
+
+            // 拖拽功能
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartY = 0;
+            let initialX = 0;
+            let initialY = 0;
+
+            const chatHeader = document.querySelector('.chat-header');
+
+            const startDrag = (e) => {
+                isDragging = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                const rect = chatWidget.getBoundingClientRect();
+                initialX = rect.left;
+                initialY = rect.top;
+                chatWidget.style.cursor = 'grabbing';
+                document.body.style.userSelect = 'none';
+            };
+
+            const drag = (e) => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
+                const newX = initialX + deltaX;
+                const newY = initialY + deltaY;
+                
+                // 限制在视窗内
+                const maxX = window.innerWidth - chatWidget.offsetWidth;
+                const maxY = window.innerHeight - chatWidget.offsetHeight;
+                const clampedX = Math.max(0, Math.min(newX, maxX));
+                const clampedY = Math.max(0, Math.min(newY, maxY));
+                
+                chatWidget.style.left = clampedX + 'px';
+                chatWidget.style.top = clampedY + 'px';
+                chatWidget.style.right = 'auto';
+                chatWidget.style.bottom = 'auto';
+            };
+
+            const stopDrag = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                chatWidget.style.cursor = '';
+                document.body.style.userSelect = '';
+                
+                // 保存位置到localStorage
+                const rect = chatWidget.getBoundingClientRect();
+                localStorage.setItem('chatWidgetX', rect.left);
+                localStorage.setItem('chatWidgetY', rect.top);
+            };
+
+            chatHeader.addEventListener('mousedown', startDrag);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDrag);
+
+            // 从localStorage恢复位置
+            const savedX = localStorage.getItem('chatWidgetX');
+            const savedY = localStorage.getItem('chatWidgetY');
+            if (savedX !== null && savedY !== null) {
+                chatWidget.style.left = savedX + 'px';
+                chatWidget.style.top = savedY + 'px';
+                chatWidget.style.right = 'auto';
+                chatWidget.style.bottom = 'auto';
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

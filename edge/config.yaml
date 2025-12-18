@@ -1,0 +1,33 @@
+# Edge组件配置
+# 边缘端服务配置
+edge:
+  host: "0.0.0.0"
+  port: 5000
+  
+# 云端服务配置
+cloud:
+  host: "localhost"
+  port: 5001
+  base_url: "http://localhost:5001"
+
+# 通信配置
+communication:
+  max_retries: 3
+  retry_delay: 1.0
+  request_timeout: 30
+
+# 上传配置
+upload:
+  max_file_size: 104857600  # 100MB
+  allowed_extensions: ["csv", "xlsx", "xls", "json", "npy", "pkl"]
+
+# 目录配置
+directories:
+  uploads: "static/uploads"
+  models: "static/models"
+  configs: "static/configs"
+
+# 日志配置
+logging:
+  level: "INFO"
+  file: "logs/edge.log"

@@ -1,0 +1,753 @@
+{% extends "base.html" %}
+
+{% block title %}RUL预测推理{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --rul-primary: #008BB0;
+        --rul-primary-light: #63D2FF;
+    }
+
+    .inference-page {
+        min-height: 100vh;
+        padding: 2rem 0;
+    }
+
+    .page-header {
+        text-align: center;
+        padding: 1rem 0 2rem;
+        color: #495057;
+    }
+
+    .page-header h2 {
+        font-weight: 700;
+        color: var(--rul-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .page-header p {
+        color: #6c757d;
+        margin-bottom: 1.25rem;
+    }
+
+    .inference-card {
+        border: none;
+        border-radius: 1rem;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        background: #fff;
+    }
+
+    .inference-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+    }
+
+    .inference-card .card-header {
+        background: #f8f9fb;
+        border: none;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .inference-card .card-body {
+        padding: 2rem;
+    }
+
+    .stat-card {
+        background: #fff;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        text-align: center;
+        position: relative;
+        border: 2px solid transparent;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 0.75rem;
+        border: 1px solid rgba(0, 139, 176, 0.12);
+        pointer-events: none;
+    }
+
+    .stat-card h4 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--rul-primary);
+        margin-bottom: 0.35rem;
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        letter-spacing: 0.08em;
+        color: #6c757d;
+        text-transform: uppercase;
+    }
+
+    .stat-card.info h4 { color: #0f172a; }
+    .stat-card.success h4 { color: #1f7a4a; }
+    .stat-card.warning h4 { color: #c27803; }
+
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.75rem;
+    }
+
+    .form-control,
+    .form-select {
+        border-radius: 0.75rem;
+        border: 2px solid #e9ecef;
+        padding: 0.75rem 1rem;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--rul-primary);
+        box-shadow: 0 0 0 0.15rem rgba(0, 139, 176, 0.25);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--rul-primary-light), var(--rul-primary));
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.75rem 2.5rem;
+        font-weight: 600;
+        box-shadow: 0 12px 24px rgba(0, 139, 176, 0.25);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 30px rgba(0, 139, 176, 0.35);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.65;
+        box-shadow: none;
+    }
+
+    .btn-outline-primary {
+        color: var(--rul-primary);
+        border-color: var(--rul-primary);
+    }
+
+    .btn-outline-primary:hover {
+        background-color: var(--rul-primary);
+        color: #fff;
+        border-color: var(--rul-primary);
+    }
+
+    .results-section {
+        animation: fadeInUp 0.5s ease;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .chart-container {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        height: 380px;
+    }
+
+    .message-area {
+        margin-bottom: 1.5rem;
+    }
+
+    .alert {
+        border: none;
+        border-radius: 0.75rem;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+    }
+
+    .rul-value-display {
+        text-align: center;
+        padding: 2rem;
+        border-radius: 1rem;
+        background: linear-gradient(135deg, rgba(99, 210, 255, 0.15), rgba(0, 139, 176, 0.18));
+        margin-bottom: 2rem;
+    }
+
+    .rul-number {
+        font-size: 3.5rem;
+        font-weight: 800;
+        color: var(--rul-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .rul-unit {
+        color: #6c757d;
+    }
+
+    .empty-state {
+        background: rgba(0, 139, 176, 0.06);
+        border-radius: 1rem;
+        border: 1px dashed rgba(0, 139, 176, 0.3);
+    }
+
+    .text-primary-custom {
+        color: var(--rul-primary) !important;
+    }
+
+    @media (max-width: 768px) {
+        .inference-card .card-body {
+            padding: 1.25rem;
+        }
+
+        .rul-number {
+            font-size: 2.4rem;
+        }
+    }
+</style>
+
+<div class="inference-page">
+    <div class="container">
+        <div class="page-header">
+            <h2 class="mb-2">
+                <i class="fas fa-clock me-2"></i>RUL预测推理
+            </h2>
+            <p>选择训练好的模型与数据文件，生成剩余寿命趋势和关键指标</p>
+        </div>
+
+        <div id="messageArea" class="message-area"></div>
+
+        <div class="inference-card card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-sliders-h me-2"></i>推理参数配置
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="inferenceForm">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label" for="modelSelect">
+                                <i class="fas fa-brain me-2"></i>选择模型
+                                <span class="text-danger">*</span>
+                            </label>
+                            <div class="d-flex gap-2">
+                                <select class="form-select" id="modelSelect" name="model_id" required>
+                                    <option value="">加载中...</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-secondary" title="刷新模型" onclick="loadModels()">
+                                    <i class="fas fa-sync"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">从 edge/models/rul_prediction 选择已下载模型</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="dataFileSelect">
+                                <i class="fas fa-file-csv me-2"></i>数据文件
+                                <span class="text-danger">*</span>
+                            </label>
+                            <div class="d-flex gap-2">
+                                <select class="form-select" id="dataFileSelect" name="data_file" required>
+                                    <option value="">加载中...</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-secondary" title="刷新数据文件" onclick="loadDataFiles()">
+                                    <i class="fas fa-sync"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">从edge\data\processed\RULPrediction目录中选择时序数据文件</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="batchSize">
+                                <i class="fas fa-layer-group me-2"></i>批处理大小
+                            </label>
+                            <input type="number" class="form-control" id="batchSize" name="batch_size" value="32" min="1" max="128">
+                            <div class="form-text">推理时的批处理大小</div>
+                        </div>
+
+                        <div class="col-12" id="conditionSection" style="display: none;">
+                            <label class="form-label">工况值</label>
+                            <div id="conditionInputs" class="p-3 bg-light rounded"></div>
+                            <div class="form-text mt-2">若训练时接入工况信息，可在此填写对应数值</div>
+                        </div>
+
+                        <div class="col-12">
+                            <div id="modelInfoCard" class="alert alert-info" style="display: none;">
+                                <h6 class="alert-heading mb-2">
+                                    <i class="fas fa-info-circle me-2"></i>模型信息
+                                </h6>
+                                <div id="modelInfoContent" class="small"></div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
+                                <button type="submit" class="btn btn-primary btn-lg" id="runInferenceBtn">
+                                    <i class="fas fa-play me-2"></i>开始预测
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-lg" onclick="resetForm()">
+                                    <i class="fas fa-undo me-2"></i>重置表单
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="text-center mt-4 mb-2">
+            <a href="/rul_prediction" class="btn btn-outline-primary btn-lg px-5 py-3">
+                <i class="fas fa-arrow-left me-2"></i>返回RUL预测主页
+            </a>
+        </div>
+
+        <div id="resultsCard" class="inference-card card mb-4" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>推理结果
+                </h5>
+                <button class="btn btn-sm btn-light" onclick="resetResultsView()">
+                    <i class="fas fa-broom me-1"></i>清空
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="resultsSection" class="results-section" style="display: none;">
+                    <div class="rul-value-display">
+                        <div class="rul-number" id="rulValue">-</div>
+                        <div class="rul-unit" id="rulUnit">剩余使用寿命 (cycles)</div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="stat-card primary">
+                                <h4 id="minRul">-</h4>
+                                <div class="stat-label">最小 RUL</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stat-card primary">
+                                <h4 id="maxRul">-</h4>
+                                <div class="stat-label">最大 RUL</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stat-card primary">
+                                <h4 id="avgRul">-</h4>
+                                <div class="stat-label">平均 RUL</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="rulChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+let rulChart = null;
+let currentResult = null;
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadModels();
+    loadDataFiles();
+
+    const modelSelect = document.getElementById('modelSelect');
+    if (modelSelect) {
+        modelSelect.addEventListener('change', function() {
+            if (this.value) {
+                loadModelInfo(this.value);
+            } else {
+                document.getElementById('modelInfoCard').style.display = 'none';
+            }
+        });
+    }
+
+    const inferenceForm = document.getElementById('inferenceForm');
+    if (inferenceForm) {
+        inferenceForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            runInference();
+        });
+    }
+});
+
+// 加载模型列表
+async function loadModels() {
+    const select = document.getElementById('modelSelect');
+    select.innerHTML = '<option value="">加载中...</option>';
+    
+    try {
+        const response = await fetch('/rul_prediction/api/inference/models');
+        const result = await response.json();
+        
+        if (result.success) {
+            if (result.models.length === 0) {
+                select.innerHTML = '<option value="">暂无可用模型</option>';
+                showMessage('没有可用的模型，请先训练并下载模型', 'info');
+            } else {
+                select.innerHTML = '<option value="">请选择模型...</option>' +
+                    result.models.map(m => `<option value="${m.model_id}">${m.model_id} (${m.model_type})</option>`).join('');
+            }
+        } else {
+            select.innerHTML = '<option value="">加载失败</option>';
+            showMessage('加载模型列表失败: ' + (result.error || '未知错误'), 'error');
+        }
+    } catch (error) {
+        select.innerHTML = '<option value="">加载失败</option>';
+        showMessage('加载模型列表失败: ' + error.message, 'error');
+    }
+}
+
+// 加载数据文件列表
+async function loadDataFiles() {
+    const select = document.getElementById('dataFileSelect');
+    select.innerHTML = '<option value="">加载中...</option>';
+    
+    try {
+        const response = await fetch('/rul_prediction/api/inference/data_files');
+        const result = await response.json();
+        
+        if (result.success) {
+            if (result.files.length === 0) {
+                select.innerHTML = '<option value="">暂无可用数据文件</option>';
+            } else {
+                select.innerHTML = '<option value="">请选择数据文件...</option>' +
+                    result.files.map(f => `<option value="${f.path}">${f.filename} (${f.type})</option>`).join('');
+            }
+        } else {
+            select.innerHTML = '<option value="">加载失败</option>';
+            showMessage('加载数据文件列表失败: ' + (result.error || '未知错误'), 'error');
+        }
+    } catch (error) {
+        select.innerHTML = '<option value="">加载失败</option>';
+        showMessage('加载数据文件列表失败: ' + error.message, 'error');
+    }
+}
+
+// 加载模型信息
+async function loadModelInfo(modelId) {
+    try {
+        const response = await fetch(`/rul_prediction/api/models/${modelId}/info`);
+        const result = await response.json();
+        
+        if (result.success && result.model_info) {
+            const info = result.model_info;
+            const config = info.config || {};
+            
+            let html = `
+                <div class="mb-2"><strong>模型类型:</strong> ${info.model_type || 'N/A'}</div>
+                <div class="mb-2"><strong>序列长度:</strong> ${config.sequence_length || 'N/A'}</div>
+                <div class="mb-2"><strong>输入维度:</strong> ${config.input_dim || 'N/A'}</div>
+            `;
+            
+            if (config.conditions && config.conditions.length > 0) {
+                html += '<div class="mt-3"><strong>工况配置:</strong></div>';
+                config.conditions.forEach(cond => {
+                    html += `<div class="ms-3">${cond.name}: ${cond.values.join(', ')}</div>`;
+                });
+                
+                // 显示工况输入框
+                showConditionInputs(config.conditions);
+            } else {
+                document.getElementById('conditionSection').style.display = 'none';
+            }
+            
+            document.getElementById('modelInfoContent').innerHTML = html;
+            document.getElementById('modelInfoCard').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('加载模型信息失败:', error);
+    }
+}
+
+// 显示工况输入框
+function showConditionInputs(conditions) {
+    const container = document.getElementById('conditionInputs');
+    container.innerHTML = '';
+    
+    conditions.forEach(cond => {
+        const div = document.createElement('div');
+        div.className = 'mb-2';
+        div.innerHTML = `
+            <label class="form-label small">${cond.name}</label>
+            <input type="number" class="form-control form-control-sm" 
+                   id="condition_${cond.name}" 
+                   placeholder="请输入${cond.name}值"
+                   step="any">
+        `;
+        container.appendChild(div);
+    });
+    
+    document.getElementById('conditionSection').style.display = 'block';
+}
+
+// 执行推理
+async function runInference() {
+    const btn = document.getElementById('runInferenceBtn');
+    const modelId = document.getElementById('modelSelect').value;
+    const dataFile = document.getElementById('dataFileSelect').value;
+    const batchSize = parseInt(document.getElementById('batchSize').value) || 32;
+    
+    if (!modelId) {
+        showMessage('请选择模型', 'error');
+        return;
+    }
+    
+    if (!dataFile) {
+        showMessage('请选择数据文件', 'error');
+        return;
+    }
+    
+    // 收集工况值
+    const conditionValues = {};
+    const conditionInputs = document.querySelectorAll('#conditionInputs input');
+    conditionInputs.forEach(input => {
+        const key = input.id.replace('condition_', '');
+        const value = parseFloat(input.value);
+        if (!isNaN(value)) {
+            conditionValues[key] = value;
+        }
+    });
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-spinner me-2"></span>预测中...';
+    
+    try {
+        showMessage('正在执行RUL预测，请稍候...', 'info');
+        
+        const response = await fetch('/rul_prediction/api/inference/predict', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model_id: modelId,
+                data_file: dataFile,
+                batch_size: batchSize,
+                condition_values: conditionValues
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            currentResult = result;
+            displayResults(result);
+            showMessage('预测完成！', 'success');
+        } else {
+            throw new Error(result.error || '预测失败');
+        }
+        
+    } catch (error) {
+        console.error('预测失败:', error);
+        showMessage(`预测失败: ${error.message}`, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-play me-2"></i>开始预测';
+    }
+}
+
+// 显示预测结果
+function displayResults(result) {
+    const predictions = result.predictions || [];
+    
+    if (predictions.length === 0) {
+        showMessage('预测结果为空', 'error');
+        return;
+    }
+    
+    // 计算统计信息
+    const minRul = Math.min(...predictions);
+    const maxRul = Math.max(...predictions);
+    const avgRul = predictions.reduce((a, b) => a + b, 0) / predictions.length;
+    const lastRul = predictions[predictions.length - 1];
+    
+    // 显示当前RUL值（最后一个点的预测值）
+    document.getElementById('rulValue').textContent = lastRul.toFixed(2);
+    document.getElementById('minRul').textContent = minRul.toFixed(2);
+    document.getElementById('maxRul').textContent = maxRul.toFixed(2);
+    document.getElementById('avgRul').textContent = avgRul.toFixed(2);
+    
+    // 绘制图表
+    drawRulChart(predictions);
+    
+    // 显示结果区域
+    const resultsCard = document.getElementById('resultsCard');
+    const resultsSection = document.getElementById('resultsSection');
+    if (resultsCard) {
+        resultsCard.style.display = 'block';
+    }
+    if (resultsSection) {
+        resultsSection.style.display = 'block';
+    }
+}
+
+// 绘制RUL趋势图
+function drawRulChart(predictions) {
+    const ctx = document.getElementById('rulChart').getContext('2d');
+    
+    // 销毁旧图表
+    if (rulChart) {
+        rulChart.destroy();
+    }
+    
+    // 创建新图表
+    rulChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: Array.from({length: predictions.length}, (_, i) => i + 1),
+            datasets: [{
+                label: 'RUL预测值',
+                data: predictions,
+                borderColor: '#008BB0',
+                backgroundColor: 'rgba(0, 139, 176, 0.15)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                title: {
+                    display: true,
+                    text: 'RUL预测趋势'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    title: {
+                        display: true,
+                        text: 'RUL (cycles)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: '时间点'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 显示消息
+function showMessage(message, type = 'info') {
+    const messageArea = document.getElementById('messageArea');
+    if (!messageArea) return;
+
+    const typeMap = {
+        success: 'success',
+        error: 'danger',
+        info: 'info',
+        warning: 'warning'
+    };
+    const iconMap = {
+        success: 'fa-check-circle',
+        danger: 'fa-exclamation-circle',
+        info: 'fa-info-circle',
+        warning: 'fa-exclamation-triangle'
+    };
+
+    const bsType = typeMap[type] || 'info';
+    const icon = iconMap[bsType] || 'fa-info-circle';
+
+    messageArea.innerHTML = `
+        <div class="alert alert-${bsType} d-flex align-items-center justify-content-between mb-0">
+            <div>
+                <i class="fas ${icon} me-2"></i>
+                ${message}
+            </div>
+            <button type="button" class="btn-close" aria-label="关闭" onclick="this.parentElement.parentElement.remove();"></button>
+        </div>
+    `;
+
+    setTimeout(() => {
+        if (messageArea.firstChild) {
+            messageArea.firstChild.remove();
+        }
+    }, 4000);
+}
+
+function resetForm() {
+    const form = document.getElementById('inferenceForm');
+    if (form) {
+        form.reset();
+    }
+
+    const modelSelect = document.getElementById('modelSelect');
+    if (modelSelect) {
+        modelSelect.selectedIndex = 0;
+    }
+
+    const dataFileSelect = document.getElementById('dataFileSelect');
+    if (dataFileSelect) {
+        dataFileSelect.selectedIndex = 0;
+    }
+
+    const modelInfoCard = document.getElementById('modelInfoCard');
+    if (modelInfoCard) {
+        modelInfoCard.style.display = 'none';
+    }
+
+    const modelInfoContent = document.getElementById('modelInfoContent');
+    if (modelInfoContent) {
+        modelInfoContent.innerHTML = '';
+    }
+
+    const conditionSection = document.getElementById('conditionSection');
+    if (conditionSection) {
+        conditionSection.style.display = 'none';
+    }
+
+    const conditionInputs = document.getElementById('conditionInputs');
+    if (conditionInputs) {
+        conditionInputs.innerHTML = '';
+    }
+
+    resetResultsView();
+}
+
+function resetResultsView() {
+    const resultsCard = document.getElementById('resultsCard');
+    const resultsSection = document.getElementById('resultsSection');
+    if (resultsSection) {
+        resultsSection.style.display = 'none';
+    }
+    if (resultsCard) {
+        resultsCard.style.display = 'none';
+    }
+    if (rulChart) {
+        rulChart.destroy();
+        rulChart = null;
+    }
+    currentResult = null;
+}
+
+</script>
+{% endblock %}

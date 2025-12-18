@@ -1,0 +1,558 @@
+{% extends "base.html" %}
+
+{% block title %}模型管理 - 故障诊断{% endblock %}
+
+{% block content %}
+<style>
+.model-card {
+    transition: all 0.3s ease;
+    border: 1px solid #e3e6f0;
+    border-radius: 0.75rem;
+}
+
+.model-card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.metric-badge {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* 模型信息弹窗样式优化 */
+#modelInfoModal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+#modelInfoModal .modal-body > div {
+    margin-bottom: 1.5rem;
+}
+
+#modelInfoModal .modal-body > div:last-child {
+    margin-bottom: 0;
+}
+
+#modelInfoModal .modal-body h6 {
+    font-weight: 600;
+    color: #495057;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
+#modelInfoModal .list-group {
+    border-radius: 0.375rem;
+    border: 1px solid #dee2e6;
+}
+
+#modelInfoModal .list-group-item {
+    padding: 0.75rem 1rem;
+    transition: background-color 0.2s ease;
+    border-left: none;
+    border-right: none;
+}
+
+#modelInfoModal .list-group-item:first-child {
+    border-top: none;
+    border-top-left-radius: 0.375rem;
+    border-top-right-radius: 0.375rem;
+}
+
+#modelInfoModal .list-group-item:last-child {
+    border-bottom: none;
+    border-bottom-left-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+}
+
+#modelInfoModal .list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+#modelInfoModal .table {
+    margin-bottom: 0;
+}
+
+#modelInfoModal .table td {
+    vertical-align: middle;
+    padding: 0.75rem;
+}
+
+#modelInfoModal .table td:first-child {
+    width: 35%;
+    color: #6c757d;
+    background-color: #f8f9fa;
+}
+
+/* 故障诊断绿色主题 */
+.text-fd-primary {
+    color: #2e7d32 !important;
+}
+
+.btn-fd-primary {
+    background: linear-gradient(135deg, #388e3c 0%, #43a047 100%);
+    border: none;
+    color: white;
+}
+
+.btn-fd-primary:hover {
+    background: linear-gradient(135deg, #2e7d32 0%, #388e3c 100%);
+    color: white;
+}
+</style>
+
+<div class="text-center mb-5">
+    <h2 class="mb-3">
+        <i class="fas fa-cogs me-3 text-fd-primary"></i>
+        故障诊断模型管理
+    </h2>
+    <p class="text-muted lead">管理本地训练好的故障诊断模型</p>
+</div>
+
+<!-- 模型列表 -->
+<div class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0">
+            <i class="fas fa-robot me-2 text-fd-primary"></i>
+            训练好的模型
+        </h4>
+        <div class="btn-group" role="group">
+            <button class="btn btn-outline-success" onclick="loadModels()">
+                <i class="fas fa-sync-alt me-1"></i>刷新列表
+            </button>
+        </div>
+    </div>
+    <div id="modelsContainer" class="row g-4">
+        <!-- 模型卡片将在这里动态生成 -->
+    </div>
+</div>
+
+<!-- 加载状态 -->
+<div id="loadingIndicator" class="text-center py-5" style="display: none;">
+    <div class="spinner-border text-success" role="status">
+        <span class="visually-hidden">加载中...</span>
+    </div>
+    <p class="mt-2 text-muted">正在加载模型列表...</p>
+</div>
+
+<script>
+// 获取模型类型图标
+function getModelTypeIcon(modelType) {
+    switch(modelType) {
+        case 'cnn_1d_classifier':
+        case 'cnn_1d':
+            return '<i class="fas fa-layer-group fa-2x text-success me-3" title="CNN 1D分类器"></i>';
+        case 'lstm_classifier':
+        case 'lstm':
+            return '<i class="fas fa-chart-line fa-2x text-info me-3" title="LSTM分类器"></i>';
+        case 'resnet_1d_classifier':
+        case 'resnet_1d':
+            return '<i class="fas fa-project-diagram fa-2x text-primary me-3" title="ResNet 1D分类器"></i>';
+        default:
+            return '<i class="fas fa-brain fa-2x text-success me-3" title="故障诊断模型"></i>';
+    }
+}
+
+// 获取模型类型描述
+function getModelTypeDescription(modelType) {
+    switch(modelType) {
+        case 'cnn_1d_classifier':
+        case 'cnn_1d':
+            return 'CNN 1D 分类器 - 基于一维卷积的故障诊断';
+        case 'lstm_classifier':
+        case 'lstm':
+            return 'LSTM 分类器 - 基于长短期记忆网络的故障诊断';
+        case 'resnet_1d_classifier':
+        case 'resnet_1d':
+            return 'ResNet 1D 分类器 - 基于残差网络的故障诊断';
+        default:
+            return modelType || '故障诊断模型';
+    }
+}
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadModels();
+});
+
+// 加载模型列表
+async function loadModels() {
+    const container = document.getElementById('modelsContainer');
+    const loading = document.getElementById('loadingIndicator');
+    
+    try {
+        loading.style.display = 'block';
+        container.innerHTML = '';
+        
+        const response = await fetch('/fault_diagnosis/api/models');
+        const result = await response.json();
+        
+        if (result.success) {
+            displayModels(result.models);
+            console.log(`✅ 已加载 ${result.total_count} 个故障诊断模型`);
+        } else {
+            throw new Error(result.error || '加载模型失败');
+        }
+    } catch (error) {
+        console.error('Load models error:', error);
+        container.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    加载模型列表失败: ${error.message}
+                </div>
+            </div>
+        `;
+    } finally {
+        loading.style.display = 'none';
+    }
+}
+
+// 显示模型列表
+function displayModels(models) {
+    const container = document.getElementById('modelsContainer');
+    
+    if (!models || models.length === 0) {
+        container.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    暂无训练好的模型，请先进行模型训练。
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = models.map(model => {
+        return `
+        <div class="col-md-6 col-lg-4">
+            <div class="card model-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="d-flex align-items-center">
+                            ${getModelTypeIcon(model.model_type)}
+                            <div>
+                                <h6 class="card-title mb-1">${model.task_id}</h6>
+                                <small class="text-muted">${getModelTypeDescription(model.model_type)}</small>
+                            </div>
+                        </div>
+                        <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>本地</span>
+                    </div>
+                    
+                    <!-- 训练配置信息 -->
+                    ${model.config ? `
+                    <div class="mb-3">
+                        <small class="text-muted d-block">训练配置</small>
+                        <div class="row g-1">
+                            <div class="col-6">
+                                <span class="badge bg-light text-dark">序列长度: ${model.config.sequence_length || 'N/A'}</span>
+                            </div>
+                            <div class="col-6">
+                                <span class="badge bg-light text-dark">类别数: ${model.config.num_classes || 'N/A'}</span>
+                            </div>
+                            <div class="col-6">
+                                <span class="badge bg-light text-dark">训练轮次: ${model.config.epochs_trained || model.config.epochs || 'N/A'}</span>
+                            </div>
+                            <div class="col-6">
+                                <span class="badge bg-light text-dark">批大小: ${model.config.batch_size || 'N/A'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- 测试结果（评估结果） -->
+                    ${model.evaluation && model.evaluation.overall ? `
+                    <div class="mb-3">
+                        <small class="text-muted d-block">测试结果</small>
+                        <div class="row g-1">
+                            <div class="col-6">
+                                <span class="badge bg-success text-white">准确率: ${(model.evaluation.overall.accuracy * 100).toFixed(1)}%</span>
+                            </div>
+                            <div class="col-6">
+                                <span class="badge bg-info text-white">F1分数: ${(model.evaluation.overall.f1_macro * 100).toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- 模型文件状态 -->
+                    ${model.files ? `
+                    <div class="mb-3">
+                        <small class="text-muted d-block">文件状态</small>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <span class="badge ${model.files.model ? 'bg-success' : 'bg-secondary'}">
+                                <i class="fas fa-brain me-1"></i>模型
+                            </span>
+                            <span class="badge ${model.files.config ? 'bg-success' : 'bg-secondary'}">
+                                <i class="fas fa-cog me-1"></i>配置
+                            </span>
+                            <span class="badge ${model.files.metrics ? 'bg-success' : 'bg-secondary'}">
+                                <i class="fas fa-chart-bar me-1"></i>指标
+                            </span>
+                            <span class="badge ${model.files.evaluation ? 'bg-success' : 'bg-secondary'}">
+                                <i class="fas fa-clipboard-check me-1"></i>评估
+                            </span>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block">文件大小</small>
+                            <span class="fw-bold">${formatFileSize(model.size || 0)}</span>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">创建时间</small>
+                            <span class="fw-bold">${formatDate(model.created_at || model.modified_at)}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-info btn-sm" onclick="viewModelInfo('${model.task_id}')">
+                            <i class="fas fa-info-circle me-1"></i>查看详情
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" onclick="goToInference('${model.task_id}')">
+                            <i class="fas fa-search me-1"></i>诊断推理
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteModel('${model.task_id}')">
+                            <i class="fas fa-trash me-1"></i>删除模型
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    }).join('');
+}
+
+// 跳转到推理页面
+function goToInference(taskId) {
+    window.location.href = `/fault_diagnosis/inference?model=${encodeURIComponent(taskId)}`;
+}
+
+// 删除模型
+async function deleteModel(taskId) {
+    if (!confirm(`确定要删除模型 ${taskId} 吗？此操作不可恢复！`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/fault_diagnosis/api/models/${taskId}`, {
+            method: 'DELETE'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('模型删除成功！');
+            loadModels();
+        } else {
+            throw new Error(result.error || '删除模型失败');
+        }
+    } catch (error) {
+        alert(`删除模型失败: ${error.message}`);
+        console.error('Delete model error:', error);
+    }
+}
+
+// 查看模型详细信息
+async function viewModelInfo(taskId) {
+    try {
+        const response = await fetch(`/fault_diagnosis/api/models/${taskId}/info`);
+        const result = await response.json();
+        
+        if (result.success) {
+            showModelInfoModal(result.model_info);
+        } else {
+            throw new Error(result.error || '获取模型信息失败');
+        }
+    } catch (error) {
+        alert(`获取模型信息失败: ${error.message}`);
+    }
+}
+
+// 显示模型信息模态框
+function showModelInfoModal(modelInfo) {
+    const modalHtml = `
+        <div class="modal fade" id="modelInfoModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-brain me-2"></i>
+                            模型详细信息
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- 基本信息 -->
+                        <div class="mb-4">
+                            <h6 class="mb-3 pb-2 border-bottom">
+                                <i class="fas fa-info-circle text-success me-2"></i>基本信息
+                            </h6>
+                            <table class="table table-sm table-bordered">
+                                <tbody>
+                                    <tr><td class="fw-bold">任务ID</td><td>${modelInfo.task_id}</td></tr>
+                                    <tr><td class="fw-bold">模型类型</td><td>${getModelTypeDescription(modelInfo.model_type)}</td></tr>
+                                    <tr><td class="fw-bold">创建时间</td><td>${formatDate(modelInfo.created_at)}</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 训练配置 -->
+                        <div class="mb-4">
+                            <h6 class="mb-3 pb-2 border-bottom">
+                                <i class="fas fa-cog text-info me-2"></i>训练配置
+                            </h6>
+                            <table class="table table-sm table-bordered">
+                                <tbody>
+                                    ${Object.entries(modelInfo.config || {}).map(([key, value]) => {
+                                        // 格式化值
+                                        let displayValue = value;
+                                        if (Array.isArray(value)) {
+                                            // 数组：检查是否包含对象
+                                            if (value.length > 0 && typeof value[0] === 'object') {
+                                                // 工况数组：格式化为 "工况名: 值1, 值2, ..."
+                                                displayValue = value.map(item => {
+                                                    if (item.name && item.values) {
+                                                        return item.name + ': ' + item.values.join(', ');
+                                                    }
+                                                    return JSON.stringify(item);
+                                                }).join(' | ');
+                                            } else {
+                                                displayValue = value.join(', ');
+                                            }
+                                        } else if (typeof value === 'object' && value !== null) {
+                                            // 单个对象
+                                            if (value.name && value.values) {
+                                                displayValue = value.name + ': ' + value.values.join(', ');
+                                            } else {
+                                                displayValue = JSON.stringify(value, null, 2);
+                                            }
+                                        }
+                                        return `<tr><td class="fw-bold">${key}</td><td>${displayValue}</td></tr>`;
+                                    }).join('')}
+                                    ${Object.keys(modelInfo.config || {}).length === 0 ? `
+                                        <tr><td colspan="2" class="text-center text-muted py-3">暂无配置信息</td></tr>
+                                    ` : ''}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 测试结果（评估结果） -->
+                        ${modelInfo.evaluation && modelInfo.evaluation.overall ? `
+                        <div class="mb-4">
+                            <h6 class="mb-3 pb-2 border-bottom">
+                                <i class="fas fa-clipboard-check text-primary me-2"></i>测试结果
+                            </h6>
+                            <table class="table table-sm table-bordered">
+                                <tbody>
+                                    <tr>
+                                        <td class="fw-bold">准确率</td>
+                                        <td><span class="badge bg-success">${(modelInfo.evaluation.overall.accuracy * 100).toFixed(2)}%</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">F1分数 (宏平均)</td>
+                                        <td><span class="badge bg-info">${(modelInfo.evaluation.overall.f1_macro * 100).toFixed(2)}%</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">精确率 (宏平均)</td>
+                                        <td><span class="badge bg-primary">${(modelInfo.evaluation.overall.precision_macro * 100).toFixed(2)}%</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">召回率 (宏平均)</td>
+                                        <td><span class="badge bg-warning text-dark">${(modelInfo.evaluation.overall.recall_macro * 100).toFixed(2)}%</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        ` : ''}
+                        
+                        <!-- 文件列表 -->
+                        <div class="mb-3">
+                            <h6 class="mb-3 pb-2 border-bottom">
+                                <i class="fas fa-folder-open text-warning me-2"></i>文件列表
+                            </h6>
+                            <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                                ${Object.entries(modelInfo.files || {}).map(([filename, info]) => `
+                                    <div class="list-group-item d-flex justify-content-between align-items-start border-bottom">
+                                        <div class="flex-grow-1">
+                                            <strong class="d-block mb-1">${filename}</strong>
+                                            <small class="text-muted d-block">
+                                                <i class="fas fa-hdd me-1"></i>${formatFileSize(info.size || 0)}
+                                            </small>
+                                        </div>
+                                        <small class="text-muted text-nowrap ms-2">
+                                            <i class="fas fa-clock me-1"></i>${formatDate(info.created_at)}
+                                        </small>
+                                    </div>
+                                `).join('')}
+                                ${Object.keys(modelInfo.files || {}).length === 0 ? `
+                                    <div class="list-group-item text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                                        <p class="mb-0">暂无文件信息</p>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                        <button type="button" class="btn btn-danger" onclick="deleteModel('${modelInfo.task_id}'); bootstrap.Modal.getInstance(document.getElementById('modelInfoModal')).hide();">
+                            <i class="fas fa-trash me-1"></i>删除模型
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 移除已存在的模态框
+    const existingModal = document.getElementById('modelInfoModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // 添加新模态框
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // 显示模态框
+    const modal = new bootstrap.Modal(document.getElementById('modelInfoModal'));
+    modal.show();
+}
+
+// 工具函数
+function formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+</script>
+
+<div class="text-center mt-5">
+    <a href="/fault_diagnosis" class="btn btn-outline-success btn-lg px-5 py-3">
+        <i class="fas fa-arrow-left me-2"></i>
+        返回故障诊断主页
+    </a>
+</div>
+{% endblock %}
+
