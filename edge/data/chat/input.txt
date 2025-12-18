@@ -1,1 +1,2 @@
 {"timestamp": "2025-12-17T09:56:48.677864Z", "session_id": "c55c9954-9c87-400f-804a-bf14cbcbe1a2", "trace_id": "775c433d-57c2-4ab7-a5d1-c2502d4a65de", "text": "测试"}
+{"timestamp": "2025-12-18T08:08:05.469293Z", "session_id": "27f3419f-906b-4e81-b910-17e382267081", "trace_id": "48dd3966-742f-4303-83ca-53fcd521f0c4", "text": "你好"}

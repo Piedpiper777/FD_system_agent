@@ -32,6 +32,7 @@ dist/
 # 日志与临时文件
 *.log
 *.tmp
+*.pid
 
 # 前端/Node 依赖与缓存
 node_modules/
@@ -71,3 +72,6 @@ docs/_build/
 *.pkl.tar.bz2
 *.pkl.tar.zip
 *.ckpt
+*.h5
+edge/models/
+cloud/models/
