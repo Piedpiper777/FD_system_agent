@@ -306,28 +306,23 @@
             </div>
         </div>
 
-        <div class="text-center mt-4 mb-2">
-            <a href="/rul_prediction" class="btn btn-outline-primary btn-lg px-5 py-3">
-                <i class="fas fa-arrow-left me-2"></i>返回RUL预测主页
-            </a>
-        </div>
-
         <div id="resultsCard" class="inference-card card mb-4" style="display: none;">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
                     <i class="fas fa-chart-line me-2"></i>推理结果
                 </h5>
-                <button class="btn btn-sm btn-light" onclick="resetResultsView()">
-                    <i class="fas fa-broom me-1"></i>清空
-                </button>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="toggleNormalized" onchange="toggleNormalization()">
+                        <label class="form-check-label small" for="toggleNormalized">显示归一化(0-1)</label>
+                    </div>
+                    <button class="btn btn-sm btn-light" onclick="resetResultsView()">
+                        <i class="fas fa-broom me-1"></i>清空
+                    </button>
+                </div>
             </div>
             <div class="card-body">
                 <div id="resultsSection" class="results-section" style="display: none;">
-                    <div class="rul-value-display">
-                        <div class="rul-number" id="rulValue">-</div>
-                        <div class="rul-unit" id="rulUnit">剩余使用寿命 (cycles)</div>
-                    </div>
-
                     <div class="row g-3 mb-4">
                         <div class="col-md-4">
                             <div class="stat-card primary">
@@ -356,6 +351,12 @@
 
             </div>
         </div>
+
+        <div class="text-center mt-4 mb-2">
+            <a href="/rul_prediction" class="btn btn-outline-primary btn-lg px-5 py-3">
+                <i class="fas fa-arrow-left me-2"></i>返回RUL预测主页
+            </a>
+        </div>
     </div>
 </div>
 
@@ -363,6 +364,7 @@
 <script>
 let rulChart = null;
 let currentResult = null;
+let showNormalized = false;
 
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -567,8 +569,17 @@ async function runInference() {
 
 // 显示预测结果
 function displayResults(result) {
-    const predictions = result.predictions || [];
-    
+    currentResult = result;
+    renderResults();
+}
+
+function renderResults() {
+    if (!currentResult) return;
+    const predictionsRaw = currentResult.predictions || [];
+    const predictionsNorm = currentResult.predictions_normalized || [];
+    const useNormalized = showNormalized && predictionsNorm.length === predictionsRaw.length && predictionsNorm.length > 0;
+    const predictions = useNormalized ? predictionsNorm : predictionsRaw;
+
     if (predictions.length === 0) {
         showMessage('预测结果为空', 'error');
         return;
@@ -580,14 +591,12 @@ function displayResults(result) {
     const avgRul = predictions.reduce((a, b) => a + b, 0) / predictions.length;
     const lastRul = predictions[predictions.length - 1];
     
-    // 显示当前RUL值（最后一个点的预测值）
-    document.getElementById('rulValue').textContent = lastRul.toFixed(2);
     document.getElementById('minRul').textContent = minRul.toFixed(2);
     document.getElementById('maxRul').textContent = maxRul.toFixed(2);
     document.getElementById('avgRul').textContent = avgRul.toFixed(2);
     
     // 绘制图表
-    drawRulChart(predictions);
+    drawRulChart(predictions, useNormalized);
     
     // 显示结果区域
     const resultsCard = document.getElementById('resultsCard');
@@ -601,7 +610,7 @@ function displayResults(result) {
 }
 
 // 绘制RUL趋势图
-function drawRulChart(predictions) {
+function drawRulChart(predictions, normalized = false) {
     const ctx = document.getElementById('rulChart').getContext('2d');
     
     // 销毁旧图表
@@ -615,7 +624,7 @@ function drawRulChart(predictions) {
         data: {
             labels: Array.from({length: predictions.length}, (_, i) => i + 1),
             datasets: [{
-                label: 'RUL预测值',
+                label: normalized ? '归一化 RUL (0-1)' : 'RUL预测值',
                 data: predictions,
                 borderColor: '#008BB0',
                 backgroundColor: 'rgba(0, 139, 176, 0.15)',
@@ -634,15 +643,15 @@ function drawRulChart(predictions) {
                 },
                 title: {
                     display: true,
-                    text: 'RUL预测趋势'
+                    text: normalized ? '归一化 RUL 预测趋势 (0-1)' : 'RUL预测趋势'
                 }
             },
             scales: {
                 y: {
-                    beginAtZero: false,
+                    beginAtZero: normalized,
                     title: {
                         display: true,
-                        text: 'RUL (cycles)'
+                        text: normalized ? '归一化 RUL (0-1)' : 'RUL (cycles)'
                     }
                 },
                 x: {
@@ -736,6 +745,10 @@ function resetForm() {
 function resetResultsView() {
     const resultsCard = document.getElementById('resultsCard');
     const resultsSection = document.getElementById('resultsSection');
+    const toggle = document.getElementById('toggleNormalized');
+    if (toggle) {
+        toggle.checked = false;
+    }
     if (resultsSection) {
         resultsSection.style.display = 'none';
     }
@@ -747,6 +760,11 @@ function resetResultsView() {
         rulChart = null;
     }
     currentResult = null;
+}
+
+function toggleNormalization() {
+    showNormalized = document.getElementById('toggleNormalized').checked;
+    renderResults();
 }
 
 </script>

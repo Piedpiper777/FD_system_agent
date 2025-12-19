@@ -1,19 +1,40 @@
 """
-RUL预测 BiLSTM/GRU 回归器 - 模型构建器（边端版本）
-与云端版本保持一致，用于边端推理
+RUL预测 BiLSTM/GRU 回归器 - 模型构建器（PyTorch版，边端推理）。
 """
 
 from typing import Dict, Any, Tuple
-import mindspore as ms
-import mindspore.nn as nn
-import mindspore.ops as ops
+import torch
+import torch.nn as nn
 
 
-class BiLSTMGRURegressor(nn.Cell):
+def _get_activation(name: str) -> nn.Module:
+    mapping = {
+        "relu": nn.ReLU(),
+        "tanh": nn.Tanh(),
+        "sigmoid": nn.Sigmoid(),
+        "gelu": nn.GELU(),
+        "leakyrelu": nn.LeakyReLU(0.2),
+    }
+    return mapping.get((name or "relu").lower(), nn.ReLU())
+
+
+class AttentionPool(nn.Module):
+    """简单的加性注意力池化。"""
+
+    def __init__(self, input_dim: int):
+        super().__init__()
+        self.score = nn.Linear(input_dim, 1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        weights = torch.softmax(self.score(x), dim=1)  # (batch, seq, 1)
+        return (x * weights).sum(dim=1)  # (batch, dim)
+
+
+class BiLSTMGRURegressor(nn.Module):
     """
-    BiLSTM/GRU RUL回归器
+    BiLSTM/GRU RUL回归器（与云端保持一致，便于权重复用）。
     """
-    
+
     def __init__(
         self,
         input_shape: Tuple[int, int],
@@ -24,10 +45,11 @@ class BiLSTMGRURegressor(nn.Cell):
         bidirectional: bool = True,
         use_attention: bool = True,
         use_layer_norm: bool = True,
-        rnn_type: str = "lstm",
+        rnn_type: str = "lstm",  # "lstm" 或 "gru"
+        output_activation: str = None,
     ):
-        super(BiLSTMGRURegressor, self).__init__()
-        
+        super().__init__()
+
         seq_len, n_features = input_shape
         self.sequence_length = seq_len
         self.input_dim = n_features
@@ -38,8 +60,7 @@ class BiLSTMGRURegressor(nn.Cell):
         self.use_attention = use_attention
         self.use_layer_norm = use_layer_norm
         self.rnn_type = rnn_type.lower()
-        
-        # RNN层（LSTM或GRU）
+
         if self.rnn_type == "lstm":
             self.rnn = nn.LSTM(
                 input_size=n_features,
@@ -60,81 +81,62 @@ class BiLSTMGRURegressor(nn.Cell):
             )
         else:
             raise ValueError(f"不支持的RNN类型: {rnn_type}，支持 'lstm' 或 'gru'")
-        
-        # 计算RNN输出维度（双向时是2倍）
+
         rnn_output_dim = hidden_units * 2 if bidirectional else hidden_units
-        
-        # 注意力机制（可选）
-        if use_attention:
-            self.attention = nn.Dense(rnn_output_dim, 1)
-        else:
-            self.attention = None
-        
-        # 回归头：全连接层
-        regressor_layers = []
-        # 第一层
-        regressor_layers.append(nn.Dense(rnn_output_dim, rnn_output_dim // 2))
+        self.attention = AttentionPool(rnn_output_dim) if use_attention else None
+
+        reg_layers = [
+            nn.Linear(rnn_output_dim, rnn_output_dim // 2),
+        ]
         if use_layer_norm:
-            regressor_layers.append(nn.LayerNorm((rnn_output_dim // 2,)))
-        regressor_layers.append(self._get_activation(activation))
-        regressor_layers.append(nn.Dropout(p=dropout))
-        
-        # 第二层
-        regressor_layers.append(nn.Dense(rnn_output_dim // 2, rnn_output_dim // 4))
+            reg_layers.append(nn.LayerNorm(rnn_output_dim // 2))
+        reg_layers.append(_get_activation(activation))
+        reg_layers.append(nn.Dropout(p=dropout))
+
+        reg_layers.append(nn.Linear(rnn_output_dim // 2, rnn_output_dim // 4))
         if use_layer_norm:
-            regressor_layers.append(nn.LayerNorm((rnn_output_dim // 4,)))
-        regressor_layers.append(self._get_activation(activation))
-        regressor_layers.append(nn.Dropout(p=dropout * 0.5))
-        
-        # 输出层
-        regressor_layers.append(nn.Dense(rnn_output_dim // 4, 1))  # 输出单个RUL值
-        
-        self.regressor = nn.SequentialCell(regressor_layers)
-    
-    def _get_activation(self, name: str):
-        """根据名称返回激活函数"""
-        activations = {
-            'relu': nn.ReLU(),
-            'tanh': nn.Tanh(),
-            'sigmoid': nn.Sigmoid(),
-            'gelu': nn.GELU(),
-        }
-        return activations.get(name.lower(), nn.ReLU())
-    
-    def construct(self, x: ms.Tensor) -> ms.Tensor:
-        """
-        前向传播
-        
-        Args:
-            x: 输入张量 (batch_size, seq_len, n_features)
-            
-        Returns:
-            rul_pred: RUL预测值 (batch_size, 1)
-        """
-        # RNN前向传播
-        rnn_out, _ = self.rnn(x)  # (batch_size, seq_len, rnn_output_dim)
-        
-        # 注意力机制（可选）
+            reg_layers.append(nn.LayerNorm(rnn_output_dim // 4))
+        reg_layers.append(_get_activation(activation))
+        reg_layers.append(nn.Dropout(p=dropout * 0.5))
+
+        reg_layers.append(nn.Linear(rnn_output_dim // 4, 1))
+        self.output_activation = (
+            nn.Sigmoid() if output_activation and output_activation.lower() == "sigmoid" else None
+        )
+        self.regressor = nn.Sequential(*reg_layers)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        rnn_output, _ = self.rnn(x)
         if self.attention is not None:
-            # 计算注意力权重
-            attention_weights = self.attention(rnn_out)  # (batch_size, seq_len, 1)
-            attention_weights = ops.Softmax(axis=1)(attention_weights)  # 归一化
-            
-            # 加权求和
-            context = ops.ReduceSum()(rnn_out * attention_weights, axis=1)  # (batch_size, rnn_output_dim)
+            features = self.attention(rnn_output)
         else:
-            # 不使用注意力，使用最后一个时间步的输出
-            context = rnn_out[:, -1, :]  # (batch_size, rnn_output_dim)
-        
-        # 回归预测
-        rul_pred = self.regressor(context)  # (batch_size, 1)
-        
-        return rul_pred
+            features = rnn_output[:, -1, :]
+        out = self.regressor(features)
+        if self.output_activation is not None:
+            out = self.output_activation(out)
+        return out
 
 
 class ModelBuilder:
     """BiLSTM/GRU 回归器模型工厂"""
-    
+
+    DEFAULT_CONFIG = {
+        "hidden_units": 128,
+        "num_layers": 2,
+        "dropout": 0.3,
+        "activation": "relu",
+        "bidirectional": True,
+        "use_attention": True,
+        "use_layer_norm": True,
+        "rnn_type": "lstm",  # "lstm" 或 "gru"
+    }
+
+    @staticmethod
+    def get_default_config(model_type: str = "bilstm_gru_regressor") -> Dict[str, Any]:
+        if model_type == "bilstm_gru_regressor":
+            return ModelBuilder.DEFAULT_CONFIG.copy()
+        return {}
+
     @staticmethod
     def build_regressor(
         input_shape: Tuple[int, int],
@@ -147,7 +149,6 @@ class ModelBuilder:
         use_layer_norm: bool = True,
         rnn_type: str = "lstm",
     ) -> BiLSTMGRURegressor:
-        """构建BiLSTM/GRU回归器"""
         return BiLSTMGRURegressor(
             input_shape=input_shape,
             hidden_units=hidden_units,
@@ -159,36 +160,43 @@ class ModelBuilder:
             use_layer_norm=use_layer_norm,
             rnn_type=rnn_type,
         )
-    
+
     @staticmethod
     def create_model(
         model_type: str,
         input_shape: Tuple[int, int],
         **kwargs
-    ) -> nn.Cell:
-        """
-        创建模型
-        
-        Args:
-            model_type: 模型类型
-            input_shape: 输入形状 (seq_len, n_features)
-            **kwargs: 其他模型参数
-            
-        Returns:
-            模型实例
-        """
-        if model_type == 'bilstm_gru_regressor':
-            return ModelBuilder.build_regressor(
-                input_shape=input_shape,
-                hidden_units=kwargs.get('hidden_units', 128),
-                num_layers=kwargs.get('num_layers', 2),
-                dropout=kwargs.get('dropout', 0.3),
-                activation=kwargs.get('activation', 'relu'),
-                bidirectional=kwargs.get('bidirectional', True),
-                use_attention=kwargs.get('use_attention', True),
-                use_layer_norm=kwargs.get('use_layer_norm', True),
-                rnn_type=kwargs.get('rnn_type', 'lstm'),
+    ) -> nn.Module:
+        if model_type != "bilstm_gru_regressor":
+            raise ValueError(
+                f"Unsupported model_type for BiLSTM/GRU regressor builder: {model_type}"
             )
-        else:
-            raise ValueError(f"不支持的模型类型: {model_type}")
 
+        config = ModelBuilder.get_default_config(model_type)
+        if 'hidden_size' in kwargs:
+            kwargs['hidden_units'] = kwargs.pop('hidden_size')
+        config.update(kwargs)
+        return ModelBuilder.build_regressor(
+            input_shape=input_shape,
+            **config
+        )
+
+    @staticmethod
+    def get_model_info(model: nn.Module) -> Dict[str, Any]:
+        if isinstance(model, BiLSTMGRURegressor):
+            return {
+                "model_type": "bilstm_gru_regressor",
+                "input_dim": model.input_dim,
+                "sequence_length": model.sequence_length,
+                "hidden_units": model.hidden_units,
+                "num_layers": model.num_layers,
+                "dropout": model.dropout,
+                "bidirectional": model.bidirectional,
+                "use_attention": model.use_attention,
+                "rnn_type": model.rnn_type,
+                "trainable_params": sum(p.numel() for p in model.parameters()),
+            }
+        return {
+            "model_type": "unknown",
+            "trainable_params": sum(p.numel() for p in model.parameters()),
+        }

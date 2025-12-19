@@ -22,10 +22,38 @@ class RULPredictionEvaluator:
         if model is None:
             raise ValueError("模型不能为None，请确保传入有效的模型")
         self.model = model
-        self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+        self.device = self._resolve_device(device)
         self.model.to(self.device)
         self.model.eval()
         self.label_scaler = label_scaler
+
+    def _resolve_device(self, device: Optional[Union[str, torch.device]]) -> torch.device:
+        if isinstance(device, torch.device):
+            target = device
+        else:
+            device_str = str(device or "cuda:0").strip().lower()
+            if device_str in ("gpu", "cuda"):
+                device_str = "cuda:0"
+            if device_str.startswith("cuda"):
+                if torch.cuda.is_available():
+                    # 解析首个可用GPU编号
+                    for part in device_str.split(","):
+                        token = part.strip()
+                        if not token:
+                            continue
+                        if token.startswith("cuda:"):
+                            token = token.split(":", 1)[1]
+                        if token.isdigit():
+                            idx = int(token)
+                            if idx < torch.cuda.device_count():
+                                return torch.device(f"cuda:{idx}")
+                    return torch.device("cuda:0")
+                return torch.device("cpu")
+            target = torch.device(device_str or ("cuda" if torch.cuda.is_available() else "cpu"))
+
+        if target.type == "cuda" and not torch.cuda.is_available():
+            return torch.device("cpu")
+        return target
 
     def evaluate(
         self,
@@ -52,6 +80,9 @@ class RULPredictionEvaluator:
         else:
             all_predictions = all_predictions_normalized
             test_labels = test_labels_normalized
+
+        # 推理阶段强制非负
+        all_predictions = np.maximum(0, all_predictions)
 
         metrics = self._compute_metrics(all_predictions, test_labels)
         metrics["predictions"] = all_predictions.tolist()

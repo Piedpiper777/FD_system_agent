@@ -68,6 +68,7 @@ class TransformerRegressor(nn.Module):
         activation: str = "gelu",
         pooling: str = "avg",
         use_positional_encoding: bool = True,
+        output_activation: str = None,
     ):
         super().__init__()
         seq_len, input_dim = input_shape
@@ -76,6 +77,7 @@ class TransformerRegressor(nn.Module):
         self.embed_dim = embed_dim
         self.pooling = (pooling or "avg").lower()
         self.use_positional_encoding = use_positional_encoding
+        self.output_activation = (output_activation or "").lower()
 
         self.input_projection = nn.Linear(input_dim, embed_dim)
 
@@ -100,7 +102,7 @@ class TransformerRegressor(nn.Module):
 
         head_hidden = max(embed_dim, 64)
         head_mid = max(head_hidden // 2, 32)
-        self.regressor = nn.Sequential(
+        layers = [
             nn.Linear(embed_dim, head_hidden),
             _get_activation(activation),
             nn.Dropout(p=dropout),
@@ -108,7 +110,10 @@ class TransformerRegressor(nn.Module):
             _get_activation(activation),
             nn.Dropout(p=dropout * 0.5),
             nn.Linear(head_mid, 1),
-        )
+        ]
+        if self.output_activation == "sigmoid":
+            layers.append(nn.Sigmoid())
+        self.regressor = nn.Sequential(*layers)
 
     def _apply_positional_encoding(self, x: torch.Tensor) -> torch.Tensor:
         if self.positional_embedding is None:
@@ -132,7 +137,8 @@ class TransformerRegressor(nn.Module):
             x = layer(x)
 
         features = self._pool_sequence(x)
-        return self.regressor(features)
+        out = self.regressor(features)
+        return out
 
 
 class ModelBuilder:

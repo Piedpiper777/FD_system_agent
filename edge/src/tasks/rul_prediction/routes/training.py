@@ -462,17 +462,20 @@ def download_model_to_edge(task_id):
                 'message': f'解压后找不到模型目录: {task_id}'
             }), 500
         
-        # 验证关键文件是否存在
-        required_files = ['model.ckpt', 'model_config.json']
-        missing_files = []
-        for filename in required_files:
-            if not (model_folder / filename).exists():
-                missing_files.append(filename)
-        
-        if missing_files:
+        # 验证关键文件是否存在（权重文件任选其一）
+        weight_candidates = ['best_model.pt', 'model.pt', 'model.ckpt']
+        has_weight = any((model_folder / f).exists() for f in weight_candidates)
+        config_exists = (model_folder / 'model_config.json').exists()
+
+        if not has_weight or not config_exists:
+            missing_parts = []
+            if not has_weight:
+                missing_parts.append('模型权重(best_model.pt/model.pt/model.ckpt)')
+            if not config_exists:
+                missing_parts.append('model_config.json')
             return jsonify({
                 'success': False,
-                'message': f'模型文件不完整，缺少: {", ".join(missing_files)}'
+                'message': f'模型文件不完整，缺少: {", ".join(missing_parts)}'
             }), 500
         
         return jsonify({

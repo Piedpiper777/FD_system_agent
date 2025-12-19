@@ -1,6 +1,6 @@
 """RUL预测 BiLSTM/GRU 回归器 - 训练器（PyTorch版）。"""
 
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -19,14 +19,14 @@ class Trainer:
         clip_grad_norm: float = 5.0,
         loss_type: str = "mse",
         device: Optional[Union[str, torch.device]] = None,
+        device_ids: Optional[List[int]] = None,
     ):
-        self.model = model
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.clip_grad_norm = clip_grad_norm
         self.loss_type = (loss_type or "mse").lower()
-        self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
-        self.model.to(self.device)
+        self.device, self.device_ids = self._setup_device(device, device_ids)
+        self.model = self._wrap_model(model)
 
         if self.loss_type == "mse":
             self.criterion = nn.MSELoss()
@@ -54,6 +54,76 @@ class Trainer:
             "val_maes": [],
             "epochs_trained": 0,
         }
+
+    @staticmethod
+    def _parse_device_ids(device_str: str) -> List[int]:
+        ids: List[int] = []
+        for part in device_str.split(","):
+            token = part.strip()
+            if not token:
+                continue
+            if token.startswith("cuda:"):
+                token = token.split(":", 1)[1]
+            if token.isdigit():
+                ids.append(int(token))
+        return ids
+
+    def _setup_device(
+        self,
+        device: Optional[Union[str, torch.device]],
+        device_ids: Optional[List[int]],
+    ) -> Tuple[torch.device, List[int]]:
+        # 设备默认使用 CUDA0/1，可用性优先
+        if isinstance(device, torch.device):
+            base_device = device
+            valid_ids = (
+                device_ids
+                if device_ids is not None
+                else ([base_device.index] if base_device.type == "cuda" and base_device.index is not None else [])
+            )
+        else:
+            device_str = str(device or "cuda:0").strip().lower()
+            if device_str in ("gpu", "cuda"):
+                device_str = "cuda:0"
+            # 提取希望使用的GPU列表
+            preferred_ids = device_ids or (
+                self._parse_device_ids(device_str) if device_str.startswith("cuda") else []
+            )
+            available = list(range(torch.cuda.device_count())) if torch.cuda.is_available() else []
+            valid_ids = [idx for idx in preferred_ids if idx in available]
+            if not valid_ids and available:
+                valid_ids = [available[0]]
+
+            if valid_ids:
+                base_device = torch.device(f"cuda:{valid_ids[0]}")
+            elif device_str.startswith("cuda") and torch.cuda.is_available():
+                base_device = torch.device("cuda:0")
+                valid_ids = [0]
+            else:
+                base_device = torch.device("cpu")
+                valid_ids = []
+
+        if base_device.type == "cuda" and not torch.cuda.is_available():
+            base_device = torch.device("cpu")
+            device_ids = []
+        else:
+            device_ids = valid_ids if base_device.type == "cuda" else []
+
+        return base_device, device_ids
+
+    def _wrap_model(self, model: nn.Module) -> nn.Module:
+        model = model.to(self.device)
+        if self.device.type == "cuda" and len(self.device_ids) > 1:
+            return nn.DataParallel(model, device_ids=self.device_ids)
+        return model
+
+    def get_base_model(self) -> nn.Module:
+        """返回未包装的基础模型，便于保存/推理。"""
+        return self.model.module if isinstance(self.model, nn.DataParallel) else self.model
+
+    def _cpu_state_dict(self) -> Dict[str, torch.Tensor]:
+        base_model = self.get_base_model()
+        return {k: v.detach().cpu() for k, v in base_model.state_dict().items()}
 
     def _compute_metrics(self, preds: np.ndarray, labels: np.ndarray) -> Dict[str, float]:
         mse = np.mean((preds - labels) ** 2)
@@ -202,7 +272,7 @@ class Trainer:
 
                 self.patience_counter = 0
                 if save_path:
-                    best_state = {k: v.cpu() for k, v in self.model.state_dict().items()}
+                    best_state = self._cpu_state_dict()
             else:
                 self.patience_counter += 1
 

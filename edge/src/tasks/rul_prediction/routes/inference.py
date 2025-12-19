@@ -64,14 +64,19 @@ def get_inferencer(model_id: str) -> RULPredictionInferencer:
     if model_dir is None or not model_dir.exists():
         raise FileNotFoundError(f'模型 {model_id} 不存在')
     
-    # 检查必要文件
-    model_path = model_dir / 'model.ckpt'
+    # 检查必要文件（优先使用PyTorch权重）
+    candidate_model_paths = [
+        model_dir / 'best_model.pt',
+        model_dir / 'model.pt',
+        model_dir / 'model.ckpt',  # 兼容旧版
+    ]
+    model_path = next((p for p in candidate_model_paths if p.exists()), None)
     config_path = model_dir / 'model_config.json'
     scaler_path = model_dir / 'scaler.pkl'  # 特征scaler（可选）
     label_scaler_path = model_dir / 'label_scaler.pkl'  # 标签scaler（必需）
     
-    if not model_path.exists():
-        raise FileNotFoundError(f'模型文件不存在: {model_path}')
+    if model_path is None:
+        raise FileNotFoundError(f'模型文件不存在（期望 best_model.pt/model.pt 或兼容的ckpt）: {model_dir}')
     if not config_path.exists():
         raise FileNotFoundError(f'模型配置文件不存在: {config_path}')
     if not label_scaler_path.exists():

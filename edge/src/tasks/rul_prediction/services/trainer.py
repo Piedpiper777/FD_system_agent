@@ -23,12 +23,12 @@ class RULPredictionTrainer:
     
     def _normalize_device_target(self, value):
         """标准化设备标识"""
-        normalized = str(value or 'CPU').strip().lower()
+        normalized = str(value or 'cuda:0').strip().lower()
         if normalized in ('gpu', 'cuda'):
-            return 'GPU'
-        if normalized in ('ascend', 'npu', 'atlas'):
-            return 'Ascend'
-        return 'CPU'
+            return 'cuda:0'
+        if normalized.startswith('cuda'):
+            return normalized
+        return 'cpu'
     
     def _get_cloud_url(self):
         """获取云端服务URL（延迟获取，确保在应用上下文中）"""
@@ -297,7 +297,7 @@ class RULPredictionTrainer:
 
         model_type = config.get('model_type') or 'bilstm_gru_regressor'
         device_target = self._normalize_device_target(
-            config.get('device') or config.get('device_target') or 'CPU'
+            config.get('device') or config.get('device_target') or 'cuda:0'
         )
         config['device'] = device_target
         config['device_target'] = device_target

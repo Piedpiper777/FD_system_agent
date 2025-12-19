@@ -54,12 +54,12 @@ except ImportError as e:
     logger.warning(f"训练模块不可用: {e}")
 
 def _normalize_device_target(value):
-    normalized = str(value or 'CPU').strip().lower()
+    normalized = str(value or 'cuda:0').strip().lower()
     if normalized in ('gpu', 'cuda'):
-        return 'GPU'
-    if normalized in ('ascend', 'npu', 'atlas'):
-        return 'Ascend'
-    return 'CPU'
+        return 'cuda:0'
+    if normalized.startswith('cuda'):
+        return normalized
+    return 'cpu'
 
 # 导入任务管理器
 training_tasks = {}
@@ -1281,10 +1281,27 @@ def _run_real_training(task_id):
             task_manager.add_log(task_id, f'配置缺少参数: {missing_params}')
 
         device_target = _normalize_device_target(
-            config.get('device') or config.get('device_target') or 'CPU'
+            config.get('device') or config.get('device_target') or 'cuda:0'
         )
         config['device'] = device_target
         config['device_target'] = device_target
+        # 解析 device_ids（优先使用显式传入，其次从device字符串推断）
+        config['device_ids'] = _parse_int_list(config.get('device_ids'), [])
+        if config.get('device_ids') is None and isinstance(device_target, str) and ',' in device_target:
+            try:
+                parsed_ids = []
+                for part in device_target.split(','):
+                    token = part.strip()
+                    if not token:
+                        continue
+                    if token.startswith('cuda:'):
+                        token = token.split(':', 1)[1]
+                    if token.isdigit():
+                        parsed_ids.append(int(token))
+                if parsed_ids:
+                    config['device_ids'] = parsed_ids
+            except Exception:
+                config['device_ids'] = None
         if 'ms' in globals():
             try:
                 ms.set_context(mode=ms.GRAPH_MODE, device_target=device_target)
@@ -1346,12 +1363,13 @@ def _run_real_training(task_id):
             input_shape=(seq_len, input_dim),
             **model_params
         )
+        model_for_save = model
         
         # 验证模型实际使用的RNN类型
-        if hasattr(model, 'rnn_type'):
-            task_manager.add_log(task_id, f'模型实际使用的RNN类型: {model.rnn_type}')
-        elif hasattr(model, 'rnn'):
-            rnn_type_name = type(model.rnn).__name__.lower()
+        if hasattr(model_for_save, 'rnn_type'):
+            task_manager.add_log(task_id, f'模型实际使用的RNN类型: {model_for_save.rnn_type}')
+        elif hasattr(model_for_save, 'rnn'):
+            rnn_type_name = type(model_for_save.rnn).__name__.lower()
             task_manager.add_log(task_id, f'模型实际使用的RNN类型: {rnn_type_name}')
         
         # 创建训练器
@@ -1362,8 +1380,10 @@ def _run_real_training(task_id):
             weight_decay=_to_float(config.get('weight_decay'), 0.0001),
             clip_grad_norm=_to_float(config.get('clip_grad_norm'), 5.0),
             loss_type=config.get('loss_type', 'mse'),
-            device=config.get('device', 'cuda'),
+            device=config.get('device', 'cuda:0'),
+            device_ids=config.get('device_ids'),
         )
+        model_for_save = trainer.get_base_model()
         
         # 记录训练参数
         task_manager.add_log(
@@ -1490,7 +1510,7 @@ def _run_real_training(task_id):
                 # 保存最佳模型
                 model_dir = Path('models') / 'rul_prediction' / model_type / task_id
                 model_dir.mkdir(parents=True, exist_ok=True)
-                torch.save(model.state_dict(), str(model_dir / 'best_model.pt'))
+                torch.save(model_for_save.state_dict(), str(model_dir / 'best_model.pt'))
             else:
                 patience_counter += 1
                 if patience_counter >= patience:
@@ -1514,12 +1534,12 @@ def _run_real_training(task_id):
             try:
                 shutil.copy2(best_model_path, model_path)
                 task_manager.add_log(task_id, '使用最佳模型作为最终模型')
-                model.load_state_dict(torch.load(model_path, map_location='cpu'))
+                model_for_save.load_state_dict(torch.load(model_path, map_location='cpu'))
             except Exception as e:
                 task_manager.add_log(task_id, f'警告：复制最佳模型失败: {e}，将保存当前模型')
-                torch.save(model.state_dict(), str(model_path))
+                torch.save(model_for_save.state_dict(), str(model_path))
         else:
-            torch.save(model.state_dict(), str(model_path))
+            torch.save(model_for_save.state_dict(), str(model_path))
         
         # 保存特征scaler（如果存在）
         import shutil
@@ -1596,7 +1616,7 @@ def _run_real_training(task_id):
             try:
                 task_manager.add_log(task_id, '开始使用测试集评估模型...')
                 evaluation_results = _evaluate_rul_model(
-                    model=model,
+                    model=model_for_save,
                     test_file=test_file,
                     label_scaler_file=dataset_info.get('label_scaler_file'),
                     config=config,

@@ -686,7 +686,11 @@
                 }
             };
 
-            chatToggleBtn?.addEventListener('click', () => toggleChat(true));
+            chatToggleBtn?.addEventListener('click', (ev) => {
+                // 如果刚刚是拖拽导致的 mouseup，则不触发展开
+                if (dragMoved) return;
+                toggleChat(true);
+            });
             chatCloseBtn?.addEventListener('click', () => toggleChat(false));
 
             const setStatus = (msg, isError = false) => {
@@ -763,17 +767,23 @@
             loadOutput();
             setInterval(loadOutput, 5000);
 
-            // 拖拽功能
+            // 拖拽功能（支持悬浮球与展开窗）
             let isDragging = false;
             let dragStartX = 0;
             let dragStartY = 0;
             let initialX = 0;
             let initialY = 0;
+            let dragFromToggle = false;
+            let dragMoved = false;
 
             const chatHeader = document.querySelector('.chat-header');
 
-            const startDrag = (e) => {
+            const startDrag = (e, fromToggle = false) => {
+                // 仅左键
+                if (e.button !== 0) return;
                 isDragging = true;
+                dragFromToggle = fromToggle;
+                dragMoved = false;
                 dragStartX = e.clientX;
                 dragStartY = e.clientY;
                 const rect = chatWidget.getBoundingClientRect();
@@ -785,6 +795,7 @@
 
             const drag = (e) => {
                 if (!isDragging) return;
+                dragMoved = dragMoved || Math.abs(e.clientX - dragStartX) > 3 || Math.abs(e.clientY - dragStartY) > 3;
                 const deltaX = e.clientX - dragStartX;
                 const deltaY = e.clientY - dragStartY;
                 const newX = initialX + deltaX;
@@ -814,7 +825,8 @@
                 localStorage.setItem('chatWidgetY', rect.top);
             };
 
-            chatHeader.addEventListener('mousedown', startDrag);
+            chatHeader.addEventListener('mousedown', (e) => startDrag(e, false));
+            chatToggleBtn?.addEventListener('mousedown', (e) => startDrag(e, true));
             document.addEventListener('mousemove', drag);
             document.addEventListener('mouseup', stopDrag);
 

@@ -30,6 +30,7 @@ class CNN1DRegressor(nn.Module):
         pooling: str = "avg",
         use_batch_norm: bool = True,
         fc_units: int = 256,
+        output_activation: str = None,
     ):
         super().__init__()
 
@@ -43,6 +44,7 @@ class CNN1DRegressor(nn.Module):
         self.pooling = (pooling or "avg").lower()
         self.use_batch_norm = use_batch_norm
         self.fc_units = fc_units
+        self.output_activation = (output_activation or "").lower()
 
         blocks: List[nn.Module] = []
         in_channels = n_features
@@ -76,7 +78,7 @@ class CNN1DRegressor(nn.Module):
         hidden_dim = max(fc_units, 32)
         second_hidden = max(hidden_dim // 2, 32)
 
-        self.regressor = nn.Sequential(
+        layers = [
             nn.Linear(reg_input_dim, hidden_dim),
             _get_activation(self.activation_name),
             nn.Dropout(p=dropout),
@@ -84,7 +86,10 @@ class CNN1DRegressor(nn.Module):
             _get_activation(self.activation_name),
             nn.Dropout(p=dropout * 0.5),
             nn.Linear(second_hidden, 1),
-        )
+        ]
+        if self.output_activation == "sigmoid":
+            layers.append(nn.Sigmoid())
+        self.regressor = nn.Sequential(*layers)
 
     def _global_pool(self, x: torch.Tensor) -> torch.Tensor:
         if self.pooling == "avg":

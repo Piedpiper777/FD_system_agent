@@ -53,6 +53,7 @@ class BiLSTMGRURegressor(nn.Module):
         use_attention: bool = True,
         use_layer_norm: bool = True,
         rnn_type: str = "lstm",  # "lstm" 或 "gru"
+        output_activation: str = None,
     ):
         """
         初始化BiLSTM/GRU回归器
@@ -122,6 +123,9 @@ class BiLSTMGRURegressor(nn.Module):
         reg_layers.append(nn.Dropout(p=dropout * 0.5))
 
         reg_layers.append(nn.Linear(rnn_output_dim // 4, 1))
+        self.output_activation = (
+            nn.Sigmoid() if output_activation and output_activation.lower() == "sigmoid" else None
+        )
         self.regressor = nn.Sequential(*reg_layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -131,7 +135,10 @@ class BiLSTMGRURegressor(nn.Module):
             features = self.attention(rnn_output)
         else:
             features = rnn_output[:, -1, :]
-        return self.regressor(features)
+        out = self.regressor(features)
+        if self.output_activation is not None:
+            out = self.output_activation(out)
+        return out
 
 
 class ModelBuilder:
