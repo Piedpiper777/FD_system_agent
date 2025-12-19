@@ -26,10 +26,11 @@ sys.path.insert(0, str(project_root))
 
 AVAILABLE_MODEL_TYPES: List[str] = []
 
-# 导入训练组件
+# 导入训练组件（PyTorch）
 logger = logging.getLogger(__name__)
 try:
-    import mindspore as ms
+    import torch
+    from torch.utils.data import DataLoader, TensorDataset
     from rul_prediction.core import (
         RULPredictionEvaluator,
         get_available_model_types,
@@ -1022,7 +1023,7 @@ def _process_condition_filtered_data(config, task_id, task_manager, model_type):
 
 
 def _evaluate_rul_model(
-    model: ms.nn.Cell,
+    model: torch.nn.Module,
     test_file: Union[str, Path],
     label_scaler_file: Optional[Union[str, Path]],
     config: dict,
@@ -1063,7 +1064,11 @@ def _evaluate_rul_model(
             task_manager.add_log(task_id, '警告：未找到标签归一化器，预测值可能未反归一化')
         
         # 创建评估器
-        evaluator = RULPredictionEvaluator(model=model, label_scaler=label_scaler)
+        evaluator = RULPredictionEvaluator(
+            model=model,
+            label_scaler=label_scaler,
+            device=config.get('device', 'cuda'),
+        )
         
         # 执行评估
         batch_size = config.get('batch_size', 32)
@@ -1356,7 +1361,8 @@ def _run_real_training(task_id):
             learning_rate=_to_float(config.get('learning_rate'), 0.001),
             weight_decay=_to_float(config.get('weight_decay'), 0.0001),
             clip_grad_norm=_to_float(config.get('clip_grad_norm'), 5.0),
-            loss_type=config.get('loss_type', 'mse')
+            loss_type=config.get('loss_type', 'mse'),
+            device=config.get('device', 'cuda'),
         )
         
         # 记录训练参数
@@ -1374,39 +1380,26 @@ def _run_real_training(task_id):
             f'random_seed={config.get("random_seed", 42)}'
         )
         
-        # 创建MindSpore数据集
-        import mindspore.dataset as ds
-        
-        def create_mindspore_dataset(sequences, labels, batch_size, shuffle=True, dataset_name=''):
-            """创建MindSpore数据集"""
+        # 创建PyTorch DataLoader
+        def create_torch_dataloader(sequences, labels, batch_size, shuffle=True, dataset_name=''):
             total_samples = len(sequences)
-            def data_generator():
-                indices = np.arange(len(sequences))
-                if shuffle:
-                    np.random.shuffle(indices)
-                for idx in indices:
-                    yield sequences[idx].astype(np.float32), labels[idx].astype(np.float32)
-            
-            dataset = ds.GeneratorDataset(
-                data_generator,
-                column_names=['data', 'target'],
-                shuffle=False
-            )
-            # 计算会被丢弃的样本数
-            dropped_samples = total_samples % batch_size
-            if dropped_samples > 0:
+            drop_last = (total_samples % batch_size) != 0
+            if drop_last:
+                dropped_samples = total_samples % batch_size
                 task_manager.add_log(
                     task_id,
                     f'{dataset_name}数据集: 总样本数={total_samples}, batch_size={batch_size}, '
                     f'将被丢弃的样本数={dropped_samples} ({dropped_samples/total_samples*100:.1f}%)'
                 )
-            dataset = dataset.batch(batch_size, drop_remainder=True)
-            return dataset
+            tensor_x = torch.tensor(sequences, dtype=torch.float32)
+            tensor_y = torch.tensor(labels, dtype=torch.float32)
+            ds = TensorDataset(tensor_x, tensor_y)
+            return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last)
         
         batch_size = _to_int(config.get('batch_size'), 32)
         config['batch_size'] = batch_size
 
-        train_dataset = create_mindspore_dataset(
+        train_dataset = create_torch_dataloader(
             train_sequences, train_labels,
             batch_size=batch_size,
             shuffle=True,
@@ -1415,7 +1408,7 @@ def _run_real_training(task_id):
         
         val_dataset = None
         if len(val_sequences) > 0:
-            val_dataset = create_mindspore_dataset(
+            val_dataset = create_torch_dataloader(
                 val_sequences, val_labels,
                 batch_size=batch_size,
                 shuffle=False,
@@ -1497,7 +1490,7 @@ def _run_real_training(task_id):
                 # 保存最佳模型
                 model_dir = Path('models') / 'rul_prediction' / model_type / task_id
                 model_dir.mkdir(parents=True, exist_ok=True)
-                ms.save_checkpoint(model, str(model_dir / 'best_model.ckpt'))
+                torch.save(model.state_dict(), str(model_dir / 'best_model.pt'))
             else:
                 patience_counter += 1
                 if patience_counter >= patience:
@@ -1509,28 +1502,24 @@ def _run_real_training(task_id):
         model_dir.mkdir(parents=True, exist_ok=True)
         
         # 如果存在最佳模型，优先使用最佳模型
-        best_model_path = model_dir / 'best_model.ckpt'
+        best_model_path = model_dir / 'best_model.pt'
+        model_path = model_dir / 'model.pt'
         if best_model_path.exists():
-            # 使用最佳模型作为最终模型
             import shutil
-            # 如果model.ckpt已存在，先删除
-            model_ckpt_path = model_dir / 'model.ckpt'
-            if model_ckpt_path.exists():
+            if model_path.exists():
                 try:
-                    model_ckpt_path.unlink()
+                    model_path.unlink()
                 except Exception as e:
                     task_manager.add_log(task_id, f'警告：删除旧模型文件失败: {e}')
-            # 复制最佳模型
             try:
-                shutil.copy2(best_model_path, model_ckpt_path)
+                shutil.copy2(best_model_path, model_path)
                 task_manager.add_log(task_id, '使用最佳模型作为最终模型')
+                model.load_state_dict(torch.load(model_path, map_location='cpu'))
             except Exception as e:
                 task_manager.add_log(task_id, f'警告：复制最佳模型失败: {e}，将保存当前模型')
-                # 如果复制失败，保存当前模型
-                ms.save_checkpoint(model, str(model_ckpt_path))
+                torch.save(model.state_dict(), str(model_path))
         else:
-            # 没有最佳模型，保存当前模型
-            ms.save_checkpoint(model, str(model_dir / 'model.ckpt'))
+            torch.save(model.state_dict(), str(model_path))
         
         # 保存特征scaler（如果存在）
         import shutil

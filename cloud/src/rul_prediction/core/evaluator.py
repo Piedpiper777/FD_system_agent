@@ -1,85 +1,64 @@
-"""
-RUL预测评估器
-用于评估回归模型的性能（RMSE、MAE、R²、MAPE等）
-"""
+"""RUL预测评估器（PyTorch版）。"""
 
-import numpy as np
-import mindspore as ms
-from typing import Dict, Any, Optional, Union
-from pathlib import Path
 import json
 import pickle
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Optional, Union
+
+import numpy as np
+import torch
 
 
 class RULPredictionEvaluator:
-    """RUL预测模型评估器"""
-    
-    def __init__(self, model: ms.nn.Cell, label_scaler: Optional[Any] = None):
-        """
-        初始化评估器
-        
-        Args:
-            model: 训练好的MindSpore模型
-            label_scaler: 标签归一化器（用于反归一化预测结果）
-        """
+    """RUL预测模型评估器（批量推理 + 反归一化 + 指标计算）。"""
+
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        label_scaler: Optional[Any] = None,
+        device: Optional[Union[str, torch.device]] = None,
+    ):
         if model is None:
-            raise ValueError("模型不能为None，请确保传入有效的MindSpore模型")
+            raise ValueError("模型不能为None，请确保传入有效的模型")
         self.model = model
-        self.model.set_train(False)  # 设置为评估模式
+        self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+        self.model.to(self.device)
+        self.model.eval()
         self.label_scaler = label_scaler
-        
+
     def evaluate(
         self,
         test_sequences: np.ndarray,
         test_labels_normalized: np.ndarray,
         batch_size: int = 32,
     ) -> Dict[str, Any]:
-        """
-        评估模型在测试集上的性能
-        
-        Args:
-            test_sequences: 测试序列数据 (N, sequence_length, features)
-            test_labels_normalized: 归一化后的测试标签 (N,)
-            batch_size: 批次大小
-            
-        Returns:
-            评估结果字典
-        """
-        # 批量预测
         all_predictions_normalized = []
-        
-        for i in range(0, len(test_sequences), batch_size):
-            batch = test_sequences[i:i + batch_size]
-            batch_tensor = ms.Tensor(batch.astype(np.float32))
-            
-            with ms._no_grad():
-                predictions = self.model(batch_tensor)
-                predictions_np = predictions.asnumpy().flatten()
-                all_predictions_normalized.extend(predictions_np)
-        
+
+        with torch.no_grad():
+            for i in range(0, len(test_sequences), batch_size):
+                batch = test_sequences[i : i + batch_size]
+                batch_tensor = torch.tensor(batch, dtype=torch.float32, device=self.device)
+                preds = self.model(batch_tensor).detach().cpu().numpy().flatten()
+                all_predictions_normalized.extend(preds)
+
         all_predictions_normalized = np.array(all_predictions_normalized)
-        
-        # 反归一化预测值和真实值
+
         if self.label_scaler is not None:
             predictions_reshaped = all_predictions_normalized.reshape(-1, 1)
             test_labels_reshaped = test_labels_normalized.reshape(-1, 1)
-            
             all_predictions = self.label_scaler.inverse_transform(predictions_reshaped).flatten()
             test_labels = self.label_scaler.inverse_transform(test_labels_reshaped).flatten()
         else:
             all_predictions = all_predictions_normalized
             test_labels = test_labels_normalized
-        
-        # 计算评估指标
+
         metrics = self._compute_metrics(all_predictions, test_labels)
-        
-        # 添加预测结果和真实值
-        metrics['predictions'] = all_predictions.tolist()
-        metrics['true_labels'] = test_labels.tolist()
-        metrics['predictions_normalized'] = all_predictions_normalized.tolist()
-        metrics['true_labels_normalized'] = test_labels_normalized.tolist()
-        
+        metrics["predictions"] = all_predictions.tolist()
+        metrics["true_labels"] = test_labels.tolist()
+        metrics["predictions_normalized"] = all_predictions_normalized.tolist()
+        metrics["true_labels_normalized"] = test_labels_normalized.tolist()
+
         return metrics
     
     def _compute_metrics(
