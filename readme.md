@@ -1,12 +1,75 @@
 # 运筹与优化团队工业设备智能健康管理平台(智能体开发版，详见开发指南)
 
-## 一键启动（推荐）
+## 一、项目部署与环境配置
+1. 本地安装git（网上搜）
+2. 本地新建一个文件夹，如project（自己做好文件管理即可）
+3. 在这个文件夹路径下运行 git clone https://github.com/Piedpiper777/FD_system_agent.git
+4. 安装conda（网上搜）
+5. 配置conda环境
+- Edge环境
+```
+conda create -n edge python=3.10.19
+conda activate edge
+cd edge
+pip install -r requirements.txt
+```
+- Cloud环境
+```
+conda create -n cloud python=3.10.19
+conda activate cloud
+cd cloud
+pip install -r requirements.txt
+```
+## 二、快速开始
+> **说明**：开发环境通常在同一台设备上运行所有服务，使用此脚本可一键启动 Edge、Cloud 和数据采集三个服务。
 
+### 1.开发环境一键启动
+#### 1.1 启动服务
+
+```bash
+# 后台模式启动（默认，推荐）
+./dev_start.sh
+
+# 前台模式启动（可以看到实时日志提示）
+./dev_start.sh --foreground
+# 或
+./dev_start.sh -f
+```
+
+#### 1.2 停止服务
+
+```bash
+# 使用停止脚本
+./stop.sh
+
+# 或使用start.sh的停止功能
+./start.sh stop
+```
+
+#### 1.3 查看日志
+
+```bash
+# 查看所有日志
+tail -f logs/*.log
+
+# 查看单个服务日志
+tail -f logs/edge.log
+tail -f logs/cloud.log
+tail -f logs/data_collection.log
+```
+#### 1.4 功能特点
+
+- ✅ **一键启动三个服务**：Edge、Cloud、数据采集同时启动
+- ✅ **自动环境检测**：自动检测并激活对应的conda环境
+- ✅ **进程管理**：自动管理进程，支持优雅停止
+- ✅ **状态监控**：启动后显示所有服务的运行状态
+- ✅ **日志管理**：所有日志统一保存在 `logs/` 目录
+- ✅ **信号处理**：按 `Ctrl+C` 自动停止所有服务
 > **说明**：使用一键启动脚本可以快速启动所有服务，无需手动操作。
 
-### 使用方式
+### 2.其他启动方式
 
-#### 方式一：交互式菜单（推荐）
+#### 方式一：交互式菜单
 
 ```bash
 # 在项目根目录执行
@@ -46,19 +109,9 @@
 ./start.sh status
 ```
 
-### 功能特性
+### 3.注意事项
 
-- ✅ 自动检测conda环境
-- ✅ 自动激活虚拟环境
-- ✅ 后台运行服务
-- ✅ 日志文件管理（保存在 `logs/` 目录）
-- ✅ 进程状态监控
-- ✅ 优雅停止服务
-- ✅ 彩色输出提示
-
-### 注意事项
-
-1. **首次使用前**，请确保已创建虚拟环境：
+3.1 **首次使用前**，请确保已创建虚拟环境：
    ```bash
    # Edge环境
    conda create -n edge python=3.10.19
@@ -73,69 +126,19 @@
    pip install -r requirements.txt
    ```
 
-2. **日志文件位置**：`logs/` 目录
+3.2 **日志文件位置**：`logs/` 目录
    - `logs/edge.log` - Edge服务日志
    - `logs/cloud.log` - Cloud服务日志
    - `logs/data_collection.log` - 数据采集日志
 
-3. **停止服务**：使用 `./start.sh stop` 或按 `Ctrl+C`（在交互模式下）
+3.3 **停止服务**：使用 `./start.sh stop` 或按 `Ctrl+C`（在交互模式下）
 
-## 开发环境一键启动
 
-> **说明**：开发环境通常在同一台设备上运行所有服务，使用此脚本可一键启动 Edge、Cloud 和数据采集三个服务。
 
-### 使用方法
 
-```bash
-# 后台模式启动（默认，推荐）
-./dev_start.sh
 
-# 前台模式启动（可以看到实时日志提示）
-./dev_start.sh --foreground
-# 或
-./dev_start.sh -f
-```
 
-### 功能特点
-
-- ✅ **一键启动三个服务**：Edge、Cloud、数据采集同时启动
-- ✅ **自动环境检测**：自动检测并激活对应的conda环境
-- ✅ **进程管理**：自动管理进程，支持优雅停止
-- ✅ **状态监控**：启动后显示所有服务的运行状态
-- ✅ **日志管理**：所有日志统一保存在 `logs/` 目录
-- ✅ **信号处理**：按 `Ctrl+C` 自动停止所有服务
-
-### 启动流程
-
-1. 检查conda环境
-2. 依次启动 Edge 服务
-3. 依次启动 Cloud 服务
-4. 依次启动数据采集服务
-5. 显示所有服务状态和访问地址
-
-### 停止服务
-
-```bash
-# 使用停止脚本
-./stop.sh
-
-# 或使用start.sh的停止功能
-./start.sh stop
-```
-
-### 查看日志
-
-```bash
-# 查看所有日志
-tail -f logs/*.log
-
-# 查看单个服务日志
-tail -f logs/edge.log
-tail -f logs/cloud.log
-tail -f logs/data_collection.log
-```
-
-## 快速开始（手动启动）
+## 旧版说明：
 
 ### 1. 云端部署(云服务器)
 
