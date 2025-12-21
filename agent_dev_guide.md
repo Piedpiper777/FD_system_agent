@@ -1,5 +1,34 @@
 # 多智能体开发说明
-
+## 项目部署与本地配置❗❗❗
+（在readme.md文件中已有说明，此处再次说明）
+1. 本地安装git（网上搜）
+2. 本地新建一个文件夹，如project（自己做好文件管理即可）
+3. 在这个文件夹路径下运行 git clone https://github.com/Piedpiper777/FD_system_agent.git
+4. 安装conda（网上搜）
+5. 配置conda环境
+- Edge环境
+```
+conda create -n edge python=3.10.19
+conda activate edge
+cd edge
+pip install -r requirements.txt
+```
+- Cloud环境
+```
+conda create -n cloud python=3.10.19
+conda activate cloud
+cd cloud
+pip install -r requirements.txt
+```
+6. 运行程序，根目录下运行以下命令即可（也可按需启动，参考readme.md文件）：
+```
+./dev_start.sh
+```
+7. 退出时停止程序（切记❗）
+```
+./stop.sh
+```
+# ❗❗❗以下内容仅供参考，可按照自己的理解开发
 ## 目标与场景
 - 支撑多人并行开发：每人负责一个子智能体（如异常检测、故障诊断等），独立迭代与验证。
 - 前端有一个常驻悬浮对话窗口，作为统一交互入口；后端有总智能体负责路由/编排各子智能体。
