@@ -2,7 +2,7 @@
 故障诊断评估器
 用于评估分类模型的性能（准确率、精确率、召回率、F1等）
 
-重构说明：从 MindSpore 迁移到 PyTorch
+
 """
 
 import numpy as np

@@ -1,12 +1,14 @@
 """
 LSTM预测异常检测模块 - 训练器
 负责模型训练、超参数调优和训练过程监控
+
+
 """
 
-import mindspore as ms
-import mindspore.ops as ops
-from mindspore.nn import MSELoss, Adam
-import mindspore.numpy as np
+import torch
+import torch.nn as nn
+from torch.optim import Adam
+from torch.nn import MSELoss
 from typing import Optional, Any, Dict, Union
 from pathlib import Path
 
@@ -22,8 +24,9 @@ class Trainer:
     - 模型保存和加载
     """
 
-    def __init__(self, model: ms.nn.Cell, learning_rate: float = 0.001,
-                 weight_decay: float = 1e-4, clip_grad_norm: float = 5.0):
+    def __init__(self, model: nn.Module, learning_rate: float = 0.001,
+                 weight_decay: float = 1e-4, clip_grad_norm: float = 5.0,
+                 device: Optional[torch.device] = None):
         """
         初始化训练器
 
@@ -32,16 +35,23 @@ class Trainer:
             learning_rate: 学习率
             weight_decay: 权重衰减
             clip_grad_norm: 梯度裁剪范数
+            device: 计算设备
         """
-        self.model = model
+        # 设置设备
+        if device is None:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        else:
+            self.device = device
+        
+        self.model = model.to(self.device)
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.clip_grad_norm = clip_grad_norm
 
         # 初始化优化器
         self.optimizer = Adam(
-            params=self.model.trainable_params(),
-            learning_rate=learning_rate,
+            params=self.model.parameters(),
+            lr=learning_rate,
             weight_decay=weight_decay
         )
 
@@ -57,35 +67,10 @@ class Trainer:
         # 损失函数
         self.criterion = MSELoss()
 
-        # 梯度函数
-        self.grad_fn = ms.value_and_grad(
-            self.forward_fn, None, self.optimizer.parameters, has_aux=False
-        )
-
         print(f"✅ 训练器初始化完成")
         print(f"  - 学习率: {learning_rate}")
         print(f"  - 权重衰减: {weight_decay}")
-
-    def process_gradients(self, grads):
-        """处理梯度（裁剪等）"""
-        if self.clip_grad_norm > 0:
-            grads = ops.clip_by_global_norm(grads, clip_norm=self.clip_grad_norm)
-        return grads
-
-    def forward_fn(self, input_seq, target):
-        """
-        前向传播函数
-
-        Args:
-            input_seq: 输入序列
-            target: 目标值
-
-        Returns:
-            损失值
-        """
-        prediction = self.model(input_seq)
-        loss = self.criterion(prediction, target)
-        return loss
+        print(f"  - 设备: {self.device}")
 
     def train_step(self, batch_data) -> float:
         """
@@ -98,15 +83,38 @@ class Trainer:
             损失值
         """
         input_seq, target = batch_data
+        
+        # 移动到设备
+        input_seq = input_seq.to(self.device)
+        target = target.to(self.device)
+        
+        # 确保数据类型
+        if input_seq.dtype != torch.float32:
+            input_seq = input_seq.float()
+        if target.dtype != torch.float32:
+            target = target.float()
 
-        # 前向传播和梯度计算
-        loss, grads = self.grad_fn(input_seq, target)
+        # 清零梯度
+        self.optimizer.zero_grad()
 
-        # 梯度处理和参数更新
-        grads = self.process_gradients(grads)
-        self.optimizer(grads)
+        # 前向传播
+        prediction = self.model(input_seq)
+        loss = self.criterion(prediction, target)
 
-        return float(loss)
+        # 反向传播
+        loss.backward()
+
+        # 梯度裁剪
+        if self.clip_grad_norm > 0:
+            torch.nn.utils.clip_grad_norm_(
+                self.model.parameters(),
+                self.clip_grad_norm
+            )
+
+        # 参数更新
+        self.optimizer.step()
+
+        return float(loss.item())
 
     def compute_loss(self, batch_data) -> float:
         """
@@ -119,9 +127,22 @@ class Trainer:
             损失值
         """
         input_seq, target = batch_data
-        prediction = self.model(input_seq)
-        loss = self.criterion(prediction, target)
-        return float(loss)
+        
+        # 移动到设备
+        input_seq = input_seq.to(self.device)
+        target = target.to(self.device)
+        
+        # 确保数据类型
+        if input_seq.dtype != torch.float32:
+            input_seq = input_seq.float()
+        if target.dtype != torch.float32:
+            target = target.float()
+
+        with torch.no_grad():
+            prediction = self.model(input_seq)
+            loss = self.criterion(prediction, target)
+        
+        return float(loss.item())
 
     def train_epoch(self, train_loader, epoch_idx: Optional[int] = None) -> float:
         """
@@ -134,7 +155,7 @@ class Trainer:
         Returns:
             平均训练损失
         """
-        self.model.set_train(True)
+        self.model.train()
         total_loss = 0.0
         batch_count = 0
 
@@ -145,11 +166,6 @@ class Trainer:
 
         avg_loss = total_loss / batch_count if batch_count > 0 else 0.0
         self.training_metrics['train_losses'].append(avg_loss)
-
-        # 注意：日志输出由调用方（api.py）统一管理，这里不输出日志
-        # 如果需要调试，可以取消下面的注释
-        # if epoch_idx is not None:
-        #     print(f"Epoch [{epoch_idx+1}] Train Loss: {avg_loss:.6f}")
 
         return avg_loss
 
@@ -163,7 +179,7 @@ class Trainer:
         Returns:
             平均验证损失
         """
-        self.model.set_train(False)
+        self.model.eval()
         total_loss = 0.0
         batch_count = 0
 
@@ -195,7 +211,7 @@ class Trainer:
             return self.patience_counter >= patience
 
     def train(self, train_loader, num_epochs: int = 50, val_loader=None,
-              patience: Optional[int] = None) -> ms.nn.Cell:
+              patience: Optional[int] = None) -> nn.Module:
         """
         训练主循环
 
@@ -255,10 +271,10 @@ class Trainer:
         save_path = Path(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
 
-        ms.save_checkpoint(self.model, str(save_path))
+        torch.save(self.model.state_dict(), str(save_path))
         print(f"💾 模型已保存: {save_path}")
 
-    def load_model(self, load_path: Union[str, Path]) -> ms.nn.Cell:
+    def load_model(self, load_path: Union[str, Path]) -> nn.Module:
         """
         加载模型权重
 
@@ -272,8 +288,8 @@ class Trainer:
         if not load_path.exists():
             raise FileNotFoundError(f"模型文件不存在: {load_path}")
 
-        param_dict = ms.load_checkpoint(str(load_path))
-        ms.load_param_into_net(self.model, param_dict)
+        state_dict = torch.load(str(load_path), map_location=self.device)
+        self.model.load_state_dict(state_dict)
         print(f"📂 模型已加载: {load_path}")
 
         return self.model

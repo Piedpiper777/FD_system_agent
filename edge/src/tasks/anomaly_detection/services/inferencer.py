@@ -6,7 +6,7 @@
 import logging
 import numpy as np
 import pandas as pd
-import mindspore as ms
+import torch
 from typing import Dict, Any, Optional, Union, Tuple, List
 from pathlib import Path
 import pickle
@@ -45,9 +45,13 @@ class LocalAnomalyDetector:
             sequence_length: 序列长度
             model_type: 模型类型 ('lstm_predictor', 'lstm_autoencoder', 'cnn_1d_autoencoder')
         """
-        # 设置MindSpore上下文
-        ms.set_context(mode=ms.GRAPH_MODE)
-        ms.set_device('CPU')
+        # 自动检测并使用最佳设备（优先GPU，回退到CPU）
+        if torch.cuda.is_available():
+            self.device = torch.device('cuda')
+            print(f"🚀 检测到CUDA设备，使用GPU加速: {torch.cuda.get_device_name(0)}")
+        else:
+            self.device = torch.device('cpu')
+            print(f"⚠️ 未检测到CUDA设备，使用CPU推理（速度较慢）")
 
         self.sequence_length = sequence_length
         self.model_type = model_type
@@ -71,6 +75,7 @@ class LocalAnomalyDetector:
         print(f"  - 阈值: {threshold_path}")
         print(f"  - 标准化器: {scaler_path}")
         print(f"  - 序列长度: {sequence_length}")
+        print(f"  - 设备: {self.device}")
 
     def _load_model(self, model_path: Union[str, Path]):
         """加载模型"""
@@ -146,10 +151,27 @@ class LocalAnomalyDetector:
                 else:
                     raise ValueError(f"不支持的模型类型: {model_type}")
 
+                # 移动模型到设备
+                self.model = self.model.to(self.device)
+
                 # 加载模型权重
                 if model_path.exists():
-                    ms.load_checkpoint(str(model_path), self.model)
+                    state_dict = torch.load(str(model_path), map_location=self.device)
+                    self.model.load_state_dict(state_dict)
                     print(f"📂 模型权重加载成功: {model_path} (类型: {model_type})")
+                    
+                    # 设置为评估模式并优化推理
+                    self.model.eval()
+                    
+                    # 如果使用CUDA，尝试编译模型以加速（PyTorch 2.0+）
+                    if self.device.type == 'cuda':
+                        try:
+                            # 使用torch.compile优化（需要PyTorch 2.0+）
+                            if hasattr(torch, 'compile'):
+                                self.model = torch.compile(self.model, mode='reduce-overhead')
+                                print(f"⚡ 模型已编译优化，推理速度将提升")
+                        except Exception as e:
+                            print(f"⚠️ 模型编译失败（不影响使用）: {e}")
                 else:
                     print(f"⚠️ 模型权重文件不存在: {model_path}")
             else:
@@ -268,7 +290,7 @@ class LocalAnomalyDetector:
 
         return np.array(sequences), np.array(targets)
 
-    def detect_anomalies(self, sequences: np.ndarray, actual_targets: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def detect_anomalies(self, sequences: np.ndarray, actual_targets: np.ndarray, batch_size: Optional[int] = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         执行异常检测
 
@@ -281,6 +303,7 @@ class LocalAnomalyDetector:
             actual_targets: 实际目标值
               - Predictor: (n_sequences, n_features)
               - Autoencoder: (n_sequences, sequence_length, n_features)
+            batch_size: 批次大小，如果为None则根据设备自动选择
 
         Returns:
             元组 (predictions, anomaly_scores, anomaly_flags)
@@ -290,20 +313,31 @@ class LocalAnomalyDetector:
                 raise ValueError("模型未加载，无法执行推理")
 
             # 设置推理模式
-            self.model.set_train(False)
+            self.model.eval()
 
             n_sequences = len(sequences)
             predictions = []
 
-            # 批量推理
-            batch_size = 32
-            for i in range(0, n_sequences, batch_size):
-                batch_sequences = sequences[i:i + batch_size]
-                batch_tensor = ms.Tensor(batch_sequences.astype(np.float32))
+            # 批量推理（根据设备自动调整批次大小）
+            # GPU可以使用更大的批次，CPU使用较小的批次
+            if batch_size is None:
+                if self.device.type == 'cuda':
+                    batch_size = 128  # GPU可以使用更大的批次
+                else:
+                    batch_size = 64  # CPU也适当增大批次以提高效率
+            
+            with torch.no_grad():
+                for i in range(0, n_sequences, batch_size):
+                    batch_sequences = sequences[i:i + batch_size]
+                    batch_tensor = torch.from_numpy(batch_sequences.astype(np.float32)).to(self.device, non_blocking=True)
 
-                # 模型预测
-                batch_predictions = self.model(batch_tensor)
-                predictions.extend(batch_predictions.asnumpy())
+                    # 模型预测
+                    batch_predictions = self.model(batch_tensor)
+                    # GPU上直接转换为numpy，CPU上需要先移到CPU
+                    if self.device.type == 'cuda':
+                        predictions.extend(batch_predictions.cpu().numpy())
+                    else:
+                        predictions.extend(batch_predictions.numpy())
 
             predictions = np.array(predictions)
 
@@ -351,8 +385,8 @@ class LocalAnomalyDetector:
             sequences, targets = self.preprocess_data(data)
             n_sequences = len(sequences)
 
-            # 执行异常检测
-            predictions, anomaly_scores, anomaly_flags = self.detect_anomalies(sequences, targets)
+            # 执行异常检测（使用传入的batch_size或自动选择）
+            predictions, anomaly_scores, anomaly_flags = self.detect_anomalies(sequences, targets, batch_size=batch_size)
 
             # 统计结果
             anomalies_detected = int(np.sum(anomaly_flags))

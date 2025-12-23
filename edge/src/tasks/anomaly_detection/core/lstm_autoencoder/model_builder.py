@@ -1,16 +1,17 @@
 """
 LSTM自编码器 - 模型构建器
 定义用于工业时序重构的LSTM Autoencoder结构
+
+
 """
 
 from typing import Dict, Any, Tuple
 
-import mindspore as ms
-import mindspore.nn as nn
-import mindspore.ops as ops
+import torch
+import torch.nn as nn
 
 
-class LSTMAutoencoder(nn.Cell):
+class LSTMAutoencoder(nn.Module):
     """LSTM Autoencoder，用于学习正常序列并重构输入窗口"""
 
     def __init__(
@@ -41,11 +42,9 @@ class LSTMAutoencoder(nn.Cell):
         )
 
         # 潜在空间映射
-        self.latent_projection = nn.SequentialCell(
-            [
-                nn.Dense(hidden_units, bottleneck_size),
-                self._get_activation(activation),
-            ]
+        self.latent_projection = nn.Sequential(
+            nn.Linear(hidden_units, bottleneck_size),
+            self._get_activation(activation),
         )
 
         # 解码器：根据潜在向量重建序列
@@ -57,43 +56,67 @@ class LSTMAutoencoder(nn.Cell):
             dropout=dropout if num_layers > 1 else 0.0,
         )
 
-        self.reconstruction_head = nn.SequentialCell(
-            [
-                nn.Dense(hidden_units, hidden_units // 2),
-                self._get_activation(activation),
-                nn.Dropout(p=dropout),
-                nn.Dense(hidden_units // 2, n_features),
-            ]
+        self.reconstruction_head = nn.Sequential(
+            nn.Linear(hidden_units, hidden_units // 2),
+            self._get_activation(activation),
+            nn.Dropout(p=dropout),
+            nn.Linear(hidden_units // 2, n_features),
         )
 
-    def _get_activation(self, name: str):
+    def _get_activation(self, name: str) -> nn.Module:
         """根据名称返回激活函数"""
         mapping = {
             "relu": nn.ReLU(),
             "tanh": nn.Tanh(),
             "sigmoid": nn.Sigmoid(),
             "leakyrelu": nn.LeakyReLU(),
+            "gelu": nn.GELU(),
         }
         return mapping.get(name.lower(), nn.Tanh())
 
-    def construct(self, x: ms.Tensor) -> ms.Tensor:
-        """前向传播，返回重构序列"""
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """前向传播，返回重构序列
+        
+        Args:
+            x: 输入序列 (batch_size, seq_len, n_features)
+        
+        Returns:
+            重构序列 (batch_size, seq_len, n_features)
+        """
         batch_size = x.shape[0]
 
+        # 编码
         _, (hidden, cell) = self.encoder(x)
         latent_vector = hidden[-1]  # (batch, hidden_units)
-        latent_vector = self.latent_projection(latent_vector)
+        latent_vector = self.latent_projection(latent_vector)  # (batch, bottleneck_size)
 
-        repeated_latent = ops.tile(
-            latent_vector.expand_dims(1), (1, self.sequence_length, 1)
-        )
+        # 重复潜在向量到序列长度
+        repeated_latent = latent_vector.unsqueeze(1).expand(-1, self.sequence_length, -1)
+        # (batch, seq_len, bottleneck_size)
 
-        decoder_output, _ = self.decoder(
-            repeated_latent, None  # 让MindSpore自动初始化h/c
-        )
+        # 解码
+        decoder_output, _ = self.decoder(repeated_latent)
+        # (batch, seq_len, hidden_units)
 
+        # 重构
         reconstruction = self.reconstruction_head(decoder_output)
+        # (batch, seq_len, n_features)
+        
         return reconstruction
+
+    def encode(self, x: torch.Tensor) -> torch.Tensor:
+        """仅编码，返回潜在向量
+        
+        Args:
+            x: 输入序列 (batch_size, seq_len, n_features)
+        
+        Returns:
+            潜在向量 (batch_size, bottleneck_size)
+        """
+        _, (hidden, _) = self.encoder(x)
+        latent_vector = hidden[-1]
+        latent_vector = self.latent_projection(latent_vector)
+        return latent_vector
 
 
 class ModelBuilder:
@@ -132,7 +155,7 @@ class ModelBuilder:
         )
 
     @staticmethod
-    def create_model(model_type: str, input_shape: Tuple[int, int], **kwargs) -> nn.Cell:
+    def create_model(model_type: str, input_shape: Tuple[int, int], **kwargs) -> nn.Module:
         if model_type != "lstm_autoencoder":
             raise ValueError(f"Unsupported model_type for autoencoder builder: {model_type}")
 
@@ -148,8 +171,9 @@ class ModelBuilder:
         return ModelBuilder.build_lstm_autoencoder(input_shape, **config)
 
     @staticmethod
-    def get_model_info(model: nn.Cell) -> Dict[str, Any]:
+    def get_model_info(model: nn.Module) -> Dict[str, Any]:
         if isinstance(model, LSTMAutoencoder):
+            total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             return {
                 "model_type": "lstm_autoencoder",
                 "input_dim": model.input_dim,
@@ -158,15 +182,16 @@ class ModelBuilder:
                 "bottleneck_size": model.bottleneck_size,
                 "num_layers": model.num_layers,
                 "dropout": model.dropout,
-                "trainable_params": sum(p.size for p in model.trainable_params()),
+                "trainable_params": total_params,
             }
+        total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         return {
             "model_type": "unknown",
-            "trainable_params": sum(p.size for p in model.trainable_params()),
+            "trainable_params": total_params,
         }
 
 
-def create_model(model_type: str, **kwargs) -> nn.Cell:
+def create_model(model_type: str, **kwargs) -> nn.Module:
     """向后兼容接口"""
     if model_type != "lstm_autoencoder":
         raise ValueError("create_model from autoencoder module only supports lstm_autoencoder")
@@ -184,7 +209,7 @@ def get_default_config(model_type: str = "lstm_autoencoder") -> Dict[str, Any]:
     return ModelBuilder.get_default_config(model_type)
 
 
-def create_model_from_config(config: Dict[str, Any]) -> nn.Cell:
+def create_model_from_config(config: Dict[str, Any]) -> nn.Module:
     model_type = config.get("model_type", "lstm_autoencoder")
     input_dim = config.get("input_dim")
     if input_dim is None:

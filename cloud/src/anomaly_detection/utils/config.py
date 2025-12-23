@@ -141,7 +141,7 @@ class TrainingConfig:
     random_seed: int = 42
     
     # 保存路径
-    output_path: str = './model.ckpt'
+    output_path: str = './model.pth'
     save_best_only: bool = True
     
     # 日志设置

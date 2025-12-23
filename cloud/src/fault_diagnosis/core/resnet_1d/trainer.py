@@ -2,7 +2,7 @@
 故障诊断 ResNet 1D - 训练器
 负责分类任务的训练循环与指标记录
 
-重构说明：从 MindSpore 迁移到 PyTorch
+
 """
 
 from pathlib import Path

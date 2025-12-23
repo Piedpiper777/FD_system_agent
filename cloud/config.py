@@ -57,9 +57,9 @@ class Config:
     EDGE_HOST = os.environ.get('EDGE_HOST') or 'localhost'
     EDGE_PORT = int(os.environ.get('EDGE_PORT') or 5000)
     
-    # MindSpore配置
-    MINDSPORE_DEVICE_TARGET = os.environ.get('MINDSPORE_DEVICE_TARGET') or 'CPU'
-    MINDSPORE_MODE = os.environ.get('MINDSPORE_MODE') or 'GRAPH_MODE'
+    # PyTorch配置
+    PYTORCH_DEVICE = os.environ.get('PYTORCH_DEVICE') or 'cpu'
+    PYTORCH_CUDA_AVAILABLE = os.environ.get('PYTORCH_CUDA_AVAILABLE', '').lower() == 'true'
     
     # 数据目录配置
     MODELS_DIR = Path(os.environ.get('MODELS_DIR') or PROJECT_ROOT / 'models')

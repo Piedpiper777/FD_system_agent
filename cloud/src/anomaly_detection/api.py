@@ -41,10 +41,10 @@ try:
     from anomaly_detection.core.cnn_1d_autoencoder.trainer import Trainer as CNN1DAutoencoderTrainer
     from anomaly_detection.core.cnn_1d_autoencoder.threshold_calculator import ThresholdCalculator as CNN1DAutoencoderThresholdCalculator
     
-    import mindspore as ms
+    import torch
     training_available = True
     logger = logging.getLogger(__name__)
-    logger.info("Real training modules loaded successfully (LSTM Predictor + LSTM Autoencoder + 1D CNN Autoencoder)")
+    logger.info("Real training modules loaded successfully (LSTM Predictor + LSTM Autoencoder + 1D CNN Autoencoder) [PyTorch]")
 except ImportError as e:
     training_available = False
     logger = logging.getLogger(__name__)
@@ -63,15 +63,20 @@ uploaded_data_files = {}  # 存储上传的数据文件信息
 
 
 def _normalize_device_target(device_value):
-    """标准化设备类型字符串，确保MindSpore识别"""
+    """标准化设备类型字符串，确保PyTorch识别"""
     if not device_value:
-        return 'CPU'
+        return 'cpu'
     normalized = str(device_value).strip().lower()
     if normalized in ('gpu', 'cuda'):
-        return 'GPU'
-    if normalized in ('ascend', 'npu', 'atlas'):
-        return 'Ascend'
-    return 'CPU'
+        return 'cuda' if torch.cuda.is_available() else 'cpu'
+    return 'cpu'
+
+
+def _get_torch_device(device_target: str = None) -> torch.device:
+    """获取PyTorch设备"""
+    if device_target is None:
+        device_target = 'cuda' if torch.cuda.is_available() else 'cpu'
+    return torch.device(device_target)
 
 @anomaly_detection_bp.route('/upload_data', methods=['POST'])
 def upload_training_data():
@@ -856,24 +861,12 @@ def _run_real_training(task_id):
                    f"隐藏层={config.get('hidden_units', 64)} | 学习率={config.get('learning_rate', 0.001)} | "
                    f"训练轮数={config.get('epochs', 50)}")
         
-        # 设置MindSpore设备
+        # 设置PyTorch设备
         device_target = _normalize_device_target(
-            config.get('device_target') or config.get('device') or 'CPU'
+            config.get('device_target') or config.get('device') or 'cpu'
         )
-        device_id = config.get('device_id')
-        context_kwargs = {
-            'mode': ms.GRAPH_MODE,
-            'device_target': device_target
-        }
-        if device_id not in (None, ''):
-            try:
-                context_kwargs['device_id'] = int(device_id)
-            except (TypeError, ValueError):
-                logger.warning(f"Invalid device_id '{device_id}', falling back to default device index")
-        ms.set_context(**context_kwargs)
-        logger.info(
-            f"MindSpore context initialized: target={device_target}, device_id={context_kwargs.get('device_id', 'auto')}"
-        )
+        device = _get_torch_device(device_target)
+        logger.info(f"PyTorch device initialized: {device}")
         
         # 1. 数据处理
         task_manager.update_task_status(task_id, 'training', 'Loading and preprocessing data...')
@@ -1307,35 +1300,24 @@ def _run_real_training(task_id):
                 weight_decay=weight_decay
             )
         
-        # 创建MindSpore数据集
-        import mindspore.dataset as ds
+        # 创建PyTorch数据加载器
+        from torch.utils.data import TensorDataset, DataLoader
         
-        def create_mindspore_dataset(sequences, targets, batch_size, shuffle=True):
-            """创建MindSpore数据集"""
-            def data_generator():
-                indices = np.arange(len(sequences))
-                if shuffle:
-                    np.random.shuffle(indices)
-                for idx in indices:
-                    yield sequences[idx].astype(np.float32), targets[idx].astype(np.float32)
-            
-            dataset = ds.GeneratorDataset(
-                data_generator,
-                column_names=['data', 'target'],
-                shuffle=False  # 已在生成器中shuffle
-            )
-            # 🔧 修复：确保所有batch大小一致，避免LSTM参数不匹配
-            dataset = dataset.batch(batch_size, drop_remainder=True)  # 丢弃不完整的batch
-            return dataset
+        def create_dataloader(sequences, targets, batch_size, shuffle=True):
+            """创建PyTorch DataLoader"""
+            sequences_tensor = torch.from_numpy(sequences.astype(np.float32))
+            targets_tensor = torch.from_numpy(targets.astype(np.float32))
+            dataset = TensorDataset(sequences_tensor, targets_tensor)
+            return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=True)
         
-        train_dataset = create_mindspore_dataset(
+        train_dataset = create_dataloader(
             train_data.sequences,
             train_data.targets,
             batch_size=config.get('batch_size', 32),
             shuffle=True
         )
         
-        val_dataset = create_mindspore_dataset(
+        val_dataset = create_dataloader(
             val_data.sequences,
             val_data.targets,
             batch_size=config.get('batch_size', 32),
@@ -1395,7 +1377,7 @@ def _run_real_training(task_id):
         model_dir.mkdir(parents=True, exist_ok=True)
         
         # 保存模型
-        model_path = model_dir / 'model.ckpt'
+        model_path = model_dir / 'model.pth'
         trainer.save_model(str(model_path))
         
         # 保存标准化器（从训练数据目录复制，或从processor获取）
@@ -1448,15 +1430,16 @@ def _run_real_training(task_id):
                 
                 if len(dev_sequences) > 0:
                     # 在验证集上进行预测
-                    model.set_train(False)
+                    model.eval()
                     dev_predictions = []
                     batch_size = config.get('batch_size', 32)
                     
-                    for i in range(0, len(dev_sequences), batch_size):
-                        batch_sequences = dev_sequences[i:i+batch_size]
-                        batch_tensor = ms.Tensor(batch_sequences.astype(np.float32))
-                        pred = model(batch_tensor)
-                        dev_predictions.append(pred.asnumpy())
+                    with torch.no_grad():
+                        for i in range(0, len(dev_sequences), batch_size):
+                            batch_sequences = dev_sequences[i:i+batch_size]
+                            batch_tensor = torch.from_numpy(batch_sequences.astype(np.float32)).to(device)
+                            pred = model(batch_tensor)
+                            dev_predictions.append(pred.cpu().numpy())
                     
                     dev_predictions = np.vstack(dev_predictions)
                     
@@ -1688,22 +1671,24 @@ def _evaluate_from_npz(
             logger.info(f"测试数据: {len(test_sequences)} 个序列（无标签信息）")
         
         # 进行预测
-        model.set_train(False)
+        model.eval()
         predictions = []
         batch_size = config.get('batch_size', 32)
+        device = next(model.parameters()).device
         
-        for i in range(0, len(test_sequences), batch_size):
-            batch_sequences = test_sequences[i:i+batch_size]
-            batch_tensor = ms.Tensor(batch_sequences.astype(np.float32))
-            
-            if model_type in ['lstm_autoencoder', 'cnn_1d_autoencoder']:
-                # 自编码器：预测重构结果
-                pred = model(batch_tensor)
-                predictions.append(pred.asnumpy())
-            else:
-                # 预测器：预测未来值
-                pred = model(batch_tensor)
-                predictions.append(pred.asnumpy())
+        with torch.no_grad():
+            for i in range(0, len(test_sequences), batch_size):
+                batch_sequences = test_sequences[i:i+batch_size]
+                batch_tensor = torch.from_numpy(batch_sequences.astype(np.float32)).to(device)
+                
+                if model_type in ['lstm_autoencoder', 'cnn_1d_autoencoder']:
+                    # 自编码器：预测重构结果
+                    pred = model(batch_tensor)
+                    predictions.append(pred.cpu().numpy())
+                else:
+                    # 预测器：预测未来值
+                    pred = model(batch_tensor)
+                    predictions.append(pred.cpu().numpy())
         
         predictions = np.vstack(predictions)
         
@@ -1959,15 +1944,17 @@ def _evaluate_anomaly_detection_model(
         logger.info(f"测试数据: {len(test_sequences)} 个序列")
         
         # 进行预测
-        model.set_train(False)
+        model.eval()
         predictions = []
         batch_size = config.get('batch_size', 32)
+        device = next(model.parameters()).device
         
-        for i in range(0, len(test_sequences), batch_size):
-            batch_seq = test_sequences[i:i+batch_size]
-            batch_tensor = ms.Tensor(batch_seq.astype(np.float32))
-            batch_pred = model(batch_tensor)
-            predictions.extend(batch_pred.asnumpy())
+        with torch.no_grad():
+            for i in range(0, len(test_sequences), batch_size):
+                batch_seq = test_sequences[i:i+batch_size]
+                batch_tensor = torch.from_numpy(batch_seq.astype(np.float32)).to(device)
+                batch_pred = model(batch_tensor)
+                predictions.extend(batch_pred.cpu().numpy())
         
         predictions = np.array(predictions)
         
@@ -2136,7 +2123,7 @@ def get_training_status(task_id):
                 
                 # 检查任务完成状态
                 threshold_path = task_dir / 'threshold.json'
-                model_path = task_dir / 'model.ckpt'
+                model_path = task_dir / 'model.pth'
                 
                 # 构建状态信息
                 status = 'completed'
@@ -2549,7 +2536,7 @@ def calculate_threshold(task_id):
                 )
                 
                 # 加载训练好的模型
-                model_path = model_dir / 'model.ckpt'
+                model_path = model_dir / 'model.pth'
                 if not model_path.exists():
                     task_manager.update_task_status(task_id, 'completed', '阈值计算失败: 找不到训练好的模型文件')
                     return jsonify({
@@ -2591,7 +2578,11 @@ def calculate_threshold(task_id):
                     )
                 
                 # 加载模型参数
-                ms.load_checkpoint(str(model_path), model)
+                device = _get_torch_device()
+                model = model.to(device)
+                state_dict = torch.load(str(model_path), map_location=device)
+                model.load_state_dict(state_dict)
+                model.eval()
                 logger.info(f"成功加载模型: {model_path}")
                 
                 # 使用训练数据计算阈值
@@ -2602,11 +2593,12 @@ def calculate_threshold(task_id):
                 # 批量预测
                 predictions = []
                 batch_size = 32
-                for i in range(0, len(sample_sequences), batch_size):
-                    batch_seq = sample_sequences[i:i+batch_size]
-                    batch_tensor = ms.Tensor(batch_seq.astype(np.float32))
-                    batch_pred = model(batch_tensor)
-                    predictions.extend(batch_pred.asnumpy())
+                with torch.no_grad():
+                    for i in range(0, len(sample_sequences), batch_size):
+                        batch_seq = sample_sequences[i:i+batch_size]
+                        batch_tensor = torch.from_numpy(batch_seq.astype(np.float32)).to(device)
+                        batch_pred = model(batch_tensor)
+                        predictions.extend(batch_pred.cpu().numpy())
                 
                 predictions = np.array(predictions)
                 actuals = sample_targets
@@ -2709,7 +2701,7 @@ def calculate_threshold(task_id):
                 }), 500
         else:
             # 训练模块不可用，无法计算真实阈值
-            error_msg = '训练模块不可用，无法计算异常检测阈值。请确保MindSpore等依赖已正确安装。'
+            error_msg = '训练模块不可用，无法计算异常检测阈值。请确保PyTorch等依赖已正确安装。'
             task_manager.update_task_status(task_id, 'failed', error_msg)
             logger.error(f"阈值计算失败: {error_msg}")
             
@@ -2826,7 +2818,7 @@ def list_anomaly_detection_models():
                     config_path = task_dir / 'config.json'
                     # 尝试多种模型文件扩展名
                     model_files = (
-                        list(task_dir.glob('*.ckpt')) + 
+                        list(task_dir.glob('*.pth')) + 
                         list(task_dir.glob('*.pth')) + 
                         list(task_dir.glob('*.mindir')) +
                         list(task_dir.glob('model.*'))  # 匹配任何以model.开头的文件
@@ -2847,8 +2839,8 @@ def list_anomaly_detection_models():
                         continue
                     
                     if not model_files:
-                        print(f'[模型列表API]   跳过 {task_dir.name}: 缺少模型文件 (.ckpt 或 .pth)')
-                        logger.warning(f'  跳过 {task_dir.name}: 缺少模型文件 (.ckpt 或 .pth)')
+                        print(f'[模型列表API]   跳过 {task_dir.name}: 缺少模型文件 (.pth)')
+                        logger.warning(f'  跳过 {task_dir.name}: 缺少模型文件 (.pth)')
                         continue
                     
                     try:

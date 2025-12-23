@@ -148,7 +148,7 @@ def train_model():
     if not training_available:
         return jsonify({
             'success': False,
-            'error': '训练模块不可用，请检查MindSpore安装'
+            'error': '训练模块不可用，请检查PyTorch安装'
         }), 500
     
     try:
@@ -1364,7 +1364,7 @@ def _train_cnn1d_model(config: dict, train_data: dict, val_data: dict, task_id: 
             clip_grad_norm=config.get('clip_grad_norm', 5.0),
         )
         
-        # 创建MindSpore数据加载器
+        # 创建PyTorch数据加载器
         train_loader = _create_dataloader(
             train_data['sequences'],
             train_data['labels'],
@@ -1519,7 +1519,7 @@ def _train_lstm_model(config: dict, train_data: dict, val_data: dict, task_id: s
             clip_grad_norm=config.get('clip_grad_norm', 5.0),
         )
         
-        # 创建MindSpore数据加载器
+        # 创建PyTorch数据加载器
         train_loader = _create_dataloader(
             train_data['sequences'],
             train_data['labels'],
@@ -1818,7 +1818,7 @@ def _train_resnet1d_model(config: dict, train_data: dict, val_data: dict, task_i
 
 
 def _create_dataloader(sequences: np.ndarray, labels: np.ndarray, batch_size: int = 32, shuffle: bool = True):
-    """创建MindSpore数据加载器
+    """创建PyTorch数据加载器
     
     Args:
         sequences: 序列数据 (n_samples, seq_len, n_features)

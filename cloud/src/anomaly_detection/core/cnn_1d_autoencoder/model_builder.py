@@ -1,16 +1,17 @@
 """
 1D CNN自编码器 - 模型构建器
 定义用于工业时序重构的1D CNN Autoencoder结构
+
+
 """
 
 from typing import Dict, Any, Tuple
 
-import mindspore as ms
-import mindspore.nn as nn
-import mindspore.ops as ops
+import torch
+import torch.nn as nn
 
 
-class CNN1DAutoencoder(nn.Cell):
+class CNN1DAutoencoder(nn.Module):
     """1D CNN Autoencoder，用于学习正常序列并重构输入窗口"""
 
     def __init__(
@@ -43,8 +44,8 @@ class CNN1DAutoencoder(nn.Cell):
                     in_channels=in_channels,
                     out_channels=num_filters,
                     kernel_size=kernel_size,
-                    pad_mode='same',
-                    has_bias=True
+                    padding=kernel_size // 2,  # 'same' padding
+                    bias=True
                 ),
                 self._get_activation(activation),
                 nn.Dropout(p=dropout),
@@ -53,51 +54,52 @@ class CNN1DAutoencoder(nn.Cell):
         
         # 添加池化层以压缩序列长度
         encoder_layers.append(nn.AdaptiveAvgPool1d(1))  # 将序列压缩到长度为1
-        self.encoder = nn.SequentialCell(encoder_layers)
+        self.encoder = nn.Sequential(*encoder_layers)
         
         # 潜在空间映射：将压缩后的特征映射到瓶颈层
         # 池化后形状为 (batch, num_filters, 1)，展平后为 (batch, num_filters)
-        self.latent_projection = nn.SequentialCell([
-            nn.Dense(num_filters, bottleneck_size),
+        self.latent_projection = nn.Sequential(
+            nn.Linear(num_filters, bottleneck_size),
             self._get_activation(activation),
-        ])
+        )
         
         # 解码器：从瓶颈层重构序列
         # 首先将瓶颈向量扩展回序列长度
-        self.decoder_projection = nn.SequentialCell([
-            nn.Dense(bottleneck_size, num_filters),
+        self.decoder_projection = nn.Sequential(
+            nn.Linear(bottleneck_size, num_filters),
             self._get_activation(activation),
-        ])
+        )
         
         # 解码器卷积层：重构序列
         decoder_layers = []
         for i in range(num_conv_layers):
             decoder_layers.extend([
-                nn.Conv1dTranspose(
+                nn.ConvTranspose1d(
                     in_channels=num_filters if i == 0 else num_filters,
                     out_channels=num_filters if i < num_conv_layers - 1 else n_features,
                     kernel_size=kernel_size,
                     stride=1,
-                    pad_mode='same',
-                    has_bias=True
+                    padding=kernel_size // 2,
+                    bias=True
                 ),
                 self._get_activation(activation) if i < num_conv_layers - 1 else nn.Identity(),
                 nn.Dropout(p=dropout) if i < num_conv_layers - 1 else nn.Identity(),
             ])
         
-        self.decoder = nn.SequentialCell(decoder_layers)
+        self.decoder = nn.Sequential(*decoder_layers)
 
-    def _get_activation(self, name: str):
+    def _get_activation(self, name: str) -> nn.Module:
         """根据名称返回激活函数"""
         mapping = {
             "relu": nn.ReLU(),
             "tanh": nn.Tanh(),
             "sigmoid": nn.Sigmoid(),
             "leakyrelu": nn.LeakyReLU(),
+            "gelu": nn.GELU(),
         }
         return mapping.get(name.lower(), nn.ReLU())
 
-    def construct(self, x: ms.Tensor) -> ms.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """前向传播，返回重构序列
         
         Args:
@@ -109,7 +111,7 @@ class CNN1DAutoencoder(nn.Cell):
         batch_size = x.shape[0]
         
         # 转换输入格式: (batch, seq_len, features) -> (batch, features, seq_len)
-        x = x.transpose(0, 2, 1)  # (batch, n_features, seq_len)
+        x = x.permute(0, 2, 1)  # (batch, n_features, seq_len)
         
         # 编码器：提取特征并压缩
         encoded = self.encoder(x)  # (batch, num_filters, 1)
@@ -124,16 +126,35 @@ class CNN1DAutoencoder(nn.Cell):
         decoded_flat = self.decoder_projection(latent)  # (batch, num_filters)
         
         # 扩展回序列长度: (batch, num_filters) -> (batch, num_filters, seq_len)
-        decoded_flat = decoded_flat.expand_dims(-1)  # (batch, num_filters, 1)
-        decoded_flat = ops.tile(decoded_flat, (1, 1, self.sequence_length))  # (batch, num_filters, seq_len)
+        decoded_flat = decoded_flat.unsqueeze(-1)  # (batch, num_filters, 1)
+        decoded_flat = decoded_flat.expand(-1, -1, self.sequence_length)  # (batch, num_filters, seq_len)
         
         # 解码器：重构序列
         reconstruction = self.decoder(decoded_flat)  # (batch, n_features, seq_len)
         
         # 转换回原始格式: (batch, n_features, seq_len) -> (batch, seq_len, n_features)
-        reconstruction = reconstruction.transpose(0, 2, 1)  # (batch, seq_len, n_features)
+        reconstruction = reconstruction.permute(0, 2, 1)  # (batch, seq_len, n_features)
         
         return reconstruction
+    
+    def encode(self, x: torch.Tensor) -> torch.Tensor:
+        """仅编码，返回潜在向量
+        
+        Args:
+            x: 输入序列 (batch_size, seq_len, n_features)
+        
+        Returns:
+            潜在向量 (batch_size, bottleneck_size)
+        """
+        # 转换输入格式
+        x = x.permute(0, 2, 1)
+        
+        # 编码
+        encoded = self.encoder(x)
+        encoded_flat = encoded.squeeze(-1)
+        latent = self.latent_projection(encoded_flat)
+        
+        return latent
 
 
 class ModelBuilder:
@@ -175,7 +196,7 @@ class ModelBuilder:
         )
 
     @staticmethod
-    def create_model(model_type: str, input_shape: Tuple[int, int], **kwargs) -> nn.Cell:
+    def create_model(model_type: str, input_shape: Tuple[int, int], **kwargs) -> nn.Module:
         if model_type != "cnn_1d_autoencoder":
             raise ValueError(f"Unsupported model_type for CNN autoencoder builder: {model_type}")
 
@@ -191,8 +212,9 @@ class ModelBuilder:
         return ModelBuilder.build_cnn_1d_autoencoder(input_shape, **config)
 
     @staticmethod
-    def get_model_info(model: nn.Cell) -> Dict[str, Any]:
+    def get_model_info(model: nn.Module) -> Dict[str, Any]:
         if isinstance(model, CNN1DAutoencoder):
+            total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             return {
                 "model_type": "cnn_1d_autoencoder",
                 "input_dim": model.input_dim,
@@ -202,15 +224,16 @@ class ModelBuilder:
                 "bottleneck_size": model.bottleneck_size,
                 "num_conv_layers": model.num_conv_layers,
                 "dropout": model.dropout,
-                "trainable_params": sum(p.size for p in model.trainable_params()),
+                "trainable_params": total_params,
             }
+        total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         return {
             "model_type": "unknown",
-            "trainable_params": sum(p.size for p in model.trainable_params()),
+            "trainable_params": total_params,
         }
 
 
-def create_model(model_type: str, **kwargs) -> nn.Cell:
+def create_model(model_type: str, **kwargs) -> nn.Module:
     """向后兼容接口"""
     if model_type != "cnn_1d_autoencoder":
         raise ValueError("create_model from CNN autoencoder module only supports cnn_1d_autoencoder")
@@ -228,7 +251,7 @@ def get_default_config(model_type: str = "cnn_1d_autoencoder") -> Dict[str, Any]
     return ModelBuilder.get_default_config(model_type)
 
 
-def create_model_from_config(config: Dict[str, Any]) -> nn.Cell:
+def create_model_from_config(config: Dict[str, Any]) -> nn.Module:
     model_type = config.get("model_type", "cnn_1d_autoencoder")
     input_dim = config.get("input_dim")
     if input_dim is None:
@@ -245,4 +268,3 @@ def create_model_from_config(config: Dict[str, Any]) -> nn.Cell:
     }}
 
     return create_model(model_type, input_dim=input_dim, seq_len=seq_len, **model_kwargs)
-

@@ -3,7 +3,7 @@
 定义用于故障分类的1D CNN模型结构
 支持二分类（正常-故障）和三分类（正常-内圈故障-外圈故障）
 
-重构说明：从 MindSpore 迁移到 PyTorch
+
 """
 
 from typing import Dict, Any, Tuple

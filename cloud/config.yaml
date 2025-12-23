@@ -22,10 +22,10 @@ data:
   training: "data/training"
   logs: "logs"
 
-# MindSpore配置
-mindspore:
-  device_target: "CPU"
-  mode: "GRAPH_MODE"
+# PyTorch配置
+pytorch:
+  device: "cpu"  # cpu 或 cuda
+  cuda_available: false
 
 # 日志配置
 logging:

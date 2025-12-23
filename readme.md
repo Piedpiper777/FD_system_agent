@@ -158,7 +158,6 @@ conda activate cloud
 ```bash
 pip install -r requirements.txt
 ```
-注意：mindspore可能需要自行从官网安装</br>
 
 (5)配置环境变量</br>
 
@@ -185,7 +184,6 @@ conda activate edge
 ```bash
 pip install -r requirements.txt
 ```
-注意：mindspore可能需要自行从官网安装</br>
 
 (5)配置环境变量</br>
 

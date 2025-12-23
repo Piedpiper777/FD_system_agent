@@ -92,15 +92,15 @@ class AnomalyDetectionTrainer:
         return self.edge_port
 
     def _normalize_device_target(self, value):
-        """标准化设备类型，确保MindSpore识别"""
+        """标准化设备类型"""
         if not value:
-            return 'CPU'
+            return 'cpu'
         normalized = str(value).strip().lower()
         if normalized in ('gpu', 'cuda'):
-            return 'GPU'
+            return 'cuda'
         if normalized in ('ascend', 'npu', 'atlas'):
-            return 'Ascend'
-        return 'CPU'
+            return 'cpu'  # PyTorch不支持Ascend，回退到CPU
+        return 'cpu'
         
     def start_monitoring(self):
         """启动训练状态监控线程"""
@@ -290,9 +290,13 @@ class AnomalyDetectionTrainer:
             normalized['val_ratio'] = validation_split
             # 不设置test_ratio，因为异常检测模型不使用测试集
         elif dataset_mode == 'condition_filtered':
-            # 工况筛选模式：validation_split 在后续处理中设置
+            # 工况筛选模式：根据validation_split计算比例参数
             validation_split = to_float(config.get('validation_split', 0.2), 0.2)
             normalized['validation_split'] = validation_split
+            # 计算train_ratio和val_ratio以满足验证要求
+            train_ratio = 1.0 - validation_split
+            normalized['train_ratio'] = train_ratio
+            normalized['val_ratio'] = validation_split
 
         # 预处理策略
         if 'preprocess_method' in config:

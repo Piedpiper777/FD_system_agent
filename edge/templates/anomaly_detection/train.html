@@ -1863,30 +1863,13 @@ function validateCurrentMode() {
 
     if (currentModelType === 'lstm_predictor') {
         console.log('✅ 进入LSTM预测模型验证分支');
-        // LSTM预测模型：验证数据集文件选择
-        const datasetFileSelect = document.getElementById('predictorDataFile');
-        if (!datasetFileSelect) {
-            console.error('❌ 未找到predictorDataFile元素');
-            errors.push('数据文件选择控件未找到，请刷新页面重试');
+        // LSTM预测模型：验证训练集文件选择（工况筛选模式）
+        const selectedTrainFiles = getSelectedFiles('trainPredictor');
+        if (!selectedTrainFiles || selectedTrainFiles.length === 0) {
+            console.warn('⚠️ 未选择训练集文件');
+            errors.push('请至少选择一个训练集文件');
         } else {
-            const selectedValue = datasetFileSelect.value;
-            const selectedText = datasetFileSelect.options[datasetFileSelect.selectedIndex]?.text || '';
-            
-            console.log('验证LSTM预测模型数据文件:', {
-                selectedValue,
-                selectedText,
-                optionsCount: datasetFileSelect.options.length
-            });
-            
-            if (!selectedValue || selectedValue === '') {
-                console.warn('⚠️ 未选择预处理数据文件');
-                errors.push('请选择预处理数据文件');
-            } else if (selectedText.includes('加载中') || selectedText.includes('加载失败')) {
-                console.warn('⚠️ 数据文件列表加载状态异常:', selectedText);
-                errors.push('数据文件列表尚未加载完成，请稍后再试');
-            } else {
-                console.log('✅ LSTM预测模型数据文件验证通过');
-            }
+            console.log(`✅ LSTM预测模型训练集文件验证通过，已选择 ${selectedTrainFiles.length} 个文件`);
         }
     } else if (currentModelType === 'lstm_autoencoder') {
         console.log('✅ 进入LSTM自编码器验证分支');

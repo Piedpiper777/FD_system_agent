@@ -15,19 +15,21 @@ logger = logging.getLogger(__name__)
 # 创建蓝图
 health_bp = Blueprint('health', __name__, url_prefix='/api/health')
 
-def _check_mindspore_status():
-    """检查MindSpore状态"""
+def _check_pytorch_status():
+    """检查PyTorch状态"""
     try:
-        import mindspore as ms
+        import torch
         return {
             'available': True,
-            'version': ms.__version__ if hasattr(ms, '__version__') else 'unknown',
-            'backend': 'MindSpore'
+            'version': torch.__version__ if hasattr(torch, '__version__') else 'unknown',
+            'backend': 'PyTorch',
+            'cuda_available': torch.cuda.is_available() if hasattr(torch.cuda, 'is_available') else False,
+            'cuda_version': torch.version.cuda if hasattr(torch.version, 'cuda') and torch.cuda.is_available() else None
         }
     except ImportError:
         return {
             'available': False,
-            'error': 'MindSpore not installed',
+            'error': 'PyTorch not installed',
             'backend': None
         }
 
@@ -118,9 +120,9 @@ def health_status():
             'version': '1.0.0'
         }
         
-        # 检查MindSpore状态
-        mindspore_status = _check_mindspore_status()
-        status['mindspore'] = mindspore_status
+        # 检查PyTorch状态
+        pytorch_status = _check_pytorch_status()
+        status['pytorch'] = pytorch_status
         
         # 检查模型目录状态
         models_status = _check_models_directory()
@@ -135,9 +137,9 @@ def health_status():
         status['disk'] = disk_info
         
         # 根据各个组件状态确定整体状态
-        if not mindspore_status['available']:
+        if not pytorch_status['available']:
             status['status'] = 'degraded'
-            status['warnings'] = ['MindSpore not available']
+            status['warnings'] = ['PyTorch not available']
         
         if 'error' in models_status:
             status['status'] = 'unhealthy'
@@ -188,13 +190,13 @@ def system_health():
     """获取系统资源信息"""
     try:
         system_info = _get_system_info()
-        mindspore_info = _check_mindspore_status()
+        pytorch_info = _check_pytorch_status()
         
         return jsonify({
             'success': True,
             'timestamp': datetime.now().isoformat(),
             'system_info': system_info,
-            'mindspore_info': mindspore_info
+            'pytorch_info': pytorch_info
         })
         
     except Exception as e:
@@ -208,12 +210,12 @@ def system_health():
 def readiness_check():
     """就绪检查 - 用于K8s等容器编排"""
     try:
-        mindspore_status = _check_mindspore_status()
+        pytorch_status = _check_pytorch_status()
         models_status = _check_models_directory()
         
         # 简单的就绪检查
         ready = (
-            mindspore_status['available'] and 
+            pytorch_status['available'] and 
             models_status.get('exists', False)
         )
         
@@ -223,7 +225,7 @@ def readiness_check():
             return jsonify({
                 'status': 'not_ready',
                 'reasons': [
-                    'MindSpore not available' if not mindspore_status['available'] else None,
+                    'PyTorch not available' if not pytorch_status['available'] else None,
                     'Models directory not found' if not models_status.get('exists') else None
                 ]
             }), 503

@@ -113,7 +113,10 @@ def _load_realtime_detector(task_id: str) -> bool:
         sequence_length = model_config.get('sequence_length', 50)
         
         # 检查必要文件
-        model_path = model_dir / 'model.ckpt'
+        # 支持 .pth 和 .ckpt 格式
+        model_path = model_dir / 'model.pth'
+        if not model_path.exists():
+            model_path = model_dir / 'model.ckpt'  # 兼容旧格式
         threshold_path = model_dir / 'threshold.json'
         scaler_path = model_dir / 'scaler.pkl'
         
@@ -517,16 +520,16 @@ def get_available_models() -> Dict[str, Any]:
             if not model_type_dir.is_dir():
                 continue
             
-            model_type = model_type_dir.name
-            
             # 遍历所有任务目录
             for task_dir in model_type_dir.iterdir():
                 if not task_dir.is_dir():
                     continue
                 
-                # 检查必要文件
+                # 检查必要文件（支持 .pth 和 .ckpt 格式）
                 config_path = task_dir / 'config.json'
-                model_path = task_dir / 'model.ckpt'
+                model_path = task_dir / 'model.pth'
+                if not model_path.exists():
+                    model_path = task_dir / 'model.ckpt'  # 兼容旧格式
                 threshold_path = task_dir / 'threshold.json'
                 scaler_path = task_dir / 'scaler.pkl'
                 
@@ -537,6 +540,10 @@ def get_available_models() -> Dict[str, Any]:
                     # 读取配置
                     with open(config_path, 'r', encoding='utf-8') as f:
                         config = json.load(f)
+                    
+                    # 使用配置文件中的model_type，而不是目录名
+                    # 目录名可能是 lstm_prediction，但配置中是 lstm_predictor
+                    model_type = config.get('model_type', model_type_dir.name)
                     
                     models.append({
                         'task_id': task_dir.name,

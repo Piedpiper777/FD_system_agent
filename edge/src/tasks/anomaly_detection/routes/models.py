@@ -59,10 +59,10 @@ def _get_local_models():
                 if not os.path.isdir(task_dir):
                     continue
                     
-                # 检查必要文件
+                # 检查必要文件（优先 .pth 格式）
                 config_path = os.path.join(task_dir, 'config.json')
                 model_files = [f for f in os.listdir(task_dir) 
-                             if f.endswith(('.ckpt', '.pth', '.h5'))]
+                             if f.endswith(('.pth', '.ckpt', '.h5'))]
                 
                 if not os.path.exists(config_path) or not model_files:
                     continue
@@ -316,7 +316,7 @@ def get_model_info(task_id):
         
         # 配置文件
         config_path = os.path.join(task_dir, 'config.json')
-        if os.path.exists(config_path):
+        if config_path and os.path.exists(config_path):
             with open(config_path, 'r', encoding='utf-8') as f:
                 model_info['config'] = json.load(f)
         
@@ -700,9 +700,9 @@ def download_model_from_cloud_after_training(task_id):
         # 清理临时ZIP文件
         os.unlink(tmp_zip_path)
         
-        # 验证关键文件是否存在
+        # 验证关键文件是否存在（优先 .pth 格式）
         config_path = os.path.join(local_task_dir, 'config.json')
-        model_files = [f for f in extracted_files if f.endswith(('.ckpt', '.pth', '.h5'))]
+        model_files = [f for f in extracted_files if f.endswith(('.pth', '.ckpt', '.h5'))]
         
         if not os.path.exists(config_path):
             return jsonify({
@@ -756,9 +756,9 @@ def _find_local_model(task_id):
         if not os.path.exists(config_path):
             continue
             
-        # 找到对应的模型文件
+        # 找到对应的模型文件（优先 .pth 格式）
         model_files = [f for f in os.listdir(task_dir) 
-                      if f.endswith(('.ckpt', '.pth', '.h5'))]
+                      if f.endswith(('.pth', '.ckpt', '.h5'))]
         
         if not model_files:
             continue

@@ -389,9 +389,9 @@ def get_available_models():
                     if not config_file.exists():
                         continue
                     
-                    # 查找模型文件（支持多种格式）
+                    # 查找模型文件（支持多种格式，优先 .pth）
                     model_file = None
-                    for ext in ['.ckpt', '.pth', '.h5', '.mindir']:
+                    for ext in ['.pth', '.ckpt', '.h5']:
                         potential_file = task_dir / f'model{ext}'
                         if potential_file.exists():
                             model_file = potential_file
@@ -400,7 +400,7 @@ def get_available_models():
                     # 如果没找到标准命名，查找任何模型文件
                     if not model_file:
                         model_files = [f for f in os.listdir(task_dir) 
-                                     if f.endswith(('.ckpt', '.pth', '.h5', '.mindir'))]
+                                     if f.endswith(('.pth', '.ckpt', '.h5'))]
                         if model_files:
                             model_file = task_dir / model_files[0]
                     
@@ -504,15 +504,17 @@ def _run_inference_with_local_model(task_id, model_dir, data_path, sequence_leng
             with open(config_path, 'r', encoding='utf-8') as f:
                 model_config = json.load(f)
 
-        # 检查必要的模型文件
-        model_path = model_dir / 'model.ckpt'
+        # 检查必要的模型文件（支持 .pth 和 .ckpt 格式）
+        model_path = model_dir / 'model.pth'
+        if not model_path.exists():
+            model_path = model_dir / 'model.ckpt'  # 兼容旧格式
         threshold_path = model_dir / 'threshold.json'
         scaler_path = model_dir / 'scaler.pkl'
 
         if not model_path.exists():
             return {
                 'success': False,
-                'error': f'模型文件不存在: {model_path}'
+                'error': f'模型文件不存在: {model_dir}/model.pth 或 model.ckpt'
             }
 
         if not threshold_path.exists():

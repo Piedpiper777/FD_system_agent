@@ -1305,9 +1305,9 @@ def _run_real_training(task_id):
         if 'ms' in globals():
             try:
                 ms.set_context(mode=ms.GRAPH_MODE, device_target=device_target)
-                task_manager.add_log(task_id, f'MindSpore context 已设置: device_target={device_target}')
+                task_manager.add_log(task_id, f'PyTorch device 已设置: device={device_target}')
             except Exception as ctx_err:
-                task_manager.add_log(task_id, f'警告：设置MindSpore设备失败，继续使用默认: {ctx_err}')
+                task_manager.add_log(task_id, f'警告：设置PyTorch设备失败，继续使用默认: {ctx_err}')
         
         task_manager.update_task_status(task_id, 'running', '开始数据处理...')
         task_manager.add_log(task_id, f'开始处理RUL预测训练任务: {task_id}')

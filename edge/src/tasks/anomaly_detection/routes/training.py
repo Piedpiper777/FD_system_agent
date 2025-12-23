@@ -78,6 +78,29 @@ def _normalize_training_payload(payload: dict) -> dict:
     # 注释掉强制设置dataset_mode为'one'，让前端的'processed_file'模式保持
     # merged.setdefault('dataset_mode', 'one')
 
+    # 对于condition_filtered模式，根据validation_split计算train_ratio和val_ratio
+    # 这样验证器就能找到这些必填字段
+    dataset_mode = merged.get('dataset_mode', 'processed_file')
+    if dataset_mode == 'condition_filtered':
+        validation_split = merged.get('validation_split', 0.2)
+        if validation_split not in (None, ''):
+            try:
+                validation_split = float(validation_split)
+                merged['train_ratio'] = 1.0 - validation_split
+                merged['val_ratio'] = validation_split
+            except (TypeError, ValueError):
+                pass
+    elif dataset_mode == 'processed_file':
+        # processed_file模式也需要计算train_ratio和val_ratio
+        validation_split = merged.get('validation_split', 0.2)
+        if validation_split not in (None, ''):
+            try:
+                validation_split = float(validation_split)
+                merged['train_ratio'] = 1.0 - validation_split
+                merged['val_ratio'] = validation_split
+            except (TypeError, ValueError):
+                pass
+
     print(f"🔥 最终merged (在setdefault之后): {merged}")
 
     if not merged.get('output_path'):

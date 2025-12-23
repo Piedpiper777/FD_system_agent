@@ -1,15 +1,16 @@
 """
 LSTM预测异常检测模块 - 模型构建器
 定义LSTM预测模型的结构，封装模型初始化和预测逻辑
+
+
 """
 
-import mindspore as ms
-import mindspore.nn as nn
+import torch
+import torch.nn as nn
 from typing import Optional, Dict, Any, Tuple
-import numpy as np
 
 
-class LSTMPredictor(nn.Cell):
+class LSTMPredictor(nn.Module):
     """
     基于LSTM的工业异常检测预测器
 
@@ -58,29 +59,30 @@ class LSTMPredictor(nn.Cell):
         )
 
         # 预测头
-        self.predictor = nn.SequentialCell([
-            nn.Dense(hidden_units, hidden_units // 2),
+        self.predictor = nn.Sequential(
+            nn.Linear(hidden_units, hidden_units // 2),
             self._get_activation(activation),
             nn.Dropout(p=dropout),
-            nn.Dense(hidden_units // 2, n_features)
-        ])
+            nn.Linear(hidden_units // 2, n_features)
+        )
 
         print(f"✅ LSTM预测器构建完成")
         print(f"  - 输入形状: {input_shape}")
         print(f"  - 隐藏单元: {hidden_units}")
         print(f"  - LSTM层数: {num_layers}")
 
-    def _get_activation(self, name: str):
+    def _get_activation(self, name: str) -> nn.Module:
         """获取激活函数"""
         activations = {
             'relu': nn.ReLU(),
             'tanh': nn.Tanh(),
             'sigmoid': nn.Sigmoid(),
-            'leakyrelu': nn.LeakyReLU()
+            'leakyrelu': nn.LeakyReLU(),
+            'gelu': nn.GELU(),
         }
         return activations.get(name.lower(), nn.Tanh())
 
-    def construct(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         前向传播
 
@@ -101,7 +103,7 @@ class LSTMPredictor(nn.Cell):
 
         return prediction
 
-    def predict(self, x: ms.Tensor) -> ms.Tensor:
+    def predict(self, x: torch.Tensor) -> torch.Tensor:
         """
         预测接口
 
@@ -111,7 +113,7 @@ class LSTMPredictor(nn.Cell):
         Returns:
             预测结果
         """
-        return self.construct(x)
+        return self.forward(x)
 
 
 class ModelBuilder:
@@ -170,7 +172,7 @@ class ModelBuilder:
         return configs.get(model_type, {})
 
     @staticmethod
-    def create_model(model_type: str, input_shape: Tuple[int, int], **kwargs) -> nn.Cell:
+    def create_model(model_type: str, input_shape: Tuple[int, int], **kwargs) -> nn.Module:
         """
         创建模型的统一接口
 
@@ -190,7 +192,7 @@ class ModelBuilder:
             raise ValueError(f"不支持的模型类型: {model_type}")
 
     @staticmethod
-    def get_model_info(model: nn.Cell) -> Dict[str, Any]:
+    def get_model_info(model: nn.Module) -> Dict[str, Any]:
         """
         获取模型信息
 
@@ -201,23 +203,25 @@ class ModelBuilder:
             模型信息字典
         """
         if isinstance(model, LSTMPredictor):
+            total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             return {
                 'model_type': 'lstm_predictor',
                 'input_shape': model.input_shape,
                 'hidden_units': model.hidden_units,
                 'num_layers': model.num_layers,
                 'dropout': model.dropout,
-                'trainable_params': sum(p.size for p in model.trainable_params())
+                'trainable_params': total_params
             }
         else:
+            total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             return {
                 'model_type': 'unknown',
-                'trainable_params': sum(p.size for p in model.trainable_params())
+                'trainable_params': total_params
             }
 
 
 # 向后兼容性函数
-def create_model(model_type: str, **kwargs) -> nn.Cell:
+def create_model(model_type: str, **kwargs) -> nn.Module:
     """
     模型工厂函数 - 向后兼容接口
 
@@ -256,7 +260,7 @@ def get_default_config(model_type: str) -> dict:
     return ModelBuilder.get_default_config(model_type)
 
 
-def create_model_from_config(config: dict) -> nn.Cell:
+def create_model_from_config(config: dict) -> nn.Module:
     """
     从配置创建模型 - 向后兼容接口
 
