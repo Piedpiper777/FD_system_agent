@@ -1,14 +1,17 @@
 """
 故障诊断 CNN 1D - 训练器
 负责分类任务的训练循环与指标记录
+
+重构说明：从 MindSpore 迁移到 PyTorch
 """
 
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
-import mindspore as ms
-import mindspore.ops as ops
-from mindspore.nn import Adam, CrossEntropyLoss
+import torch
+import torch.nn as nn
+from torch.optim import Adam
+from torch.nn import CrossEntropyLoss
 import numpy as np
 
 
@@ -17,10 +20,11 @@ class Trainer:
     
     def __init__(
         self,
-        model: ms.nn.Cell,
+        model: nn.Module,
         learning_rate: float = 1e-3,
         weight_decay: float = 1e-4,
         clip_grad_norm: float = 5.0,
+        device: Optional[torch.device] = None,
     ):
         """
         初始化训练器
@@ -30,26 +34,28 @@ class Trainer:
             learning_rate: 学习率
             weight_decay: 权重衰减
             clip_grad_norm: 梯度裁剪阈值
+            device: 计算设备 (cuda/cpu)
         """
-        self.model = model
+        # 设置设备
+        if device is None:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        else:
+            self.device = device
+        
+        self.model = model.to(self.device)
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.clip_grad_norm = clip_grad_norm
         
         # 优化器
         self.optimizer = Adam(
-            params=self.model.trainable_params(),
-            learning_rate=learning_rate,
+            params=self.model.parameters(),
+            lr=learning_rate,
             weight_decay=weight_decay,
         )
         
         # 损失函数：交叉熵损失
         self.criterion = CrossEntropyLoss()
-        
-        # 梯度计算函数
-        self.grad_fn = ms.value_and_grad(
-            self.forward_fn, None, self.optimizer.parameters
-        )
         
         # 训练指标
         self.best_val_loss = float("inf")
@@ -63,40 +69,7 @@ class Trainer:
             "epochs_trained": 0,
         }
     
-    def forward_fn(self, input_seq, labels):
-        """
-        前向传播函数
-        
-        Args:
-            input_seq: 输入序列 (batch_size, seq_len, n_features)
-            labels: 标签 (batch_size,)
-            
-        Returns:
-            损失值
-        """
-        logits = self.model(input_seq)
-        loss = self.criterion(logits, labels)
-        return loss
-    
-    def _process_grads(self, grads):
-        """处理梯度（梯度裁剪）"""
-        if self.clip_grad_norm > 0:
-            # 计算梯度范数
-            total_norm = 0.0
-            for grad in grads:
-                if grad is not None:
-                    total_norm += ops.norm(grad) ** 2
-            total_norm = total_norm ** 0.5
-            
-            # 如果梯度范数超过阈值，进行裁剪
-            if total_norm > self.clip_grad_norm:
-                clip_coef = self.clip_grad_norm / (total_norm + 1e-6)
-                grads = [grad * clip_coef if grad is not None else grad for grad in grads]
-        
-        # 确保返回元组类型，与MindSpore优化器期望的格式一致
-        return tuple(grads)
-    
-    def compute_accuracy(self, logits: ms.Tensor, labels: ms.Tensor) -> float:
+    def compute_accuracy(self, logits: torch.Tensor, labels: torch.Tensor) -> float:
         """
         计算准确率
         
@@ -107,12 +80,12 @@ class Trainer:
         Returns:
             准确率
         """
-        predictions = ops.argmax(logits, dim=1)
-        correct = ops.equal(predictions, labels)
-        accuracy = correct.astype(ms.float32).mean()
-        return float(accuracy)
+        predictions = torch.argmax(logits, dim=1)
+        correct = (predictions == labels).float()
+        accuracy = correct.mean()
+        return float(accuracy.item())
     
-    def train_step(self, batch_data):
+    def train_step(self, batch_data) -> tuple:
         """
         训练一步
         
@@ -128,23 +101,43 @@ class Trainer:
         else:
             sequences, labels = batch_data
         
-        # 前向传播和梯度计算
-        loss, grads = self.grad_fn(sequences, labels)
+        # 将数据移动到设备
+        sequences = sequences.to(self.device)
+        labels = labels.to(self.device)
         
-        # 梯度处理
-        grads = self._process_grads(grads)
+        # 确保数据类型正确
+        if sequences.dtype != torch.float32:
+            sequences = sequences.float()
+        if labels.dtype != torch.long:
+            labels = labels.long()
+        
+        # 清零梯度
+        self.optimizer.zero_grad()
+        
+        # 前向传播
+        logits = self.model(sequences)
+        loss = self.criterion(logits, labels)
+        
+        # 反向传播
+        loss.backward()
+        
+        # 梯度裁剪
+        if self.clip_grad_norm > 0:
+            torch.nn.utils.clip_grad_norm_(
+                self.model.parameters(), 
+                self.clip_grad_norm
+            )
         
         # 优化器更新
-        self.optimizer(grads)
+        self.optimizer.step()
         
-        # 计算准确率
-        with ms._no_grad():
-            logits = self.model(sequences)
+        # 计算准确率（不需要梯度）
+        with torch.no_grad():
             accuracy = self.compute_accuracy(logits, labels)
         
-        return float(loss), accuracy
+        return float(loss.item()), accuracy
     
-    def compute_loss_and_accuracy(self, batch_data):
+    def compute_loss_and_accuracy(self, batch_data) -> tuple:
         """
         计算损失和准确率（用于验证）
         
@@ -160,11 +153,22 @@ class Trainer:
         else:
             sequences, labels = batch_data
         
-        logits = self.model(sequences)
-        loss = self.criterion(logits, labels)
-        accuracy = self.compute_accuracy(logits, labels)
+        # 将数据移动到设备
+        sequences = sequences.to(self.device)
+        labels = labels.to(self.device)
         
-        return float(loss), accuracy
+        # 确保数据类型正确
+        if sequences.dtype != torch.float32:
+            sequences = sequences.float()
+        if labels.dtype != torch.long:
+            labels = labels.long()
+        
+        with torch.no_grad():
+            logits = self.model(sequences)
+            loss = self.criterion(logits, labels)
+            accuracy = self.compute_accuracy(logits, labels)
+        
+        return float(loss.item()), accuracy
     
     def train_epoch(self, train_loader, epoch_idx: Optional[int] = None) -> tuple:
         """
@@ -177,7 +181,7 @@ class Trainer:
         Returns:
             (平均损失, 平均准确率)
         """
-        self.model.set_train(True)
+        self.model.train()
         total_loss = 0.0
         total_acc = 0.0
         count = 0
@@ -206,7 +210,7 @@ class Trainer:
         Returns:
             (平均损失, 平均准确率)
         """
-        self.model.set_train(False)
+        self.model.eval()
         total_loss = 0.0
         total_acc = 0.0
         count = 0
@@ -305,7 +309,14 @@ class Trainer:
         """保存模型"""
         save_path = Path(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
-        ms.save_checkpoint(self.model, str(save_path))
+        torch.save(self.model.state_dict(), str(save_path))
+    
+    def load_model(self, load_path: Union[str, Path]):
+        """加载模型"""
+        load_path = Path(load_path)
+        state_dict = torch.load(str(load_path), map_location=self.device)
+        self.model.load_state_dict(state_dict)
+        return self.model
     
     def get_training_metrics(self) -> Dict[str, Any]:
         """获取训练指标"""
@@ -323,4 +334,3 @@ class Trainer:
         self.best_val_loss = float("inf")
         self.best_val_acc = 0.0
         self.patience_counter = 0
-

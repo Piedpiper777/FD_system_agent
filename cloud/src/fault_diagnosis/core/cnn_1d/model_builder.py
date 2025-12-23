@@ -2,16 +2,18 @@
 故障诊断 CNN 1D - 模型构建器
 定义用于故障分类的1D CNN模型结构
 支持二分类（正常-故障）和三分类（正常-内圈故障-外圈故障）
+
+重构说明：从 MindSpore 迁移到 PyTorch
 """
 
 from typing import Dict, Any, Tuple
 
-import mindspore as ms
-import mindspore.nn as nn
-import mindspore.ops as ops
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 
-class CNN1DClassifier(nn.Cell):
+class CNN1DClassifier(nn.Module):
     """
     1D CNN 故障分类器
     
@@ -64,13 +66,14 @@ class CNN1DClassifier(nn.Cell):
         in_channels = n_features
         
         for i in range(num_conv_layers):
+            # 卷积层，使用 padding='same' 保持序列长度
             encoder_layers.append(
                 nn.Conv1d(
                     in_channels=in_channels,
                     out_channels=num_filters,
                     kernel_size=kernel_size,
-                    pad_mode='same',
-                    has_bias=not use_batch_norm,  # 如果使用BN，可以不用bias
+                    padding=kernel_size // 2,  # 'same' padding
+                    bias=not use_batch_norm,  # 如果使用BN，可以不用bias
                 )
             )
             
@@ -82,36 +85,32 @@ class CNN1DClassifier(nn.Cell):
             
             in_channels = num_filters
         
-        self.encoder = nn.SequentialCell(encoder_layers)
+        self.encoder = nn.Sequential(*encoder_layers)
         
         # 全局平均池化：将时序维度压缩为1
         self.global_pool = nn.AdaptiveAvgPool1d(1)
         
         # 分类头：全连接层
         # 池化后形状为 (batch, num_filters, 1)，展平后为 (batch, num_filters)
-        self.classifier = nn.SequentialCell([
-            nn.Dense(num_filters, num_filters // 2),
+        self.classifier = nn.Sequential(
+            nn.Linear(num_filters, num_filters // 2),
             self._get_activation(activation),
             nn.Dropout(p=dropout),
-            nn.Dense(num_filters // 2, num_classes),
-        ])
-        
-        # Softmax用于输出概率（在训练时通常使用CrossEntropyLoss，它会自动应用softmax）
-        # 但在推理时可能需要显式应用
-        self.softmax = nn.Softmax(axis=-1)
+            nn.Linear(num_filters // 2, num_classes),
+        )
     
-    def _get_activation(self, name: str):
+    def _get_activation(self, name: str) -> nn.Module:
         """根据名称返回激活函数"""
         mapping = {
             "relu": nn.ReLU(),
             "tanh": nn.Tanh(),
             "sigmoid": nn.Sigmoid(),
-            "leakyrelu": nn.LeakyReLU(alpha=0.2),
+            "leakyrelu": nn.LeakyReLU(negative_slope=0.2),
             "gelu": nn.GELU(),
         }
         return mapping.get(name.lower(), nn.ReLU())
     
-    def construct(self, x: ms.Tensor, return_probs: bool = False) -> ms.Tensor:
+    def forward(self, x: torch.Tensor, return_probs: bool = False) -> torch.Tensor:
         """
         前向传播
         
@@ -123,7 +122,7 @@ class CNN1DClassifier(nn.Cell):
             分类输出 (batch_size, num_classes)
         """
         # 转换输入格式: (batch, seq_len, features) -> (batch, features, seq_len)
-        x = x.transpose(0, 2, 1)  # (batch, n_features, seq_len)
+        x = x.permute(0, 2, 1)  # (batch, n_features, seq_len)
         
         # 编码器：提取特征
         encoded = self.encoder(x)  # (batch, num_filters, seq_len)
@@ -139,7 +138,7 @@ class CNN1DClassifier(nn.Cell):
         
         # 如果需要概率，应用softmax
         if return_probs:
-            return self.softmax(logits)
+            return F.softmax(logits, dim=-1)
         
         return logits
 
@@ -192,7 +191,7 @@ class ModelBuilder:
         input_shape: Tuple[int, int],
         num_classes: int = 3,
         **kwargs
-    ) -> nn.Cell:
+    ) -> nn.Module:
         """
         创建模型
         
@@ -227,9 +226,10 @@ class ModelBuilder:
         )
     
     @staticmethod
-    def get_model_info(model: nn.Cell) -> Dict[str, Any]:
+    def get_model_info(model: nn.Module) -> Dict[str, Any]:
         """获取模型信息"""
         if isinstance(model, CNN1DClassifier):
+            total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             return {
                 "model_type": "cnn_1d_classifier",
                 "input_dim": model.input_dim,
@@ -240,15 +240,16 @@ class ModelBuilder:
                 "num_conv_layers": model.num_conv_layers,
                 "dropout": model.dropout,
                 "use_batch_norm": model.use_batch_norm,
-                "trainable_params": sum(p.size for p in model.trainable_params()),
+                "trainable_params": total_params,
             }
+        total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         return {
             "model_type": "unknown",
-            "trainable_params": sum(p.size for p in model.trainable_params()),
+            "trainable_params": total_params,
         }
 
 
-def create_model(model_type: str, **kwargs) -> nn.Cell:
+def create_model(model_type: str, **kwargs) -> nn.Module:
     """向后兼容接口"""
     if model_type != "cnn_1d_classifier":
         raise ValueError(
@@ -273,7 +274,7 @@ def get_default_config(model_type: str = "cnn_1d_classifier") -> Dict[str, Any]:
     return ModelBuilder.get_default_config(model_type)
 
 
-def create_model_from_config(config: Dict[str, Any]) -> nn.Cell:
+def create_model_from_config(config: Dict[str, Any]) -> nn.Module:
     """从配置字典创建模型"""
     model_type = config.get("model_type", "cnn_1d_classifier")
     input_dim = config.get("input_dim")
@@ -296,4 +297,3 @@ def create_model_from_config(config: Dict[str, Any]) -> nn.Cell:
     return ModelBuilder.create_model(
         model_type, input_shape, num_classes=num_classes, **model_kwargs
     )
-

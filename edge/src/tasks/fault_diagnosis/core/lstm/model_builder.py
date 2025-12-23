@@ -2,16 +2,18 @@
 故障诊断 LSTM - 模型构建器
 定义用于故障分类的LSTM模型结构
 支持二分类（正常-故障）和三分类（正常-内圈故障-外圈故障）
+
+重构说明：从 MindSpore 迁移到 PyTorch
 """
 
 from typing import Dict, Any, Tuple
 
-import mindspore as ms
-import mindspore.nn as nn
-import mindspore.ops as ops
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 
-class LSTMClassifier(nn.Cell):
+class LSTMClassifier(nn.Module):
     """
     LSTM 故障分类器
     
@@ -73,34 +75,30 @@ class LSTMClassifier(nn.Cell):
         
         # 注意力机制（可选）
         if use_attention:
-            self.attention = nn.Dense(lstm_output_dim, 1)
+            self.attention = nn.Linear(lstm_output_dim, 1)
         else:
             self.attention = None
         
         # 分类头：全连接层
-        self.classifier = nn.SequentialCell([
-            nn.Dense(lstm_output_dim, lstm_output_dim // 2),
+        self.classifier = nn.Sequential(
+            nn.Linear(lstm_output_dim, lstm_output_dim // 2),
             self._get_activation(activation),
             nn.Dropout(p=dropout),
-            nn.Dense(lstm_output_dim // 2, num_classes),
-        ])
-        
-        # Softmax用于输出概率（在训练时通常使用CrossEntropyLoss，它会自动应用softmax）
-        # 但在推理时可能需要显式应用
-        self.softmax = nn.Softmax(axis=-1)
+            nn.Linear(lstm_output_dim // 2, num_classes),
+        )
     
-    def _get_activation(self, name: str):
+    def _get_activation(self, name: str) -> nn.Module:
         """根据名称返回激活函数"""
         mapping = {
             "relu": nn.ReLU(),
             "tanh": nn.Tanh(),
             "sigmoid": nn.Sigmoid(),
-            "leakyrelu": nn.LeakyReLU(alpha=0.2),
+            "leakyrelu": nn.LeakyReLU(negative_slope=0.2),
             "gelu": nn.GELU(),
         }
         return mapping.get(name.lower(), nn.Tanh())
     
-    def _apply_attention(self, lstm_output: ms.Tensor) -> ms.Tensor:
+    def _apply_attention(self, lstm_output: torch.Tensor) -> torch.Tensor:
         """
         应用注意力机制
         
@@ -112,16 +110,16 @@ class LSTMClassifier(nn.Cell):
         """
         # 计算注意力权重
         attention_weights = self.attention(lstm_output)  # (batch_size, seq_len, 1)
-        attention_weights = ops.softmax(attention_weights, axis=1)  # 归一化
+        attention_weights = F.softmax(attention_weights, dim=1)  # 归一化
         
         # 加权求和
-        weighted_output = ops.sum(
-            lstm_output * attention_weights, axis=1
+        weighted_output = torch.sum(
+            lstm_output * attention_weights, dim=1
         )  # (batch_size, hidden_units)
         
         return weighted_output
     
-    def construct(self, x: ms.Tensor, return_probs: bool = False) -> ms.Tensor:
+    def forward(self, x: torch.Tensor, return_probs: bool = False) -> torch.Tensor:
         """
         前向传播
         
@@ -148,7 +146,7 @@ class LSTMClassifier(nn.Cell):
         
         # 如果需要概率，应用softmax
         if return_probs:
-            return self.softmax(logits)
+            return F.softmax(logits, dim=-1)
         
         return logits
 
@@ -201,7 +199,7 @@ class ModelBuilder:
         input_shape: Tuple[int, int],
         num_classes: int = 3,
         **kwargs
-    ) -> nn.Cell:
+    ) -> nn.Module:
         """
         创建模型
         
@@ -236,9 +234,10 @@ class ModelBuilder:
         )
     
     @staticmethod
-    def get_model_info(model: nn.Cell) -> Dict[str, Any]:
+    def get_model_info(model: nn.Module) -> Dict[str, Any]:
         """获取模型信息"""
         if isinstance(model, LSTMClassifier):
+            total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             return {
                 "model_type": "lstm_classifier",
                 "input_dim": model.input_dim,
@@ -249,15 +248,16 @@ class ModelBuilder:
                 "dropout": model.dropout,
                 "bidirectional": model.bidirectional,
                 "use_attention": model.use_attention,
-                "trainable_params": sum(p.size for p in model.trainable_params()),
+                "trainable_params": total_params,
             }
+        total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         return {
             "model_type": "unknown",
-            "trainable_params": sum(p.size for p in model.trainable_params()),
+            "trainable_params": total_params,
         }
 
 
-def create_model(model_type: str, **kwargs) -> nn.Cell:
+def create_model(model_type: str, **kwargs) -> nn.Module:
     """向后兼容接口"""
     if model_type != "lstm_classifier":
         raise ValueError(
@@ -282,7 +282,7 @@ def get_default_config(model_type: str = "lstm_classifier") -> Dict[str, Any]:
     return ModelBuilder.get_default_config(model_type)
 
 
-def create_model_from_config(config: Dict[str, Any]) -> nn.Cell:
+def create_model_from_config(config: Dict[str, Any]) -> nn.Module:
     """从配置字典创建模型"""
     model_type = config.get("model_type", "lstm_classifier")
     input_dim = config.get("input_dim")
@@ -305,4 +305,3 @@ def create_model_from_config(config: Dict[str, Any]) -> nn.Cell:
     return ModelBuilder.create_model(
         model_type, input_shape, num_classes=num_classes, **model_kwargs
     )
-

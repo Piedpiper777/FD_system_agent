@@ -2,16 +2,18 @@
 故障诊断 ResNet 1D - 模型构建器
 定义用于故障分类的1D残差网络模型结构
 支持二分类（正常-故障）和多分类（正常-内圈故障-外圈故障等）
+
+重构说明：从 MindSpore 迁移到 PyTorch
 """
 
 from typing import Dict, Any, Tuple, List
 
-import mindspore as ms
-import mindspore.nn as nn
-import mindspore.ops as ops
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 
-class ResidualBlock1D(nn.Cell):
+class ResidualBlock1D(nn.Module):
     """
     1D 残差块
     
@@ -37,39 +39,39 @@ class ResidualBlock1D(nn.Cell):
             out_channels=out_channels,
             kernel_size=kernel_size,
             stride=actual_stride,
-            pad_mode='same',
-            has_bias=False,
+            padding=kernel_size // 2,
+            bias=False,
         )
         self.bn1 = nn.BatchNorm1d(out_channels)
-        self.relu = nn.ReLU()
+        self.relu = nn.ReLU(inplace=True)
         
         self.conv2 = nn.Conv1d(
             in_channels=out_channels,
             out_channels=out_channels,
             kernel_size=kernel_size,
             stride=1,
-            pad_mode='same',
-            has_bias=False,
+            padding=kernel_size // 2,
+            bias=False,
         )
         self.bn2 = nn.BatchNorm1d(out_channels)
         
         self.need_shortcut = (in_channels != out_channels) or downsample
         if self.need_shortcut:
-            self.shortcut = nn.SequentialCell([
+            self.shortcut = nn.Sequential(
                 nn.Conv1d(
                     in_channels=in_channels,
                     out_channels=out_channels,
                     kernel_size=1,
                     stride=actual_stride,
-                    pad_mode='valid',
-                    has_bias=False,
+                    padding=0,
+                    bias=False,
                 ),
                 nn.BatchNorm1d(out_channels),
-            ])
+            )
         else:
             self.shortcut = None
     
-    def construct(self, x: ms.Tensor) -> ms.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
         
         out = self.conv1(x)
@@ -88,7 +90,7 @@ class ResidualBlock1D(nn.Cell):
         return out
 
 
-class ResNet1DClassifier(nn.Cell):
+class ResNet1DClassifier(nn.Module):
     """
     1D ResNet 故障分类器
     
@@ -133,18 +135,18 @@ class ResNet1DClassifier(nn.Cell):
         else:
             self.num_blocks = block_config
         
-        self.stem = nn.SequentialCell([
+        self.stem = nn.Sequential(
             nn.Conv1d(
                 in_channels=n_features,
                 out_channels=base_channels,
                 kernel_size=7,
                 stride=1,
-                pad_mode='same',
-                has_bias=False,
+                padding=3,
+                bias=False,
             ),
             nn.BatchNorm1d(base_channels),
-            nn.ReLU(),
-        ])
+            nn.ReLU(inplace=True),
+        )
         
         self.layer1 = self._make_layer(
             base_channels, base_channels, self.num_blocks[0], downsample=False
@@ -159,20 +161,18 @@ class ResNet1DClassifier(nn.Cell):
             layers.append(layer)
             in_channels = out_channels
         
-        self.res_layers = nn.CellList(layers)
+        self.res_layers = nn.ModuleList(layers)
         self.final_channels = in_channels
         
         self.global_pool = nn.AdaptiveAvgPool1d(1)
         self.dropout = nn.Dropout(p=dropout)
         
-        self.classifier = nn.SequentialCell([
-            nn.Dense(self.final_channels, self.final_channels // 2),
-            nn.ReLU(),
+        self.classifier = nn.Sequential(
+            nn.Linear(self.final_channels, self.final_channels // 2),
+            nn.ReLU(inplace=True),
             nn.Dropout(p=dropout),
-            nn.Dense(self.final_channels // 2, num_classes),
-        ])
-        
-        self.softmax = nn.Softmax(axis=-1)
+            nn.Linear(self.final_channels // 2, num_classes),
+        )
     
     def _make_layer(
         self,
@@ -180,7 +180,7 @@ class ResNet1DClassifier(nn.Cell):
         out_channels: int,
         num_blocks: int,
         downsample: bool = False,
-    ) -> nn.SequentialCell:
+    ) -> nn.Sequential:
         blocks = []
         
         blocks.append(
@@ -202,10 +202,12 @@ class ResNet1DClassifier(nn.Cell):
                 )
             )
         
-        return nn.SequentialCell(blocks)
+        return nn.Sequential(*blocks)
     
-    def construct(self, x: ms.Tensor, return_probs: bool = False) -> ms.Tensor:
-        x = x.transpose(0, 2, 1)
+    def forward(self, x: torch.Tensor, return_probs: bool = False) -> torch.Tensor:
+        # 转换输入格式: (batch, seq_len, features) -> (batch, features, seq_len)
+        x = x.permute(0, 2, 1)
+        
         x = self.stem(x)
         
         for layer in self.res_layers:
@@ -217,7 +219,7 @@ class ResNet1DClassifier(nn.Cell):
         logits = self.classifier(x)
         
         if return_probs:
-            return self.softmax(logits)
+            return F.softmax(logits, dim=-1)
         
         return logits
 
@@ -262,7 +264,7 @@ class ModelBuilder:
         input_shape: Tuple[int, int],
         num_classes: int = 3,
         **kwargs
-    ) -> nn.Cell:
+    ) -> nn.Module:
         if model_type != "resnet_1d_classifier":
             raise ValueError(
                 f"Unsupported model_type: {model_type}"
@@ -289,8 +291,9 @@ class ModelBuilder:
         )
     
     @staticmethod
-    def get_model_info(model: nn.Cell) -> Dict[str, Any]:
+    def get_model_info(model: nn.Module) -> Dict[str, Any]:
         if isinstance(model, ResNet1DClassifier):
+            total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             return {
                 "model_type": "resnet_1d_classifier",
                 "input_dim": model.input_dim,
@@ -302,15 +305,16 @@ class ModelBuilder:
                 "final_channels": model.final_channels,
                 "kernel_size": model.kernel_size,
                 "dropout": model.dropout_rate,
-                "trainable_params": sum(p.size for p in model.trainable_params()),
+                "trainable_params": total_params,
             }
+        total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         return {
             "model_type": "unknown",
-            "trainable_params": sum(p.size for p in model.trainable_params()),
+            "trainable_params": total_params,
         }
 
 
-def create_model(model_type: str, **kwargs) -> nn.Cell:
+def create_model(model_type: str, **kwargs) -> nn.Module:
     """向后兼容接口"""
     if model_type != "resnet_1d_classifier":
         raise ValueError(
@@ -334,7 +338,7 @@ def get_default_config(model_type: str = "resnet_1d_classifier") -> Dict[str, An
     return ModelBuilder.get_default_config(model_type)
 
 
-def create_model_from_config(config: Dict[str, Any]) -> nn.Cell:
+def create_model_from_config(config: Dict[str, Any]) -> nn.Module:
     model_type = config.get("model_type", "resnet_1d_classifier")
     input_dim = config.get("input_dim")
     if input_dim is None:
@@ -354,4 +358,3 @@ def create_model_from_config(config: Dict[str, Any]) -> nn.Cell:
     return ModelBuilder.create_model(
         model_type, input_shape, num_classes=num_classes, **model_kwargs
     )
-

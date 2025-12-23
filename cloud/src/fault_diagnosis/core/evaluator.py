@@ -1,10 +1,14 @@
 """
 故障诊断评估器
 用于评估分类模型的性能（准确率、精确率、召回率、F1等）
+
+重构说明：从 MindSpore 迁移到 PyTorch
 """
 
 import numpy as np
-import mindspore as ms
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from typing import Dict, Any, Optional, Union
 from pathlib import Path
 import json
@@ -21,17 +25,29 @@ from sklearn.metrics import (
 class FaultDiagnosisEvaluator:
     """故障诊断模型评估器"""
     
-    def __init__(self, model: ms.nn.Cell):
+    def __init__(
+        self, 
+        model: nn.Module,
+        device: Optional[torch.device] = None,
+    ):
         """
         初始化评估器
         
         Args:
-            model: 训练好的MindSpore模型
+            model: 训练好的PyTorch模型
+            device: 计算设备 (cuda/cpu)
         """
         if model is None:
-            raise ValueError("模型不能为None，请确保传入有效的MindSpore模型")
-        self.model = model
-        self.model.set_train(False)  # 设置为评估模式
+            raise ValueError("模型不能为None，请确保传入有效的PyTorch模型")
+        
+        # 设置设备
+        if device is None:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        else:
+            self.device = device
+        
+        self.model = model.to(self.device)
+        self.model.eval()  # 设置为评估模式
         
     def evaluate(
         self,
@@ -52,22 +68,31 @@ class FaultDiagnosisEvaluator:
         all_labels = []
         
         # 遍历测试集进行预测
-        for batch in test_loader:
-            if isinstance(batch, dict):
-                sequences = batch['sequences']
-                labels = batch['labels']
-            else:
-                sequences, labels = batch
-            
-            # 模型预测
-            logits = self.model(sequences)
-            
-            # 获取预测类别
-            predictions = ms.ops.argmax(logits, dim=1)
-            
-            # 转换为numpy
-            all_predictions.extend(predictions.asnumpy().tolist())
-            all_labels.extend(labels.asnumpy().tolist())
+        with torch.no_grad():
+            for batch in test_loader:
+                if isinstance(batch, dict):
+                    sequences = batch['sequences']
+                    labels = batch['labels']
+                else:
+                    sequences, labels = batch
+                
+                # 将数据移动到设备
+                sequences = sequences.to(self.device)
+                labels = labels.to(self.device)
+                
+                # 确保数据类型正确
+                if sequences.dtype != torch.float32:
+                    sequences = sequences.float()
+                
+                # 模型预测
+                logits = self.model(sequences)
+                
+                # 获取预测类别
+                predictions = torch.argmax(logits, dim=1)
+                
+                # 转换为numpy（先移到CPU）
+                all_predictions.extend(predictions.cpu().numpy().tolist())
+                all_labels.extend(labels.cpu().numpy().tolist())
         
         # 转换为numpy数组
         all_predictions = np.array(all_predictions)
@@ -167,6 +192,41 @@ class FaultDiagnosisEvaluator:
         
         return metrics
     
+    def predict(
+        self,
+        sequences: Union[np.ndarray, torch.Tensor],
+        return_probs: bool = False,
+    ) -> Union[np.ndarray, tuple]:
+        """
+        对输入序列进行预测
+        
+        Args:
+            sequences: 输入序列 (batch_size, seq_len, n_features)
+            return_probs: 是否返回概率
+            
+        Returns:
+            如果 return_probs=False: 预测类别 (batch_size,)
+            如果 return_probs=True: (预测类别, 概率) 
+        """
+        # 转换为Tensor
+        if isinstance(sequences, np.ndarray):
+            sequences = torch.from_numpy(sequences).float()
+        
+        sequences = sequences.to(self.device)
+        
+        with torch.no_grad():
+            logits = self.model(sequences)
+            probs = F.softmax(logits, dim=1)
+            predictions = torch.argmax(logits, dim=1)
+        
+        predictions_np = predictions.cpu().numpy()
+        
+        if return_probs:
+            probs_np = probs.cpu().numpy()
+            return predictions_np, probs_np
+        
+        return predictions_np
+    
     def save_evaluation_results(
         self,
         metrics: Dict[str, Any],
@@ -250,4 +310,3 @@ class FaultDiagnosisEvaluator:
                         f.write(f"{key}: {value}\n")
         
         return results_file, summary_file
-

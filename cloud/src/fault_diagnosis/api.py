@@ -44,22 +44,34 @@ try:
     from fault_diagnosis.core.resnet_1d.model_builder import ModelBuilder as ResNet1DModelBuilder
     from fault_diagnosis.core.resnet_1d.trainer import Trainer as ResNet1DTrainer
     
-    import mindspore as ms
+    import torch
     training_available = True
     logger = logging.getLogger(__name__)
-    logger.info("故障诊断训练模块加载成功 (CNN 1D + LSTM + ResNet 1D)")
+    logger.info("故障诊断训练模块加载成功 (CNN 1D + LSTM + ResNet 1D) - PyTorch版本")
 except ImportError as e:
     training_available = False
     logger = logging.getLogger(__name__)
     logger.warning(f"训练模块不可用: {e}")
 
 def _normalize_device_target(value):
-    normalized = str(value or 'CPU').strip().lower()
+    """标准化设备标识（PyTorch风格）"""
+    normalized = str(value or 'cpu').strip().lower()
     if normalized in ('gpu', 'cuda'):
-        return 'GPU'
+        return 'cuda' if torch.cuda.is_available() else 'cpu'
     if normalized in ('ascend', 'npu', 'atlas'):
-        return 'Ascend'
-    return 'CPU'
+        # Ascend/NPU 目前不支持，回退到CPU
+        logger.warning("Ascend/NPU设备暂不支持，使用CPU")
+        return 'cpu'
+    return 'cpu'
+
+
+def _get_torch_device(device_target: str = None) -> torch.device:
+    """获取PyTorch设备对象"""
+    if device_target is None:
+        device_target = 'cuda' if torch.cuda.is_available() else 'cpu'
+    else:
+        device_target = _normalize_device_target(device_target)
+    return torch.device(device_target)
 
 # 导入任务管理器
 # 始终初始化 training_tasks 字典作为备用存储
@@ -263,16 +275,13 @@ def _execute_training(task_id: str, config: dict):
                 })
         
         device_target = _normalize_device_target(
-            config.get('device_target') or config.get('device') or 'CPU'
+            config.get('device_target') or config.get('device') or 'cpu'
         )
         config['device_target'] = device_target
         config['device'] = device_target
-        if 'ms' in globals():
-            try:
-                ms.set_context(mode=ms.GRAPH_MODE, device_target=device_target)
-                logger.info(f"MindSpore context 已设置: device_target={device_target}")
-            except Exception as ctx_err:
-                logger.warning(f"设置MindSpore设备失败，仍使用默认: {ctx_err}")
+        # PyTorch 设备设置
+        device = _get_torch_device(device_target)
+        logger.info(f"PyTorch 设备已设置: {device}")
 
         # 1. 从Edge获取数据文件
         logger.info("步骤1: 从Edge获取数据文件")
@@ -346,12 +355,30 @@ def _execute_training(task_id: str, config: dict):
         
         # 5. 使用测试集评估模型
         logger.info("步骤5: 使用测试集评估模型")
-        evaluation_results = _evaluate_model(
-            model=model,
-            test_data=test_data,
-            config=config,
-            task_id=task_id
-        )
+        
+        # 检查测试数据是否存在，如果不存在则使用验证集或跳过评估
+        eval_data = test_data
+        if eval_data is None:
+            logger.warning("测试集不存在，尝试使用验证集进行评估")
+            eval_data = val_data
+        
+        if eval_data is None:
+            logger.warning("验证集也不存在，跳过模型评估步骤")
+            evaluation_results = {
+                'overall': {'accuracy': 0.0, 'precision_macro': 0.0, 'recall_macro': 0.0, 'f1_macro': 0.0},
+                'per_class': {'precision': [], 'recall': [], 'f1': []},
+                'confusion_matrix': [],
+                'num_samples': 0,
+                'num_classes': len(config.get('labels', ['正常', '内圈故障', '外圈故障'])),
+                'note': '无测试集或验证集，评估结果为默认值'
+            }
+        else:
+            evaluation_results = _evaluate_model(
+                model=model,
+                test_data=eval_data,
+                config=config,
+                task_id=task_id
+            )
         
         logger.info(f"训练和评估任务完成: {task_id}")
         logger.info(f"测试集准确率: {evaluation_results['overall']['accuracy']:.4f}")
@@ -1416,7 +1443,7 @@ def _train_cnn1d_model(config: dict, train_data: dict, val_data: dict, task_id: 
         # 保存模型
         models_dir = Path('models') / 'fault_diagnosis' / 'cnn_1d' / task_id
         models_dir.mkdir(parents=True, exist_ok=True)
-        trainer.save_model(models_dir / 'model.ckpt')
+        trainer.save_model(models_dir / 'model.pth')
         
         # 保存训练指标
         metrics_file = models_dir / 'training_metrics.json'
@@ -1573,7 +1600,7 @@ def _train_lstm_model(config: dict, train_data: dict, val_data: dict, task_id: s
         # 保存模型
         models_dir = Path('models') / 'fault_diagnosis' / 'lstm' / task_id
         models_dir.mkdir(parents=True, exist_ok=True)
-        trainer.save_model(models_dir / 'model.ckpt')
+        trainer.save_model(models_dir / 'model.pth')
         
         # 保存训练指标
         metrics_file = models_dir / 'training_metrics.json'
@@ -1628,12 +1655,11 @@ def _train_resnet1d_model(config: dict, train_data: dict, val_data: dict, task_i
         训练好的模型
     """
     try:
-        import mindspore as ms
         device_target = _normalize_device_target(
-            config.get('device_target') or config.get('device') or 'CPU'
+            config.get('device_target') or config.get('device') or 'cpu'
         )
-        ms.set_context(mode=ms.GRAPH_MODE, device_target=device_target)
-        logger.info(f"MindSpore context 已设置: device_target={device_target}")
+        device = _get_torch_device(device_target)
+        logger.info(f"PyTorch 设备已设置: {device}")
         
         logger.info("===== 开始 ResNet 1D 模型训练 =====")
         
@@ -1752,7 +1778,7 @@ def _train_resnet1d_model(config: dict, train_data: dict, val_data: dict, task_i
         # 保存模型
         models_dir = Path('models') / 'fault_diagnosis' / 'resnet_1d' / task_id
         models_dir.mkdir(parents=True, exist_ok=True)
-        trainer.save_model(models_dir / 'model.ckpt')
+        trainer.save_model(models_dir / 'model.pth')
         
         # 保存训练指标
         metrics_file = models_dir / 'training_metrics.json'
@@ -1801,66 +1827,40 @@ def _create_dataloader(sequences: np.ndarray, labels: np.ndarray, batch_size: in
         shuffle: 是否打乱
         
     Returns:
-        MindSpore Dataset对象
+        PyTorch DataLoader对象
     """
-    try:
-        import mindspore.dataset as ds
-        
-        # 检查输入是否已经是MindSpore张量，如果是则转换为numpy
-        if hasattr(sequences, 'asnumpy'):
-            sequences = sequences.asnumpy()
-        if hasattr(labels, 'asnumpy'):
-            labels = labels.asnumpy()
-        
-        # 创建数据集 - 直接使用numpy数组
-        dataset = ds.NumpySlicesDataset(
-            data=(sequences, labels),
-            column_names=['sequences', 'labels'],
-            shuffle=shuffle
-        )
-        
-        # 定义转换函数
-        def numpy_to_tensor(sequences, labels):
-            return ms.Tensor(sequences, dtype=ms.float32), ms.Tensor(labels, dtype=ms.int32)
-        
-        # 应用转换
-        dataset = dataset.map(
-            operations=numpy_to_tensor,
-            input_columns=['sequences', 'labels'],
-            output_columns=['sequences', 'labels']
-        )
-        
-        # 创建数据加载器
-        dataloader = dataset.batch(batch_size=batch_size, drop_remainder=False)
-        
-        return dataloader
-        
-    except Exception as e:
-        logger.error(f"创建数据加载器失败: {str(e)}", exc_info=True)
-        # 如果MindSpore不可用，返回简单的迭代器
-        def simple_loader():
-            # 检查输入是否已经是MindSpore张量，如果是则转换为numpy
-            if hasattr(sequences, 'asnumpy'):
-                sequences = sequences.asnumpy()
-            if hasattr(labels, 'asnumpy'):
-                labels = labels.asnumpy()
-                
-            n_samples = len(sequences)
-            indices = np.arange(n_samples)
-            if shuffle:
-                np.random.shuffle(indices)
-            
-            for i in range(0, n_samples, batch_size):
-                batch_indices = indices[i:i+batch_size]
-                batch_sequences = sequences[batch_indices]
-                batch_labels = labels[batch_indices]
-                yield ms.Tensor(batch_sequences, dtype=ms.float32), ms.Tensor(batch_labels, dtype=ms.int32)
-        
-        return simple_loader()
+    from torch.utils.data import DataLoader, TensorDataset
+    
+    # 检查输入是否是PyTorch张量，如果是则转换为numpy再重新创建
+    if isinstance(sequences, torch.Tensor):
+        sequences = sequences.cpu().numpy()
+    if isinstance(labels, torch.Tensor):
+        labels = labels.cpu().numpy()
+    
+    # 确保数据类型正确
+    sequences = np.array(sequences, dtype=np.float32)
+    labels = np.array(labels, dtype=np.int64)
+    
+    # 创建PyTorch张量
+    sequences_tensor = torch.from_numpy(sequences)
+    labels_tensor = torch.from_numpy(labels)
+    
+    # 创建TensorDataset
+    dataset = TensorDataset(sequences_tensor, labels_tensor)
+    
+    # 创建DataLoader
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        drop_last=False
+    )
+    
+    return dataloader
 
 
 def _evaluate_model(
-    model: ms.nn.Cell,
+    model: torch.nn.Module,
     test_data: dict,
     config: dict,
     task_id: str
@@ -1882,6 +1882,13 @@ def _evaluate_model(
         # 检查模型是否有效
         if model is None:
             raise ValueError("模型为None，无法进行评估。请检查训练函数是否正确返回了模型。")
+        
+        # 检查测试数据是否有效
+        if test_data is None:
+            raise ValueError("测试数据为None，无法进行评估。请确保数据集划分正确生成了测试集。")
+        
+        if 'sequences' not in test_data or 'labels' not in test_data:
+            raise ValueError("测试数据格式错误，需要包含 'sequences' 和 'labels' 字段。")
         
         # 创建测试数据加载器
         test_loader = _create_dataloader(

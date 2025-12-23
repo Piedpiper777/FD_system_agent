@@ -296,18 +296,21 @@ def _create_sequences(data: np.ndarray, sequence_length: int, stride: int = 1) -
 
 def _load_and_predict(model_dir: Path, model_type: str, sequences: np.ndarray, 
                       num_classes: int, batch_size: int) -> tuple:
-    """加载模型并进行预测"""
+    """加载模型并进行预测（PyTorch版本）"""
     try:
-        import mindspore as ms
-        from mindspore import Tensor
+        import torch
+        import torch.nn.functional as F
         
-        # 设置MindSpore为推理模式
-        ms.set_context(mode=ms.GRAPH_MODE, device_target='CPU')
+        # 设置设备
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
-        # 加载模型
-        model_path = model_dir / 'model.ckpt'
+        # 加载模型 - 优先使用 .pth 文件，向后兼容 .ckpt 文件
+        model_path = model_dir / 'model.pth'
         if not model_path.exists():
-            raise FileNotFoundError(f'模型文件不存在: {model_path}')
+            # 向后兼容：尝试加载旧的 .ckpt 文件
+            model_path = model_dir / 'model.ckpt'
+            if not model_path.exists():
+                raise FileNotFoundError(f'模型文件不存在: {model_dir}/model.pth 或 model.ckpt')
         
         # 从配置中获取模型参数
         config_file = model_dir / 'model_config.json'
@@ -352,34 +355,36 @@ def _load_and_predict(model_dir: Path, model_type: str, sequences: np.ndarray,
                 use_attention=config.get('use_attention', False)
             )
         
-        # 加载参数
-        param_dict = ms.load_checkpoint(str(model_path))
-        ms.load_param_into_net(model, param_dict)
-        model.set_train(False)
+        # 加载模型参数
+        state_dict = torch.load(str(model_path), map_location=device)
+        model.load_state_dict(state_dict)
+        model.to(device)
+        model.eval()  # 设置为评估模式
         
         # 批量预测
         all_predictions = []
         all_confidences = []
         
-        for i in range(0, len(sequences), batch_size):
-            batch = sequences[i:i + batch_size]
-            batch_tensor = Tensor(batch.astype(np.float32))
-            
-            # 前向传播
-            output = model(batch_tensor)
-            probs = ms.ops.Softmax(axis=1)(output)
-            
-            # 获取预测结果
-            pred = probs.argmax(axis=1).asnumpy()
-            conf = probs.max(axis=1).asnumpy()
-            
-            all_predictions.extend(pred)
-            all_confidences.extend(conf)
+        with torch.no_grad():
+            for i in range(0, len(sequences), batch_size):
+                batch = sequences[i:i + batch_size]
+                batch_tensor = torch.from_numpy(batch.astype(np.float32)).to(device)
+                
+                # 前向传播
+                output = model(batch_tensor)
+                probs = F.softmax(output, dim=1)
+                
+                # 获取预测结果
+                pred = probs.argmax(dim=1).cpu().numpy()
+                conf = probs.max(dim=1).values.cpu().numpy()
+                
+                all_predictions.extend(pred)
+                all_confidences.extend(conf)
         
         return np.array(all_predictions), np.array(all_confidences)
         
     except ImportError as e:
-        print(f"MindSpore导入失败: {e}")
+        print(f"PyTorch导入失败: {e}")
         raise
     except Exception as e:
         print(f"模型加载或推理失败: {e}")
