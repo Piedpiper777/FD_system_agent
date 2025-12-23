@@ -1,5 +1,6 @@
 # 运筹与优化团队工业设备智能健康管理平台(智能体开发版，详见开发指南)
 
+## ❗此仓库全部为pytorch框架，如需mindspore框架请移步https://github.com/Piedpiper777/FD_system.git
 ## 一、项目部署与环境配置
 1. 本地安装git（网上搜）
 2. 本地新建一个文件夹，如project（自己做好文件管理即可）
